@@ -54,22 +54,18 @@ interface EventDetail {
   };
 }
 
-export default function AdminEventDetailPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+export default function AdminEventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [eventId, setEventId] = useState<string>('');
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Resolve params (handle both Promise and object)
+  // Resolve params
   useEffect(() => {
     async function resolveParams() {
-      if (params && typeof params === 'object' && 'then' in params) {
-        const resolved = await params;
-        setEventId(resolved.id);
-      } else if (params && typeof params === 'object' && 'id' in params) {
-        setEventId(params.id);
-      }
+      const resolved = await params;
+      setEventId(resolved.id);
     }
     resolveParams();
   }, [params]);

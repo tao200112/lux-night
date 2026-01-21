@@ -46,7 +46,7 @@ interface TicketType {
   redeem_end_at_override: string | null;
 }
 
-export default function AdminEditEventPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+export default function AdminEditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [eventId, setEventId] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -94,12 +94,8 @@ export default function AdminEditEventPage({ params }: { params: Promise<{ id: s
   // Resolve params
   useEffect(() => {
     async function resolveParams() {
-      if (params && typeof params === 'object' && 'then' in params) {
-        const resolved = await params;
-        setEventId(resolved.id);
-      } else if (params && typeof params === 'object' && 'id' in params) {
-        setEventId(params.id);
-      }
+      const resolved = await params;
+      setEventId(resolved.id);
     }
     resolveParams();
   }, [params]);
