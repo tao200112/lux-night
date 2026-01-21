@@ -1,41 +1,34 @@
 /**
  * Internal Web Auth Client
  * Internal 端认证客户端函数
+ * 
+ * 使用 @lux-night/shared 的统一认证工具
  */
 
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
+import { getOAuthRedirectTo } from '@lux-night/shared/auth';
 
-/**
- * 获取 Internal App 的 OAuth 回调 URL
- * 
- * 重要：始终使用当前浏览器的 origin，确保在哪个端口登录就回到哪个端口
- * 不依赖环境变量，避免跨域重定向问题
- */
-const getCallbackUrl = () => {
-  // 始终使用当前页面的 origin，确保回调到同一个应用
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/auth/callback`;
-  }
-  // 服务端渲染时的 fallback（实际不应该在服务端调用此函数）
-  return 'http://localhost:3001/auth/callback';
-};
+export const APP_NAME = 'internal';
+export const DEFAULT_AFTER_LOGIN = '/workspaces';
 
 /**
  * Google 登录
- * @param redirectTo 登录成功后重定向的 URL（可选，默认使用当前应用的 /auth/callback）
+ * 
+ * 使用统一的 OAuth 回调 URL，不再支持自定义 redirectTo
+ * 登录前的目标路径通过 setPostAuthRedirect 设置
  */
-export async function signInWithGoogle(redirectTo?: string): Promise<void> {
+export async function signInWithGoogle(): Promise<void> {
   const supabase = createClient();
   
-  // 确保 redirectTo 使用当前应用的 origin
-  const callbackUrl = redirectTo || getCallbackUrl();
+  // 使用统一的回调 URL 生成器
+  const redirectTo = getOAuthRedirectTo(window.location.origin);
   
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: callbackUrl,
+      redirectTo,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
@@ -51,18 +44,20 @@ export async function signInWithGoogle(redirectTo?: string): Promise<void> {
 
 /**
  * Apple 登录
- * @param redirectTo 登录成功后重定向的 URL（可选，默认使用当前应用的 /auth/callback）
+ * 
+ * 使用统一的 OAuth 回调 URL，不再支持自定义 redirectTo
+ * 登录前的目标路径通过 setPostAuthRedirect 设置
  */
-export async function signInWithApple(redirectTo?: string): Promise<void> {
+export async function signInWithApple(): Promise<void> {
   const supabase = createClient();
   
-  // 确保 redirectTo 使用当前应用的 origin
-  const callbackUrl = redirectTo || getCallbackUrl();
+  // 使用统一的回调 URL 生成器
+  const redirectTo = getOAuthRedirectTo(window.location.origin);
   
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'apple',
     options: {
-      redirectTo: callbackUrl,
+      redirectTo,
     },
   });
 

@@ -7,12 +7,21 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signInWithEmailPassword, getSession } from '@/lib/auth/client';
+import { signInWithEmailPassword, getSession, APP_NAME, DEFAULT_AFTER_LOGIN } from '@/lib/auth/client';
+import { consumePostAuthRedirect, normalizeRelativePath } from '@lux-night/shared/auth';
 
 function AdminLoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 从查询参数获取 redirect，确保是安全的相对路径
+  const redirectParam = mounted ? searchParams.get('redirect') : null;
+  const redirectTo = normalizeRelativePath(redirectParam, DEFAULT_AFTER_LOGIN);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

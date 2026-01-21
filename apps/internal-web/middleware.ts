@@ -33,6 +33,7 @@ export async function middleware(request: NextRequest) {
       pathname === '/login' ||
       pathname.startsWith('/auth/callback') ||
       pathname === '/auth/callback' ||
+      pathname === '/auth/post-login' ||
       pathname.startsWith('/onboarding/') ||
       pathname === '/join' ||
       pathname === '/error'

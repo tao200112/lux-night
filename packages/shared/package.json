@@ -11,7 +11,8 @@
     "./constants": "./src/constants.ts",
     "./data/profile": "./src/data/profile.ts",
     "./data/regions": "./src/data/regions.ts",
-    "./utils/qr": "./src/utils/qr.ts"
+    "./utils/qr": "./src/utils/qr.ts",
+    "./auth": "./src/auth/index.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

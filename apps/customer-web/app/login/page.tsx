@@ -2,16 +2,24 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signInWithGoogle, signInWithApple, getUser } from '@/lib/auth/client';
+import { signInWithGoogle, signInWithApple, getUser, APP_NAME, DEFAULT_AFTER_LOGIN } from '@/lib/auth/client';
+import { setPostAuthRedirect, normalizeRelativePath } from '@lux-night/shared/auth';
 import Button from '@/components/ui/Button';
 
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Default to home page, not profile or other protected pages
-  const redirectTo = searchParams.get('redirect') || '/';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 从查询参数获取 redirect，确保是安全的相对路径
+  const redirectParam = mounted ? searchParams.get('redirect') : null;
+  const targetPath = normalizeRelativePath(redirectParam, DEFAULT_AFTER_LOGIN);
 
   useEffect(() => {
     // Check if already logged in
@@ -28,9 +36,10 @@ function LoginPageContent() {
     try {
       setLoading(true);
       setError(null);
-      // Always redirect to home after login, navigation stack will be: Login -> Home
-      // If user needs to go to a specific page (like /profile), they can navigate there after login
-      await signInWithGoogle(`${window.location.origin}/auth/callback?redirect=/`);
+      // 存储登录后要跳转的路径
+      setPostAuthRedirect(APP_NAME, targetPath);
+      // 发起 OAuth 登录（回调到 /auth/callback）
+      await signInWithGoogle();
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
       setLoading(false);
@@ -41,9 +50,10 @@ function LoginPageContent() {
     try {
       setLoading(true);
       setError(null);
-      // Always redirect to home after login, navigation stack will be: Login -> Home
-      // If user needs to go to a specific page (like /profile), they can navigate there after login
-      await signInWithApple(`${window.location.origin}/auth/callback?redirect=/`);
+      // 存储登录后要跳转的路径
+      setPostAuthRedirect(APP_NAME, targetPath);
+      // 发起 OAuth 登录（回调到 /auth/callback）
+      await signInWithApple();
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
       setLoading(false);

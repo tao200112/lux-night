@@ -1,9 +1,15 @@
 /**
  * Admin Web Auth Client Utilities
  * Admin Portal 客户端认证工具（邮箱密码登录）
+ * 
+ * Admin 使用邮箱密码登录，不使用 OAuth
+ * 但仍需使用统一的 post-auth redirect 管理
  */
 
 import { createClient } from '@/lib/supabase/client';
+
+export const APP_NAME = 'admin';
+export const DEFAULT_AFTER_LOGIN = '/dashboard';
 
 export async function signInWithEmailPassword(email: string, password: string) {
   const supabase = createClient();

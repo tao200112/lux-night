@@ -7,7 +7,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signInWithGoogle, signInWithApple } from '@/lib/auth/client';
+import { signInWithGoogle, signInWithApple, APP_NAME, DEFAULT_AFTER_LOGIN } from '@/lib/auth/client';
+import { setPostAuthRedirect, normalizeRelativePath } from '@lux-night/shared/auth';
 
 function InternalLoginPageContent() {
   const router = useRouter();
@@ -19,14 +20,17 @@ function InternalLoginPageContent() {
     setMounted(true);
   }, []);
 
-  const redirectTo = mounted ? (searchParams.get('redirect') || '/workspaces') : '/workspaces';
+  // 从查询参数获取 redirect，确保是安全的相对路径
+  const redirectParam = mounted ? searchParams.get('redirect') : null;
+  const targetPath = normalizeRelativePath(redirectParam, DEFAULT_AFTER_LOGIN);
 
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
-      await signInWithGoogle(
-        `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`
-      );
+      // 存储登录后要跳转的路径
+      setPostAuthRedirect(APP_NAME, targetPath);
+      // 发起 OAuth 登录（回调到 /auth/callback）
+      await signInWithGoogle();
     } catch (error) {
       console.error('Google login error:', error);
       setLoading(false);
@@ -36,9 +40,10 @@ function InternalLoginPageContent() {
   const handleAppleLogin = async () => {
     try {
       setLoading(true);
-      await signInWithApple(
-        `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`
-      );
+      // 存储登录后要跳转的路径
+      setPostAuthRedirect(APP_NAME, targetPath);
+      // 发起 OAuth 登录（回调到 /auth/callback）
+      await signInWithApple();
     } catch (error) {
       console.error('Apple login error:', error);
       setLoading(false);

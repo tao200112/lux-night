@@ -1,28 +1,33 @@
 /**
  * Customer Web Auth Client
- * 确保 OAuth 回调指向 customer app
+ * 
+ * 使用 @lux-night/shared 的统一认证工具
  */
 
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
+import { getOAuthRedirectTo } from '@lux-night/shared/auth';
 
-const getCallbackUrl = () => {
-  // 优先使用 NEXT_PUBLIC_* 环境变量（Vercel 生产环境）
-  // 客户端组件只能访问 NEXT_PUBLIC_* 前缀的环境变量
-  const origin = process.env.NEXT_PUBLIC_APP_ORIGIN || 
-                 (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
-  return `${origin}/auth/callback`;
-};
+export const APP_NAME = 'customer';
+export const DEFAULT_AFTER_LOGIN = '/';
 
-export async function signInWithGoogle(redirectTo?: string): Promise<void> {
+/**
+ * Google 登录
+ * 
+ * 使用统一的 OAuth 回调 URL，不再支持自定义 redirectTo
+ * 登录前的目标路径通过 setPostAuthRedirect 设置
+ */
+export async function signInWithGoogle(): Promise<void> {
   const supabase = createClient();
-  const callbackUrl = redirectTo || getCallbackUrl();
+  
+  // 使用统一的回调 URL 生成器
+  const redirectTo = getOAuthRedirectTo(window.location.origin);
   
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: callbackUrl,
+      redirectTo,
     },
   });
 
@@ -32,14 +37,22 @@ export async function signInWithGoogle(redirectTo?: string): Promise<void> {
   }
 }
 
-export async function signInWithApple(redirectTo?: string): Promise<void> {
+/**
+ * Apple 登录
+ * 
+ * 使用统一的 OAuth 回调 URL，不再支持自定义 redirectTo
+ * 登录前的目标路径通过 setPostAuthRedirect 设置
+ */
+export async function signInWithApple(): Promise<void> {
   const supabase = createClient();
-  const callbackUrl = redirectTo || getCallbackUrl();
+  
+  // 使用统一的回调 URL 生成器
+  const redirectTo = getOAuthRedirectTo(window.location.origin);
   
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'apple',
     options: {
-      redirectTo: callbackUrl,
+      redirectTo,
     },
   });
 
@@ -49,6 +62,9 @@ export async function signInWithApple(redirectTo?: string): Promise<void> {
   }
 }
 
+/**
+ * 登出当前用户
+ */
 export async function signOut(): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.auth.signOut();
@@ -59,6 +75,9 @@ export async function signOut(): Promise<void> {
   }
 }
 
+/**
+ * 获取当前用户
+ */
 export async function getUser() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -1,8 +1,14 @@
 /**
  * GET /auth/callback
  * OAuth 回调 Route Handler（服务器端）
- * 从 URL 读取 code，使用服务器端 Supabase 客户端交换 session
- * 成功后重定向到首页，失败重定向到登录页
+ * 
+ * 职责：
+ * 1. 从 URL 读取 code
+ * 2. 使用服务器端 Supabase 客户端交换 session
+ * 3. 成功后重定向到 /auth/post-login（由客户端处理最终跳转）
+ * 4. 失败重定向到登录页
+ * 
+ * 注意：不再通过 query 参数传递 redirect，而是使用 localStorage
  */
 
 import { createClient } from '@/lib/supabase/server';
@@ -12,7 +18,6 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
   const error = requestUrl.searchParams.get('error');
-  const redirectTo = requestUrl.searchParams.get('redirect') || '/';
 
   // 如果 URL 中有错误参数，重定向到登录页
   if (error) {
@@ -54,9 +59,10 @@ export async function GET(request: NextRequest) {
       console.log('[CUSTOMER AUTH CALLBACK] Session exchanged successfully:', data.session.user.id);
     }
 
-    // 成功后重定向到目标页面
+    // 重定向到 post-login 页面
+    // post-login 页面会从 localStorage 读取目标路径并跳转
     // session 已经存储在 cookies 中（通过 createServerClient 的 setAll）
-    return NextResponse.redirect(new URL(redirectTo, request.url));
+    return NextResponse.redirect(new URL('/auth/post-login', request.url));
   } catch (err: any) {
     console.error('[CUSTOMER AUTH CALLBACK] Unexpected error:', err);
     return NextResponse.redirect(
