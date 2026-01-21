@@ -266,7 +266,7 @@ export async function GET() {
           },
           ticketsRedeemed: {
             value: ticketsRedeemed || 0,
-            formatted: ticketsRedeemed >= 1000 ? `${(ticketsRedeemed / 1000).toFixed(1)}K` : ticketsRedeemed.toString(),
+            formatted: (ticketsRedeemed || 0) >= 1000 ? `${((ticketsRedeemed || 0) / 1000).toFixed(1)}K` : (ticketsRedeemed || 0).toString(),
             trend: null, // 无趋势（显示 —）
           },
           totalMerchants: {
