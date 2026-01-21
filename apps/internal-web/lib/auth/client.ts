@@ -9,13 +9,17 @@ import { createClient } from '@/lib/supabase/client';
 
 /**
  * 获取 Internal App 的 OAuth 回调 URL
+ * 
+ * 重要：始终使用当前浏览器的 origin，确保在哪个端口登录就回到哪个端口
+ * 不依赖环境变量，避免跨域重定向问题
  */
 const getCallbackUrl = () => {
-  // 优先使用 NEXT_PUBLIC_* 环境变量（Vercel 生产环境）
-  // 客户端组件只能访问 NEXT_PUBLIC_* 前缀的环境变量
-  const origin = process.env.NEXT_PUBLIC_APP_ORIGIN || 
-                 (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
-  return `${origin}/auth/callback`;
+  // 始终使用当前页面的 origin，确保回调到同一个应用
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/auth/callback`;
+  }
+  // 服务端渲染时的 fallback（实际不应该在服务端调用此函数）
+  return 'http://localhost:3001/auth/callback';
 };
 
 /**
