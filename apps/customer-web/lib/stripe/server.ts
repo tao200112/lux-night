@@ -1,10 +1,14 @@
 import Stripe from 'stripe';
 
+export const isStripeConfigured = !!process.env.STRIPE_SECRET_KEY;
+
 if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set');
+  console.warn('[Stripe] STRIPE_SECRET_KEY is not set - Stripe features will be disabled');
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia', // 使用当前稳定的 API 版本
-  typescript: true,
-});
+export const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-02-24.acacia',
+      typescript: true,
+    })
+  : null;

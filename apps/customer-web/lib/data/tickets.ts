@@ -115,30 +115,33 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
       ),
       ticket_types!inner(name)
     `)
-    .eq('id', id)
-    .single();
+    .eq('id', id);
 
   if (userId) {
     query = query.eq('user_id', userId);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query.single();
 
   if (error || !data) {
     console.error('Error fetching ticket:', error);
     return null;
   }
 
-  // Transform data
+  // Transform data - safely access arrays
+  const eventData = Array.isArray(data.events) ? data.events[0] : data.events;
+  const venueData = eventData?.venues ? (Array.isArray(eventData.venues) ? eventData.venues[0] : eventData.venues) : null;
+  const ticketTypeData = Array.isArray(data.ticket_types) ? data.ticket_types[0] : data.ticket_types;
+
   return {
     id: data.id,
     eventId: data.event_id,
-    eventName: data.events.title,
-    venue: data.events.venues.name,
-    date: new Date(data.events.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    time: new Date(data.events.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    eventName: eventData?.title || 'Unknown Event',
+    venue: venueData?.name || 'Unknown Venue',
+    date: eventData?.start_at ? new Date(eventData.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+    time: eventData?.start_at ? new Date(eventData.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
     status: data.status,
-    tierName: data.ticket_types.name,
+    tierName: ticketTypeData?.name || 'Unknown',
     qrToken: data.qr_seed,
     qrCodeUrl: generateQRCodeUrl(data.qr_seed),
     purchaseDate: new Date(data.created_at).toLocaleDateString(),

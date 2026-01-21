@@ -9,7 +9,7 @@ import Button from '../../../components/ui/Button';
 import BackButton from '../../../components/ui/BackButton';
 import { useRouter } from 'next/navigation';
 
-export default function EventDetailPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [eventId, setEventId] = useState<string>('');
   const [event, setEvent] = useState<EventWithVenue | null>(null);
@@ -18,15 +18,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, number>>({});
 
-  // Resolve params (handle both Promise and object)
+  // Resolve params (Next.js 15 always provides Promise)
   useEffect(() => {
     async function resolveParams() {
-      if (params && typeof params === 'object' && 'then' in params) {
-        const resolved = await params;
-        setEventId(resolved.id);
-      } else if (params && typeof params === 'object' && 'id' in params) {
-        setEventId(params.id);
-      }
+      const resolved = await params;
+      setEventId(resolved.id);
     }
     resolveParams();
   }, [params]);
@@ -266,8 +262,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 const maxQuantity = Math.min(maxPerOrder, available === Infinity ? 10 : available, 10); // Limit to 10 per order
 
                 return (
-                  <div key={tier.id} className={`group relative overflow-hidden rounded-2xl bg-lux-card border border-white/10 transition-all duration-300 hover:border-primary/40 hover:bg-lux-card/80 p-5 ${totalQuantity !== Infinity && available < 10 ? '' : ''}`}>
-                    {totalQuantity !== Infinity && available < 10 && !isSoldOut && (
+                  <div key={tier.id} className={`group relative overflow-hidden rounded-2xl bg-lux-card border border-white/10 transition-all duration-300 hover:border-primary/40 hover:bg-lux-card/80 p-5 ${(typeof totalQuantity === 'number' && totalQuantity !== Infinity && available < 10) ? '' : ''}`}>
+                    {(typeof totalQuantity === 'number' && totalQuantity !== Infinity && available < 10 && !isSoldOut) && (
                       <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/20 blur-3xl rounded-full pointer-events-none"></div>
                     )}
                     {isSoldOut && (

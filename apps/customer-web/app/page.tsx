@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getRegions, getEvents, Region as RegionType } from '@/lib/data/regions';
-import { getEvents as getEventsData, EventWithVenue } from '@/lib/data/events';
+import { getRegions, Region as RegionType } from '@/lib/data/regions';
+import { getEvents, EventWithVenue } from '@/lib/data/events';
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';

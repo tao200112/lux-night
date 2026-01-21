@@ -162,14 +162,13 @@ export async function getEventById(
         address
       )
     `)
-    .eq('id', eventId)
-    .single();
+    .eq('id', eventId);
 
   if (merchantId) {
     query = query.eq('merchant_id', merchantId);
   }
 
-  const { data: event, error } = await query;
+  const { data: event, error } = await query.single();
 
   if (error || !event) {
     return null;
@@ -195,11 +194,14 @@ export async function getEventById(
     posterUrl: event.poster_url,
     createdAt: event.created_at,
     updatedAt: event.updated_at,
-    venue: {
-      id: event.venues.id,
-      name: event.venues.name,
-      address: event.venues.address,
-    },
+    venue: (() => {
+      const venueData = Array.isArray(event.venues) ? event.venues[0] : event.venues;
+      return venueData ? {
+        id: venueData.id,
+        name: venueData.name,
+        address: venueData.address,
+      } : null;
+    })(),
     ticketTypes: (ticketTypes || []).map((tt: any) => ({
       id: tt.id,
       name: tt.name,
