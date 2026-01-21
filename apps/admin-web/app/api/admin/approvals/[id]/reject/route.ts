@@ -8,12 +8,12 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    const body = await req.json();
     const { note } = body;
     
     if (!note || note.trim().length === 0) {
@@ -43,20 +43,20 @@ export async function POST(
     }
     
     // 获取审批请求详情
-    const { data: request, error: requestError } = await supabase
+    const { data: requestData, error: requestError } = await supabase
       .from('requests')
       .select('*')
       .eq('id', id)
       .single();
     
-    if (requestError || !request) {
+    if (requestError || !requestData) {
       return NextResponse.json(
         { success: false, code: 'NOT_FOUND', message: 'Request not found' },
         { status: 404 }
       );
     }
     
-    if (request.status !== 'pending') {
+    if (requestData.status !== 'pending') {
       return NextResponse.json(
         { success: false, code: 'INVALID_STATUS', message: 'Request is not pending' },
         { status: 400 }

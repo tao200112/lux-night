@@ -8,12 +8,12 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    const body = await req.json();
     const { note } = body;
     
     const supabase = await createClient();
@@ -36,20 +36,20 @@ export async function POST(
     }
     
     // 获取审批请求详情
-    const { data: request, error: requestError } = await supabase
+    const { data: requestData, error: requestError } = await supabase
       .from('requests')
       .select('*')
       .eq('id', id)
       .single();
     
-    if (requestError || !request) {
+    if (requestError || !requestData) {
       return NextResponse.json(
         { success: false, code: 'NOT_FOUND', message: 'Request not found' },
         { status: 404 }
       );
     }
     
-    if (request.status !== 'pending') {
+    if (requestData.status !== 'pending') {
       return NextResponse.json(
         { success: false, code: 'INVALID_STATUS', message: 'Request is not pending' },
         { status: 400 }
@@ -57,10 +57,10 @@ export async function POST(
     }
     
     // 根据 type 落地到真实表
-    const payloadAfter = request.payload_after || {};
+    const payloadAfter = requestData.payload_after || {};
     let updateResult: any;
     
-    switch (request.type) {
+    switch (requestData.type) {
       case 'price_change':
       case 'PRICE_CHANGE': {
         // 更新 ticket_types 价格
