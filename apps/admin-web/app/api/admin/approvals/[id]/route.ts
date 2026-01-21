@@ -102,14 +102,22 @@ export async function GET(
           name: request.merchants[0].name,
           regionId: request.merchants[0].region_id,
         } : null,
-        venue: request.venues && (Array.isArray(request.venues) ? request.venues[0] : request.venues) ? {
-          id: Array.isArray(request.venues) ? request.venues[0].id : request.venues.id,
-          name: Array.isArray(request.venues) ? request.venues[0].name : request.venues.name,
-        } : null,
-        event: request.events && (Array.isArray(request.events) ? request.events[0] : request.events) ? {
-          id: Array.isArray(request.events) ? request.events[0].id : request.events.id,
-          title: Array.isArray(request.events) ? request.events[0].title : request.events.title,
-        } : null,
+        venue: (() => {
+          if (!request.venues) return null;
+          const venueData = Array.isArray(request.venues) ? request.venues[0] : request.venues;
+          return venueData ? {
+            id: venueData.id,
+            name: venueData.name,
+          } : null;
+        })(),
+        event: (() => {
+          if (!request.events) return null;
+          const eventData = Array.isArray(request.events) ? request.events[0] : request.events;
+          return eventData ? {
+            id: eventData.id,
+            title: eventData.title,
+          } : null;
+        })(),
         requestedBy: requestedByProfile ? {
           id: requestedByProfile.id,
           name: requestedByProfile.display_name || 'Unknown',
