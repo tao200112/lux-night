@@ -17,13 +17,26 @@ export async function middleware(request: NextRequest) {
 
     const { pathname } = request.nextUrl;
 
-    // API 路由直接放行（不需要认证检查）
-    if (pathname.startsWith('/api/')) {
+    // 静态资源和 Next.js 内部路径，直接放行
+    if (
+      pathname.startsWith('/_next/') ||
+      pathname.startsWith('/api/') ||
+      pathname === '/favicon.ico' ||
+      pathname.endsWith('.map') ||
+      pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico)$/)
+    ) {
       return response;
     }
 
-    // 公开的登录和回调页面，直接放行
-    if (pathname === '/login' || pathname === '/auth/callback') {
+    // 公开的登录、回调和认证相关页面，直接放行
+    if (
+      pathname === '/login' ||
+      pathname.startsWith('/auth/callback') ||
+      pathname === '/auth/callback' ||
+      pathname.startsWith('/onboarding/') ||
+      pathname === '/join' ||
+      pathname === '/error'
+    ) {
       return response;
     }
 
@@ -137,9 +150,10 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
+     * - _next/webpack-hmr (HMR in development)
+     * - favicon.ico, *.map (sourcemaps)
+     * - Static file extensions
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|map)$).*)',
   ],
 };
