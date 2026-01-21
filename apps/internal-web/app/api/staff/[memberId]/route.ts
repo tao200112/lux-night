@@ -44,7 +44,7 @@ export async function PATCH(
     }
 
     // 更新员工状态
-    await updateStaffStatus(memberId, isActive);
+    await updateStaffStatus(memberId, { isActive });
 
     return NextResponse.json({
       success: true,

@@ -5,7 +5,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 
-export async function getRequests(merchantId?: string, status?: string) {
+export async function getRequests(merchantId?: string, status?: string, type?: string) {
   const supabase = await createClient();
   
   let query = supabase
@@ -19,6 +19,10 @@ export async function getRequests(merchantId?: string, status?: string) {
   
   if (status) {
     query = query.eq('status', status);
+  }
+  
+  if (type) {
+    query = query.eq('type', type);
   }
   
   const { data: requests, error } = await query;
