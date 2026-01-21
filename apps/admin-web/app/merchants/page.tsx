@@ -436,7 +436,7 @@ export default function AdminMerchantsPage() {
                 </label>
                 <select
                   value={inviteForm.role}
-                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                  onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as 'owner' | 'manager' })}
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
                 >
                   <option value="owner">Owner</option>

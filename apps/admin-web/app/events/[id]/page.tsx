@@ -129,8 +129,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           <ErrorState
             title="Failed to load event"
             message={error || 'Event not found'}
-            actionLabel="Back to Events"
-            onAction={() => router.push('/events')}
+            onRetry={() => router.push('/events')}
           />
         </main>
         <AdminBottomNav />

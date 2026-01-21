@@ -3,14 +3,14 @@
  * 检查当前用户是否为 admin（使用 service role 避免 RLS 问题）
  */
 
-import { createServerSupabaseClient } from '@/lib/supabase/server-ssr';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. 使用 SSR client 从 cookie 获取用户（使用 middleware 相同的逻辑）
-    const { supabase } = createServerSupabaseClient(request);
+    // 1. 使用标准 server client 获取用户
+    const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
@@ -20,26 +20,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 2. 使用 service role client 查询 admin 状态（绕过 RLS）
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceRoleKey) {
-      console.error('[ADMIN ME API] SUPABASE_SERVICE_ROLE_KEY not configured');
-      return NextResponse.json(
-        { success: false, code: 'CONFIG_ERROR', message: 'Service role key not configured' },
-        { status: 500 }
-      );
-    }
-
-    const supabaseAdmin = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceRoleKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    // 2. 使用 admin client 查询 admin 状态（绕过 RLS）
+    const supabaseAdmin = createAdminClient();
 
     // 3. 查询 profiles.is_admin 和 admin_users 表
     const [profileResult, adminUsersResult] = await Promise.all([
