@@ -104,21 +104,33 @@ export async function GET(
         posterUrl: event.poster_url,
         agePolicy: event.age_policy,
         refundPolicy: event.refund_policy,
-        merchant: event.merchants && Array.isArray(event.merchants) && event.merchants.length > 0 ? {
-          id: event.merchants[0].id,
-          name: event.merchants[0].name,
-        } : null,
-        region: event.regions && Array.isArray(event.regions) && event.regions.length > 0 ? {
-          id: event.regions[0].id,
-          name: event.regions[0].name,
-          state: event.regions[0].state,
-          country: event.regions[0].country,
-        } : null,
-        venue: event.venues && (Array.isArray(event.venues) ? event.venues[0] : event.venues) ? {
-          id: Array.isArray(event.venues) ? event.venues[0].id : event.venues.id,
-          name: Array.isArray(event.venues) ? event.venues[0].name : event.venues.name,
-          address: Array.isArray(event.venues) ? event.venues[0].address : event.venues.address,
-        } : null,
+        merchant: (() => {
+          if (!event.merchants) return null;
+          const merchantData = Array.isArray(event.merchants) ? event.merchants[0] : event.merchants;
+          return merchantData ? {
+            id: merchantData.id,
+            name: merchantData.name,
+          } : null;
+        })(),
+        region: (() => {
+          if (!event.regions) return null;
+          const regionData = Array.isArray(event.regions) ? event.regions[0] : event.regions;
+          return regionData ? {
+            id: regionData.id,
+            name: regionData.name,
+            state: regionData.state,
+            country: regionData.country,
+          } : null;
+        })(),
+        venue: (() => {
+          if (!event.venues) return null;
+          const venueData = Array.isArray(event.venues) ? event.venues[0] : event.venues;
+          return venueData ? {
+            id: venueData.id,
+            name: venueData.name,
+            address: venueData.address,
+          } : null;
+        })(),
         ticketTypes: (ticketTypes || []).map((tt: any) => ({
           id: tt.id,
           name: tt.name,

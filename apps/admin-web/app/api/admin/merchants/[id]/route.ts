@@ -122,13 +122,17 @@ export async function GET(
         id: merchant.id,
         name: merchant.name,
         status: merchant.status,
-        region: merchant.regions && Array.isArray(merchant.regions) && merchant.regions.length > 0 ? {
-          id: merchant.regions[0].id,
-          name: merchant.regions[0].name,
-          state: merchant.regions[0].state,
-          country: merchant.regions[0].country,
-          status: merchant.regions[0].status,
-        } : null,
+        region: (() => {
+          if (!merchant.regions) return null;
+          const regionData = Array.isArray(merchant.regions) ? merchant.regions[0] : merchant.regions;
+          return regionData ? {
+            id: regionData.id,
+            name: regionData.name,
+            state: regionData.state,
+            country: regionData.country,
+            status: regionData.status,
+          } : null;
+        })(),
         venues: (venuesResult.data || []).map((v: any) => ({
           id: v.id,
           name: v.name,
@@ -144,18 +148,25 @@ export async function GET(
               endAt: e.end_at,
             }))
           : [],
-        members: (membersResult.data || []).map((m: any) => ({
-          id: m.id,
-          role: m.role,
-          isActive: m.is_active,
-          user: m.profiles && Array.isArray(m.profiles) && m.profiles.length > 0 ? {
-            id: m.profiles[0].id,
-            name: m.profiles[0].display_name || 'Unknown',
-            email: m.profiles[0].email,
-            avatar: m.profiles[0].avatar_url,
-          } : null,
-          joinedAt: m.created_at,
-        })),
+        members: (membersResult.data || []).map((m: any) => {
+          const profileData = (() => {
+            if (!m.profiles) return null;
+            return Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+          })();
+          
+          return {
+            id: m.id,
+            role: m.role,
+            isActive: m.is_active,
+            user: profileData ? {
+              id: profileData.id,
+              name: profileData.display_name || 'Unknown',
+              email: profileData.email,
+              avatar: profileData.avatar_url,
+            } : null,
+            joinedAt: m.created_at,
+          };
+        }),
         recentOrders: (ordersResult.data || []).map((o: any) => ({
           id: o.id,
           total: o.total_cents / 100,
