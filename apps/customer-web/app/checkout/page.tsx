@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Button from '../../components/ui/Button';
 import { getStripe } from '@/lib/stripe/client';
@@ -8,7 +8,7 @@ import { getStripe } from '@/lib/stripe/client';
 // Simulate payment stages
 type PaymentStatus = 'idle' | 'processing' | 'success' | 'failed';
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventId = searchParams.get('eventId') || '';
@@ -271,5 +271,21 @@ export default function CheckoutPage() {
             </div>
         </div>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <CheckoutPageContent />
+    </Suspense>
   );
 }
