@@ -85,7 +85,7 @@ export default function DiscoverPage() {
 
     try {
       setLoading(true);
-      const eventsData = await getEventsData(region.id);
+      const eventsData = await getEvents(region.id);
       setEvents(eventsData);
     } catch (err: any) {
       console.error('Error loading events:', err);
