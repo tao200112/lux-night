@@ -23,7 +23,7 @@ export interface InternalEvent {
     id: string;
     name: string;
     address: string | null;
-  };
+  } | null;
   ticketTypes: Array<{
     id: string;
     name: string;
