@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
   
   // 检查 Stripe 配置
-  if (!isStripeConfigured() || !stripe) {
+  if (!isStripeConfigured || !stripe) {
     console.warn('[STRIPE WEBHOOK] Stripe not configured, rejecting webhook');
     return NextResponse.json(
       { error: 'Stripe not configured' },

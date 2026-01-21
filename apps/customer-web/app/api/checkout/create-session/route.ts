@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   
   try {
     // 1. 检查 Stripe 配置
-    if (!isStripeConfigured() || !stripe) {
+    if (!isStripeConfigured || !stripe) {
       console.warn('[CHECKOUT API] Stripe not configured');
       return NextResponse.json<ApiResponse<never>>(
         {
