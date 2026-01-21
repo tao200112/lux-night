@@ -9,6 +9,9 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getDashboardData } from '@/lib/data/admin/dashboard';
 
+// Force dynamic rendering because this page uses cookies
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboardPage() {
   let dashboardData;
   let error: string | null = null;

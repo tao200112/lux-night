@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminTopBar from '@/components/admin/AdminTopBar';
 import AdminButton from '@/components/admin/AdminButton';
@@ -46,7 +46,7 @@ interface TicketType {
   redeem_end_at_override: string | null;
 }
 
-export default function AdminCreateEventPage() {
+function AdminCreateEventPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const merchantId = searchParams.get('merchant_id');
@@ -1528,5 +1528,21 @@ function TicketTypeModal({
         </div>
       </div>
     </>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function AdminCreateEventPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AdminCreateEventPageContent />
+    </Suspense>
   );
 }

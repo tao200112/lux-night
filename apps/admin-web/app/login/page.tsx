@@ -5,11 +5,11 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithEmailPassword, getSession } from '@/lib/auth/client';
 
-export default function AdminLoginPage() {
+function AdminLoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/dashboard';
@@ -327,5 +327,18 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <AdminLoginPageContent />
+    </Suspense>
   );
 }
