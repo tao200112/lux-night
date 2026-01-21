@@ -6,8 +6,9 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function DuplicatePage() {
+function DuplicatePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const checkedInAt = searchParams.get('checked_in_at') || '10:45 PM';
@@ -100,5 +101,18 @@ export default function DuplicatePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function DuplicatePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#0f1212]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <DuplicatePageContent />
+    </Suspense>
   );
 }

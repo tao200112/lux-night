@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMerchantContext } from '@/contexts/MerchantContext';
 
@@ -20,7 +20,7 @@ interface TicketType {
   price_cents: number;
 }
 
-export default function PriceChangeRequestPage() {
+function PriceChangeRequestPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventIdParam = searchParams.get('event_id');
@@ -263,5 +263,18 @@ export default function PriceChangeRequestPage() {
         </form>
       </main>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function PriceChangeRequestPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#0f1212]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <PriceChangeRequestPageContent />
+    </Suspense>
   );
 }

@@ -6,8 +6,9 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function WrongVenuePage() {
+function WrongVenuePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const ticketVenueName = searchParams.get('ticket_venue') || 'The Sapphire Lounge';
@@ -91,5 +92,18 @@ export default function WrongVenuePage() {
       {/* Bottom Spacing for iOS Home Indicator */}
       <div className="h-10"></div>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function WrongVenuePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#0f1212]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <WrongVenuePageContent />
+    </Suspense>
   );
 }

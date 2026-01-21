@@ -5,11 +5,11 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithGoogle, signInWithApple } from '@/lib/auth/client';
 
-export default function InternalLoginPage() {
+function InternalLoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -144,5 +144,18 @@ export default function InternalLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function InternalLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0f1212] dark:bg-[#0f1212] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <InternalLoginPageContent />
+    </Suspense>
   );
 }

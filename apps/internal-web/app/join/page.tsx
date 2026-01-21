@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -28,7 +28,7 @@ interface InvitePreview {
   message?: string;
 }
 
-export default function JoinConfirmPage() {
+function JoinConfirmPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -268,5 +268,18 @@ export default function JoinConfirmPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function JoinConfirmPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#0f1212]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <JoinConfirmPageContent />
+    </Suspense>
   );
 }

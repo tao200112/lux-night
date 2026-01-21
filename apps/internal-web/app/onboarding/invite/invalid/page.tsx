@@ -5,10 +5,10 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function InviteInvalidPage() {
+function InviteInvalidPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invalidCode = searchParams.get('code') || '';
@@ -135,5 +135,18 @@ export default function InviteInvalidPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function InviteInvalidPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#0f1212]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <InviteInvalidPageContent />
+    </Suspense>
   );
 }

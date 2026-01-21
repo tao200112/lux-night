@@ -6,8 +6,9 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function ErrorPage() {
+function ErrorPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get('message') || 'We couldn\'t load the data. Check your connection or server status.';
@@ -94,5 +95,18 @@ export default function ErrorPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+// Wrap with Suspense to handle useSearchParams()
+export default function ErrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#0f1212]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <ErrorPageContent />
+    </Suspense>
   );
 }
