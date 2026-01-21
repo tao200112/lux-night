@@ -7,16 +7,24 @@ import Button from '../../../components/ui/Button';
 import BackButton from '../../../components/ui/BackButton';
 import { useRouter } from 'next/navigation';
 
-export default function TicketDetailPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+export default function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const resolvedParams = typeof params === 'object' && 'then' in params ? { id: '' } : params;
-  const ticketId = resolvedParams.id;
+  const [ticketId, setTicketId] = useState<string>('');
   
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [redemptionStatus, setRedemptionStatus] = useState<'idle' | 'confirming' | 'redeemed'>('idle');
+
+  // Resolve params (Next.js 15 always provides Promise)
+  useEffect(() => {
+    async function resolveParams() {
+      const resolved = await params;
+      setTicketId(resolved.id);
+    }
+    resolveParams();
+  }, [params]);
 
   useEffect(() => {
     if (authLoading) return;
