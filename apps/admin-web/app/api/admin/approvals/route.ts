@@ -98,29 +98,43 @@ export async function GET(request: NextRequest) {
     }
     
     // 格式化响应
-    const formattedRequests = (requests || []).map((req: any) => ({
-      id: req.id,
-      type: req.type,
-      status: req.status,
-      merchant: req.merchants && Array.isArray(req.merchants) && req.merchants.length > 0 ? {
-        id: req.merchants[0].id,
-        name: req.merchants[0].name,
-      } : null,
-      venue: req.venues && (Array.isArray(req.venues) ? req.venues[0] : req.venues) ? {
-        id: Array.isArray(req.venues) ? req.venues[0].id : req.venues.id,
-        name: Array.isArray(req.venues) ? req.venues[0].name : req.venues.name,
-      } : null,
-      requestedBy: req.requested_by && profilesMap[req.requested_by] ? {
-        id: profilesMap[req.requested_by].id,
-        name: profilesMap[req.requested_by].display_name || 'Unknown',
-        avatar: profilesMap[req.requested_by].avatar_url,
-      } : null,
-      payloadBefore: req.payload_before,
-      payloadAfter: req.payload_after,
-      note: req.admin_note,
-      createdAt: req.created_at,
-      decidedAt: req.decided_at,
-    }));
+    const formattedRequests = (requests || []).map((req: any) => {
+      const merchantData = (() => {
+        if (!req.merchants) return null;
+        const merchant = Array.isArray(req.merchants) ? req.merchants[0] : req.merchants;
+        return merchant ? {
+          id: merchant.id,
+          name: merchant.name,
+        } : null;
+      })();
+      
+      const venueData = (() => {
+        if (!req.venues) return null;
+        const venue = Array.isArray(req.venues) ? req.venues[0] : req.venues;
+        return venue ? {
+          id: venue.id,
+          name: venue.name,
+        } : null;
+      })();
+      
+      return {
+        id: req.id,
+        type: req.type,
+        status: req.status,
+        merchant: merchantData,
+        venue: venueData,
+        requestedBy: req.requested_by && profilesMap[req.requested_by] ? {
+          id: profilesMap[req.requested_by].id,
+          name: profilesMap[req.requested_by].display_name || 'Unknown',
+          avatar: profilesMap[req.requested_by].avatar_url,
+        } : null,
+        payloadBefore: req.payload_before,
+        payloadAfter: req.payload_after,
+        note: req.admin_note,
+        createdAt: req.created_at,
+        decidedAt: req.decided_at,
+      };
+    });
     
     // 获取各状态数量
     const { count: pendingCount } = await supabase

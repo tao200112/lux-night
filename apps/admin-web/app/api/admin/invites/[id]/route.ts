@@ -188,10 +188,14 @@ export async function GET(
         usedBy,
         usedAt: invite.redeemed_at,
         region,
-        merchant: invite.merchants && (Array.isArray(invite.merchants) ? invite.merchants[0] : invite.merchants) ? {
-          id: Array.isArray(invite.merchants) ? invite.merchants[0].id : invite.merchants.id,
-          name: Array.isArray(invite.merchants) ? invite.merchants[0].name : invite.merchants.name,
-        } : null,
+        merchant: (() => {
+          if (!invite.merchants) return null;
+          const merchantData = Array.isArray(invite.merchants) ? invite.merchants[0] : invite.merchants;
+          return merchantData ? {
+            id: merchantData.id,
+            name: merchantData.name,
+          } : null;
+        })(),
         note: invite.note,
       },
     });
