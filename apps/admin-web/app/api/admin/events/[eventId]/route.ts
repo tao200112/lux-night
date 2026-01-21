@@ -104,20 +104,20 @@ export async function GET(
         posterUrl: event.poster_url,
         agePolicy: event.age_policy,
         refundPolicy: event.refund_policy,
-        merchant: event.merchants ? {
-          id: event.merchants.id,
-          name: event.merchants.name,
+        merchant: event.merchants && Array.isArray(event.merchants) && event.merchants.length > 0 ? {
+          id: event.merchants[0].id,
+          name: event.merchants[0].name,
         } : null,
-        region: event.regions ? {
-          id: event.regions.id,
-          name: event.regions.name,
-          state: event.regions.state,
-          country: event.regions.country,
+        region: event.regions && Array.isArray(event.regions) && event.regions.length > 0 ? {
+          id: event.regions[0].id,
+          name: event.regions[0].name,
+          state: event.regions[0].state,
+          country: event.regions[0].country,
         } : null,
-        venue: event.venues ? {
-          id: event.venues.id,
-          name: event.venues.name,
-          address: event.venues.address,
+        venue: event.venues && (Array.isArray(event.venues) ? event.venues[0] : event.venues) ? {
+          id: Array.isArray(event.venues) ? event.venues[0].id : event.venues.id,
+          name: Array.isArray(event.venues) ? event.venues[0].name : event.venues.name,
+          address: Array.isArray(event.venues) ? event.venues[0].address : event.venues.address,
         } : null,
         ticketTypes: (ticketTypes || []).map((tt: any) => ({
           id: tt.id,

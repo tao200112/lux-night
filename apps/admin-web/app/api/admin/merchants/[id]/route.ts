@@ -122,12 +122,12 @@ export async function GET(
         id: merchant.id,
         name: merchant.name,
         status: merchant.status,
-        region: merchant.regions ? {
-          id: merchant.regions.id,
-          name: merchant.regions.name,
-          state: merchant.regions.state,
-          country: merchant.regions.country,
-          status: merchant.regions.status,
+        region: merchant.regions && Array.isArray(merchant.regions) && merchant.regions.length > 0 ? {
+          id: merchant.regions[0].id,
+          name: merchant.regions[0].name,
+          state: merchant.regions[0].state,
+          country: merchant.regions[0].country,
+          status: merchant.regions[0].status,
         } : null,
         venues: (venuesResult.data || []).map((v: any) => ({
           id: v.id,
@@ -148,11 +148,11 @@ export async function GET(
           id: m.id,
           role: m.role,
           isActive: m.is_active,
-          user: m.profiles ? {
-            id: m.profiles.id,
-            name: m.profiles.display_name || 'Unknown',
-            email: m.profiles.email,
-            avatar: m.profiles.avatar_url,
+          user: m.profiles && Array.isArray(m.profiles) && m.profiles.length > 0 ? {
+            id: m.profiles[0].id,
+            name: m.profiles[0].display_name || 'Unknown',
+            email: m.profiles[0].email,
+            avatar: m.profiles[0].avatar_url,
           } : null,
           joinedAt: m.created_at,
         })),

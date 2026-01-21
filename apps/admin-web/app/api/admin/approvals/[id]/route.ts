@@ -49,7 +49,7 @@ export async function GET(
         decided_at,
         merchant_id,
         venue_id,
-        merchants!inner(
+        merchants(
           id,
           name,
           region_id
@@ -97,18 +97,18 @@ export async function GET(
         id: request.id,
         type: request.type,
         status: request.status,
-        merchant: {
-          id: request.merchants?.id,
-          name: request.merchants?.name,
-          regionId: request.merchants?.region_id,
-        },
-        venue: request.venues ? {
-          id: request.venues.id,
-          name: request.venues.name,
+        merchant: request.merchants && Array.isArray(request.merchants) && request.merchants.length > 0 ? {
+          id: request.merchants[0].id,
+          name: request.merchants[0].name,
+          regionId: request.merchants[0].region_id,
         } : null,
-        event: request.events ? {
-          id: request.events.id,
-          title: request.events.title,
+        venue: request.venues && (Array.isArray(request.venues) ? request.venues[0] : request.venues) ? {
+          id: Array.isArray(request.venues) ? request.venues[0].id : request.venues.id,
+          name: Array.isArray(request.venues) ? request.venues[0].name : request.venues.name,
+        } : null,
+        event: request.events && (Array.isArray(request.events) ? request.events[0] : request.events) ? {
+          id: Array.isArray(request.events) ? request.events[0].id : request.events.id,
+          title: Array.isArray(request.events) ? request.events[0].title : request.events.title,
         } : null,
         requestedBy: requestedByProfile ? {
           id: requestedByProfile.id,

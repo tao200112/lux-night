@@ -102,13 +102,13 @@ export async function GET(request: NextRequest) {
       id: req.id,
       type: req.type,
       status: req.status,
-      merchant: {
-        id: req.merchants?.id,
-        name: req.merchants?.name,
-      },
-      venue: req.venues ? {
-        id: req.venues.id,
-        name: req.venues.name,
+      merchant: req.merchants && Array.isArray(req.merchants) && req.merchants.length > 0 ? {
+        id: req.merchants[0].id,
+        name: req.merchants[0].name,
+      } : null,
+      venue: req.venues && (Array.isArray(req.venues) ? req.venues[0] : req.venues) ? {
+        id: Array.isArray(req.venues) ? req.venues[0].id : req.venues.id,
+        name: Array.isArray(req.venues) ? req.venues[0].name : req.venues.name,
       } : null,
       requestedBy: req.requested_by && profilesMap[req.requested_by] ? {
         id: profilesMap[req.requested_by].id,

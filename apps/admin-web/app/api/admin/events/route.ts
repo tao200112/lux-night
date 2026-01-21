@@ -156,20 +156,20 @@ export async function GET(request: NextRequest) {
           id: event.id,
           title: event.title,
           status: event.status,
-          merchant: {
-            id: event.merchants.id,
-            name: event.merchants.name,
-          },
-          venue: {
-            id: event.venues.id,
-            name: event.venues.name,
-            region: {
-              id: event.venues.regions.id,
-              name: event.venues.regions.name,
-              state: event.venues.regions.state,
-              country: event.venues.regions.country,
-            },
-          },
+          merchant: event.merchants && Array.isArray(event.merchants) && event.merchants.length > 0 ? {
+            id: event.merchants[0].id,
+            name: event.merchants[0].name,
+          } : null,
+          venue: event.venues && Array.isArray(event.venues) && event.venues.length > 0 ? {
+            id: event.venues[0].id,
+            name: event.venues[0].name,
+            region: event.venues[0].regions && Array.isArray(event.venues[0].regions) && event.venues[0].regions.length > 0 ? {
+              id: event.venues[0].regions[0].id,
+              name: event.venues[0].regions[0].name,
+              state: event.venues[0].regions[0].state,
+              country: event.venues[0].regions[0].country,
+            } : null,
+          } : null,
           stats: {
             minPrice: minPrice / 100, // 转换为美元
             priceFormatted: `$${(minPrice / 100).toFixed(2)}`,

@@ -126,25 +126,25 @@ export async function GET(
           id: o.id,
           total: o.total_cents / 100,
           status: o.status,
-          event: o.events ? {
-            id: o.events.id,
-            title: o.events.title,
-            startAt: o.events.start_at,
+          event: o.events && (Array.isArray(o.events) ? o.events[0] : o.events) ? {
+            id: Array.isArray(o.events) ? o.events[0].id : o.events.id,
+            title: Array.isArray(o.events) ? o.events[0].title : o.events.title,
+            startAt: Array.isArray(o.events) ? o.events[0].start_at : o.events.start_at,
           } : null,
           createdAt: o.created_at,
         })),
         tickets: (tickets || []).map((t: any) => ({
           id: t.id,
           status: t.status,
-          event: t.events ? {
-            id: t.events.id,
-            title: t.events.title,
-            startAt: t.events.start_at,
+          event: t.events && (Array.isArray(t.events) ? t.events[0] : t.events) ? {
+            id: Array.isArray(t.events) ? t.events[0].id : t.events.id,
+            title: Array.isArray(t.events) ? t.events[0].title : t.events.title,
+            startAt: Array.isArray(t.events) ? t.events[0].start_at : t.events.start_at,
           } : null,
-          ticketType: t.ticket_types ? {
-            id: t.ticket_types.id,
-            name: t.ticket_types.name,
-            category: t.ticket_types.category,
+          ticketType: t.ticket_types && (Array.isArray(t.ticket_types) ? t.ticket_types[0] : t.ticket_types) ? {
+            id: Array.isArray(t.ticket_types) ? t.ticket_types[0].id : t.ticket_types.id,
+            name: Array.isArray(t.ticket_types) ? t.ticket_types[0].name : t.ticket_types.name,
+            category: Array.isArray(t.ticket_types) ? t.ticket_types[0].category : t.ticket_types.category,
           } : null,
           createdAt: t.created_at,
         })),

@@ -87,9 +87,10 @@ export async function GET(request: NextRequest) {
         // 过滤出属于该商家的订单
         const merchantOrders = (ordersData || []).filter((order: any) => {
           const orderItems = order.order_items || [];
-          return orderItems.some((item: any) => 
-            item.events && item.events.merchant_id === merchant.id
-          );
+          return orderItems.some((item: any) => {
+            const eventData = Array.isArray(item.events) ? item.events[0] : item.events;
+            return eventData && eventData.merchant_id === merchant.id;
+          });
         });
         
         const revenue = merchantOrders.reduce((sum: number, order: any) => sum + (order.total_cents || 0), 0);
@@ -106,11 +107,11 @@ export async function GET(request: NextRequest) {
           id: merchant.id,
           name: merchant.name,
           status: merchant.status,
-          region: merchant.regions ? {
-            id: merchant.regions.id,
-            name: merchant.regions.name,
-            state: merchant.regions.state,
-            country: merchant.regions.country,
+          region: merchant.regions && Array.isArray(merchant.regions) && merchant.regions.length > 0 ? {
+            id: merchant.regions[0].id,
+            name: merchant.regions[0].name,
+            state: merchant.regions[0].state,
+            country: merchant.regions[0].country,
           } : null,
           stats: {
             ordersCount: merchantOrders.length,

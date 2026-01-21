@@ -116,21 +116,35 @@ export async function GET(
           phone: order.profiles.phone,
           avatar: order.profiles.avatar_url,
         } : null,
-        event: order.events ? {
-          id: order.events.id,
-          title: order.events.title,
-          startAt: order.events.start_at,
-          endAt: order.events.end_at,
-        } : null,
-        venue: order.events?.venues ? {
-          id: order.events.venues.id,
-          name: order.events.venues.name,
-          address: order.events.venues.address,
-        } : null,
-        merchant: order.events?.merchants ? {
-          id: order.events.merchants.id,
-          name: order.events.merchants.name,
-        } : null,
+        event: (() => {
+          const eventData = Array.isArray(order.events) ? order.events[0] : order.events;
+          return eventData ? {
+            id: eventData.id,
+            title: eventData.title,
+            startAt: eventData.start_at,
+            endAt: eventData.end_at,
+          } : null;
+        })(),
+        venue: (() => {
+          const eventData = Array.isArray(order.events) ? order.events[0] : order.events;
+          if (!eventData) return null;
+          const venueData = Array.isArray(eventData.venues) ? eventData.venues[0] : eventData.venues;
+          return venueData ? {
+            id: venueData.id,
+            name: venueData.name,
+            address: venueData.address,
+          } : null;
+        })(),
+        merchant: (() => {
+          const eventData = Array.isArray(order.events) ? order.events[0] : order.events;
+          if (!eventData) return null;
+          const merchants = eventData.merchants;
+          if (!merchants || !Array.isArray(merchants) || merchants.length === 0) return null;
+          return {
+            id: merchants[0].id,
+            name: merchants[0].name,
+          };
+        })(),
         items: (orderItems || []).map((item: any) => ({
           id: item.id,
           quantity: item.quantity,

@@ -146,7 +146,12 @@ export async function GET(request: NextRequest) {
       
       relatedEvents.forEach((event: any) => {
         if (event.merchants) {
-          orderMap[orderId].merchants.add(event.merchants.id);
+          const merchants = Array.isArray(event.merchants) ? event.merchants : [event.merchants];
+          merchants.forEach((m: any) => {
+            if (m && m.id) {
+              orderMap[orderId].merchants.add(m.id);
+            }
+          });
         }
       });
     });

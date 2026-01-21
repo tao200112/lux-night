@@ -18,7 +18,11 @@ pnpm dev:internal
 npx -y pnpm@latest dev:customer
 npx -y pnpm@latest dev:internal
 ```
+# 停止当前服务器（Ctrl+C）
 
+# 重新启动
+cd C:\Users\yesod\Desktop\lux-night
+npx -y pnpm@latest dev:admin
 ## 📦 安装依赖
 
 ```cmd

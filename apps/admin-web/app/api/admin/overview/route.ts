@@ -90,8 +90,12 @@ export async function GET() {
     const totalOrders = ordersByRegion?.length || 0;
     
     ordersByRegion?.forEach((order: any) => {
-      const regionId = order.events?.region_id;
-      const regionName = order.events?.regions?.name || 'Unknown';
+      const eventData = Array.isArray(order.events) ? order.events[0] : order.events;
+      const regionId = eventData?.region_id;
+      const regions = eventData?.regions;
+      const regionName = (regions && Array.isArray(regions) && regions.length > 0) 
+        ? regions[0].name 
+        : (regions?.name || 'Unknown');
       
       if (!regionStats[regionId]) {
         regionStats[regionId] = {
@@ -128,7 +132,9 @@ export async function GET() {
     
     topMerchants?.forEach((order: any) => {
       const merchantId = order.events?.merchant_id;
-      const merchantName = order.events?.merchants?.name || 'Unknown';
+      const merchantName = (order.events?.merchants && Array.isArray(order.events.merchants) && order.events.merchants.length > 0) 
+        ? order.events.merchants[0].name 
+        : 'Unknown';
       
       if (!merchantStats[merchantId]) {
         merchantStats[merchantId] = { name: merchantName, count: 0 };

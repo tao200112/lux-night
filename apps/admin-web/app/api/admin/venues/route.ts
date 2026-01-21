@@ -210,10 +210,10 @@ export async function GET(req: NextRequest) {
             address: defaultVenue.address,
             logo_url: defaultVenue.logo_url,
             description: defaultVenue.description,
-            merchant: {
-              id: defaultVenue.merchants.id,
-              name: defaultVenue.merchants.name,
-            },
+            merchant: defaultVenue.merchants && (Array.isArray(defaultVenue.merchants) ? defaultVenue.merchants[0] : defaultVenue.merchants) ? {
+              id: Array.isArray(defaultVenue.merchants) ? defaultVenue.merchants[0].id : defaultVenue.merchants.id,
+              name: Array.isArray(defaultVenue.merchants) ? defaultVenue.merchants[0].name : defaultVenue.merchants.name,
+            } : null,
           };
           
           const duration = Date.now() - startTime;

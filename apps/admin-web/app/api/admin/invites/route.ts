@@ -249,9 +249,9 @@ export async function GET(request: NextRequest) {
           state: region.state,
           country: region.country,
         } : null,
-        merchant: invite.merchants ? {
-          id: invite.merchants.id,
-          name: invite.merchants.name,
+        merchant: invite.merchants && (Array.isArray(invite.merchants) ? invite.merchants[0] : invite.merchants) ? {
+          id: Array.isArray(invite.merchants) ? invite.merchants[0].id : invite.merchants.id,
+          name: Array.isArray(invite.merchants) ? invite.merchants[0].name : invite.merchants.name,
         } : null,
         note: invite.note,
       };

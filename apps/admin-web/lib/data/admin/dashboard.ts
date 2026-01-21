@@ -146,7 +146,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     
     topMerchantsResult.data?.forEach((order: any) => {
       const merchantId = order.events?.merchant_id;
-      const merchantName = order.events?.merchants?.name || 'Unknown';
+      const merchantName = (order.events?.merchants && Array.isArray(order.events.merchants) && order.events.merchants.length > 0) 
+        ? order.events.merchants[0].name 
+        : 'Unknown';
       
       if (!merchantStats[merchantId]) {
         merchantStats[merchantId] = { name: merchantName, count: 0 };
