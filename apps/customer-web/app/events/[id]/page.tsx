@@ -255,7 +255,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {ticketTypes.map(tier => {
                 const quantity = selections[tier.id] || 0;
                 // 使用 quantity_total 如果存在，否则使用 inventory_limit（向后兼容）
-                const totalQuantity: number = tier.quantity_total !== null ? tier.quantity_total : (tier.inventory_limit !== null ? tier.inventory_limit : Infinity);
+                const totalQuantity: number = tier.quantity_total ?? tier.inventory_limit ?? Infinity;
                 const available = totalQuantity === Infinity ? Infinity : totalQuantity - (tier.sold_count || 0);
                 const isSoldOut = available === 0;
                 const maxPerOrder = tier.max_per_order || tier.redeem_limit || 4;
