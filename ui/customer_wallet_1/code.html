@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lux Night - Customer Wallet</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,100..900;1,100..900&amp;family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#195966",
+                        "lux-gold": "#E8B94B",
+                        "lux-dark": "#121416",
+                        "lux-card": "#1E2224",
+                        "background-light": "#fafaf9",
+                        "background-dark": "#121416",
+                    },
+                    fontFamily: {
+                        "display": ["Epilogue", "sans-serif"],
+                        "body": ["Manrope", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "2xl": "2rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+        
+        /* Custom Perforation Utilities */
+        .ticket-perforation {
+            background-image: radial-gradient(circle at 0 0, transparent 0, transparent 0), radial-gradient(circle at 0 100%, transparent 0, transparent 0);
+            position: relative;
+        }
+        
+        /* Top cutout */
+        .ticket-cutout-top {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #121416; /* Matches body bg */
+            z-index: 10;
+        }
+
+        /* Bottom cutout */
+        .ticket-cutout-bottom {
+            position: absolute;
+            bottom: -10px;
+            right: -10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #121416; /* Matches body bg */
+            z-index: 10;
+        }
+        
+        /* Dashed Line Generator */
+        .dashed-line {
+            background-image: linear-gradient(to bottom, #4A4C4F 50%, transparent 50%);
+            background-size: 2px 12px;
+            background-repeat: repeat-y;
+            width: 2px;
+            height: 100%;
+            opacity: 0.5;
+        }
+
+        /* Hide scrollbar for clean horizontal scroll if needed */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark text-white font-body selection:bg-lux-gold selection:text-lux-dark">
+<div class="relative flex h-auto min-h-screen w-full max-w-md mx-auto flex-col overflow-x-hidden shadow-2xl border-x border-white/5">
+<!-- Header -->
+<header class="flex items-center justify-center p-6 pb-2 relative">
+<h1 class="font-display text-xl font-bold tracking-tight text-white">My Wallet</h1>
+<!-- Notification Dot Example -->
+<div class="absolute right-6 top-7 w-2 h-2 rounded-full bg-lux-gold"></div>
+</header>
+<!-- Segmented Control -->
+<div class="px-6 py-4">
+<div class="flex h-12 w-full items-center rounded-xl bg-[#1E2224] p-1 border border-white/5">
+<!-- Active Tab -->
+<button class="relative flex-1 h-full rounded-lg bg-primary shadow-sm transition-all duration-200 group">
+<span class="absolute inset-0 flex items-center justify-center text-sm font-bold text-lux-gold font-display tracking-wide">Active</span>
+</button>
+<!-- Used Tab -->
+<button class="flex-1 h-full rounded-lg hover:bg-white/5 transition-all duration-200">
+<span class="flex items-center justify-center text-sm font-medium text-gray-400 font-display">Used</span>
+</button>
+<!-- Refunded Tab -->
+<button class="flex-1 h-full rounded-lg hover:bg-white/5 transition-all duration-200">
+<span class="flex items-center justify-center text-sm font-medium text-gray-400 font-display">Refunded</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Content Area -->
+<div class="flex-1 flex flex-col gap-6 px-6 py-2 overflow-y-auto no-scrollbar pb-24">
+<!-- Card 1: Midnight Gala (Tonight) -->
+<div class="group relative w-full flex flex-row h-48 rounded-2xl overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] transition-transform hover:scale-[1.02] active:scale-[0.98]">
+<!-- Main Ticket Body -->
+<div class="relative flex-grow flex flex-col justify-end p-5 bg-[#1E2224]">
+<!-- Background Image with Overlay -->
+<div class="absolute inset-0 bg-cover bg-center z-0 opacity-60 mix-blend-overlay" data-alt="Dark moody club crowd with lasers" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDYL_KH3jjArqeksnIkSSysKU50AWPPaHwfcR9ITLY19-SybiDhq-PfcPoQ1ym7uktDDX0WM2Va0mHQMseWgCd2SoA1p6PRVchZEJXV-GoaJ8X-t5yHvxeXdEweu31W4IVeLA6gbT1GmQ-j7jRNiwmc64AlRKSAhODSjZhYjeyqb7O-2LjpKN5dqVkBGvk_9-qnQLF_UfjWF4Ixue1ZjFMUVYVSazpy1LxJXF8r8Detee0ZckhHdkifd6N4Cuw1i9kC1j1o-MwVpLN7');"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-[#121416] via-[#121416]/80 to-transparent z-0"></div>
+<!-- Content -->
+<div class="relative z-10 w-full">
+<div class="flex justify-between items-start mb-auto absolute top-0 left-0 right-0 -mt-1">
+<span class="px-3 py-1 rounded-full bg-lux-gold text-lux-dark text-xs font-bold tracking-wider uppercase shadow-lg shadow-lux-gold/20">Tonight</span>
+</div>
+<h3 class="font-display text-2xl font-bold text-white leading-tight mb-1 tracking-tight">Midnight Gala</h3>
+<div class="flex items-center gap-2 text-gray-300 text-sm font-medium">
+<span class="material-symbols-outlined text-[18px] text-lux-gold">calendar_today</span>
+<span>Oct 24 • 10:00 PM</span>
+</div>
+<div class="mt-2 text-xs text-gray-500 uppercase tracking-widest font-semibold">Club Onyx, NY</div>
+</div>
+</div>
+<!-- Perforation Line Container -->
+<div class="relative w-[1px] bg-[#1E2224] flex flex-col items-center justify-center z-20">
+<!-- The dashed line -->
+<div class="dashed-line absolute top-2 bottom-2"></div>
+<!-- Cutouts to simulate ticket shape -->
+<div class="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-background-dark"></div>
+<div class="absolute -bottom-3 -left-3 w-6 h-6 rounded-full bg-background-dark"></div>
+</div>
+<!-- Ticket Stub (QR) -->
+<div class="relative w-24 min-w-[96px] bg-[#191D1F] flex flex-col items-center justify-center p-2 border-l border-white/5">
+<div class="w-16 h-16 bg-white rounded-lg p-1 mb-2 shadow-inner">
+<!-- QR Code Placeholder -->
+<img alt="QR Code for entry" class="w-full h-full object-contain opacity-90" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcMD3F5ABjIDBQ92LIp6cxhBXuWQ9uz8ZLHtRkFgUoKREGhNTUkf_WfFRpZh7ExGV9I1CWOdcPrWfsGrjIcSm9W18vEUTZajv6gwRQeA4j_0tDBqOfx9GQwmuX1wxld_3Y5vZmbEQcbV_fNa2p-V3hL_OHIeTyNex_20Vp6YbQxFj8j4zaBpCog86bsrkUYAarD7XFaOe0sxgbpq-sykMdlNve7N0wygPcIitA3DyIDFiiU5smD2eqdbjxlTVwRU8v4fpB8bRCQRgu"/>
+</div>
+<span class="text-[10px] text-gray-400 uppercase tracking-widest font-bold rotate-0 text-center">Scan<br/>Entry</span>
+</div>
+</div>
+<!-- Card 2: Neon Nights (Upcoming) -->
+<div class="group relative w-full flex flex-row h-48 rounded-2xl overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] transition-transform hover:scale-[1.02] active:scale-[0.98]">
+<!-- Main Ticket Body -->
+<div class="relative flex-grow flex flex-col justify-end p-5 bg-[#1E2224]">
+<!-- Background Image -->
+<div class="absolute inset-0 bg-cover bg-center z-0 opacity-50 mix-blend-luminosity" data-alt="Abstract neon lights and nightlife bokeh" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA0A-YeiB-VFGF3VqvrnlLilYGKbKug8FG_zJPQK-sxot8-GSvkhy3jxXhsAy6IVcCxIM0X0pdKYawhIyExcTsaqtT21WCQujNmZwreewdVP7zr1AECv0JBdywWt7fPKWoQghbq-bjUI5rOeE-g_DrtUXSXEqH2UBV_YZPWTpBdpwgAIpTJCXAUF0Bgcf2NzzXVLcTb1-wiWpcMNLZw1W72aGkdrR2ZXYRkWiuPb6zlEx8ctxzUnOmo4FJSPWi2zihWZBGxYcns19U5');"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/90 via-[#121416]/80 to-[#121416]/40 z-0"></div>
+<!-- Content -->
+<div class="relative z-10 w-full">
+<h3 class="font-display text-2xl font-bold text-white leading-tight mb-1 tracking-tight">Neon Nights</h3>
+<div class="flex items-center gap-2 text-gray-300 text-sm font-medium">
+<span class="material-symbols-outlined text-[18px] text-primary-300">calendar_today</span>
+<span>Nov 02 • 11:00 PM</span>
+</div>
+<div class="mt-2 text-xs text-gray-400 uppercase tracking-widest font-semibold">The Void, LA</div>
+</div>
+</div>
+<!-- Perforation Line -->
+<div class="relative w-[1px] bg-[#1E2224] flex flex-col items-center justify-center z-20">
+<div class="dashed-line absolute top-2 bottom-2"></div>
+<div class="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-background-dark"></div>
+<div class="absolute -bottom-3 -left-3 w-6 h-6 rounded-full bg-background-dark"></div>
+</div>
+<!-- Ticket Stub -->
+<div class="relative w-24 min-w-[96px] bg-[#15181A] flex flex-col items-center justify-center p-2 border-l border-white/5">
+<div class="w-16 h-16 bg-white/10 rounded-lg p-1 mb-2 flex items-center justify-center border border-white/10">
+<span class="material-symbols-outlined text-white/50 text-3xl">qr_code_2</span>
+</div>
+<span class="text-[10px] text-gray-500 uppercase tracking-widest font-bold text-center">View<br/>Info</span>
+</div>
+</div>
+<!-- Spacer for visual separation of demo states -->
+<div class="mt-8 flex items-center gap-4 opacity-30">
+<div class="h-px bg-white flex-1"></div>
+<span class="text-xs uppercase tracking-widest text-white font-display">Empty State Demo</span>
+<div class="h-px bg-white flex-1"></div>
+</div>
+<!-- Empty State Component (As requested in design plan) -->
+<div class="flex flex-col items-center justify-center py-10 px-4 text-center rounded-3xl border border-white/5 bg-white/[0.02]">
+<div class="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6 ring-1 ring-white/10">
+<span class="material-symbols-outlined text-4xl text-gray-500">confirmation_number</span>
+</div>
+<h3 class="font-display text-lg font-bold text-white mb-2">No active tickets</h3>
+<p class="text-gray-400 text-sm max-w-[240px] leading-relaxed mb-8">Your next unforgettable night is waiting for you.</p>
+<button class="flex items-center gap-2 bg-lux-gold text-lux-dark hover:bg-[#D4A63B] transition-colors rounded-xl px-6 py-3 font-bold text-sm tracking-wide shadow-[0_0_20px_-5px_rgba(232,185,75,0.3)]">
+<span>Explore Events</span>
+<span class="material-symbols-outlined text-lg font-bold">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Bottom Navigation (iOS Style) -->
+<div class="h-20 bg-[#121416]/90 backdrop-blur-xl border-t border-white/5 flex items-start justify-around pt-4 px-2 absolute bottom-0 w-full z-50">
+<button class="flex flex-col items-center gap-1 w-16 group">
+<span class="material-symbols-outlined text-gray-500 group-hover:text-white transition-colors">home</span>
+<span class="text-[10px] font-medium text-gray-500 group-hover:text-white transition-colors">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 w-16 group">
+<span class="material-symbols-outlined text-gray-500 group-hover:text-white transition-colors">search</span>
+<span class="text-[10px] font-medium text-gray-500 group-hover:text-white transition-colors">Explore</span>
+</button>
+<button class="flex flex-col items-center gap-1 w-16 group">
+<span class="material-symbols-outlined text-primary group-hover:text-primary-400 transition-colors filled" style="font-variation-settings: 'FILL' 1;">wallet</span>
+<span class="text-[10px] font-bold text-primary group-hover:text-primary-400 transition-colors">Wallet</span>
+</button>
+<button class="flex flex-col items-center gap-1 w-16 group">
+<span class="material-symbols-outlined text-gray-500 group-hover:text-white transition-colors">person</span>
+<span class="text-[10px] font-medium text-gray-500 group-hover:text-white transition-colors">Profile</span>
+</button>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>System Error | Nightlife Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1f96ad",
+                        "background-light": "#f9fafa",
+                        "background-dark": "#16181d",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .ios-shadow {
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between px-4 py-4 bg-background-light dark:bg-background-dark border-b border-gray-100 dark:border-gray-800">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary text-2xl">nightlife</span>
+<span class="text-sm font-bold tracking-tight text-gray-900 dark:text-white uppercase">Venue OS</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</header>
+<!-- Main Content Area: Centered Layout -->
+<main class="flex-1 flex flex-col items-center justify-center px-6">
+<!-- Error Status Container -->
+<div class="w-full max-w-sm flex flex-col items-center">
+<!-- Distinctive Iconography -->
+<div class="mb-8 w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+<div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-4xl leading-none">cloud_off</span>
+</div>
+</div>
+<!-- Headline Text -->
+<h1 class="text-gray-900 dark:text-white text-3xl font-bold leading-tight tracking-tight text-center mb-3">
+                Something went wrong
+            </h1>
+<!-- Body Text -->
+<p class="text-gray-500 dark:text-gray-400 text-base font-normal leading-relaxed text-center mb-10 max-w-[280px]">
+                We couldn’t load the data. Check your connection or server status.
+            </p>
+<!-- Action Area -->
+<div class="w-full space-y-4">
+<!-- SingleButton: Retry -->
+<button class="w-full h-14 flex items-center justify-center rounded-xl bg-primary hover:bg-primary/90 active:scale-[0.98] transition-all text-white text-lg font-semibold shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined mr-2 text-[20px]">refresh</span>
+<span>Retry Connection</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Footer Meta -->
+<footer class="pb-12 px-6 flex flex-col items-center">
+<!-- MetaText: Contact Support -->
+<a class="group flex items-center space-x-1 text-gray-400 dark:text-gray-500 hover:text-primary dark:hover:text-primary transition-colors duration-200" href="#">
+<span class="text-sm font-medium underline underline-offset-4 decoration-gray-300 dark:decoration-gray-700 group-hover:decoration-primary">Contact Support</span>
+<span class="material-symbols-outlined text-sm">arrow_outward</span>
+</a>
+<div class="mt-8 flex items-center space-x-4 opacity-30 grayscale">
+<!-- Simplified abstract logo pattern instead of images -->
+<div class="w-2 h-2 rounded-full bg-gray-400"></div>
+<div class="w-2 h-2 rounded-full bg-gray-400"></div>
+<div class="w-2 h-2 rounded-full bg-gray-400"></div>
+</div>
+</footer>
+<!-- Decorative background element for "out-of-distribution" feel -->
+<div class="fixed top-[-10%] right-[-10%] w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none -z-10"></div>
+<div class="fixed bottom-[-5%] left-[-5%] w-48 h-48 bg-primary/10 rounded-full blur-2xl pointer-events-none -z-10"></div>
+</body></html>

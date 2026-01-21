@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Staff Management List</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1f8aad",
+                        "background-light": "#fafafa",
+                        "background-dark": "#121417",
+                        "accent-manager": "#e0d194",
+                        "accent-staff": "#b7e1e5",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        .dark .skeleton {
+            background: linear-gradient(90deg, #2a2d32 25%, #3a3f45 50%, #2a2d32 75%);
+            background-size: 200% 100%;
+        }
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#0f171a] dark:text-gray-100 min-h-screen pb-32">
+<!-- Top Navigation Bar -->
+<nav class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 ios-blur border-b border-gray-200 dark:border-gray-800">
+<div class="flex items-center p-4 justify-between max-w-md mx-auto">
+<div class="w-10 flex items-center justify-start">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-400 cursor-pointer">arrow_back_ios</span>
+</div>
+<h2 class="text-lg font-semibold tracking-tight">Staff Management</h2>
+<div class="w-10 flex items-center justify-end">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-400 cursor-pointer">filter_list</span>
+</div>
+</div>
+</nav>
+<main class="max-w-md mx-auto px-4 pt-6">
+<!-- Search Bar -->
+<div class="mb-6">
+<label class="flex items-center h-12 w-full bg-gray-100 dark:bg-gray-800 rounded-xl px-4 focus-within:ring-2 ring-primary/50 transition-all">
+<span class="material-symbols-outlined text-gray-400 mr-2">search</span>
+<input class="w-full bg-transparent border-none focus:ring-0 text-base placeholder:text-gray-500" placeholder="Search staff members..." type="text"/>
+</label>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
+<div class="flex h-9 shrink-0 items-center justify-center rounded-full bg-primary px-5 text-white text-sm font-medium">
+                All Members
+            </div>
+<div class="flex h-9 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-5 text-gray-600 dark:text-gray-300 text-sm font-medium">
+                Managers
+            </div>
+<div class="flex h-9 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-5 text-gray-600 dark:text-gray-300 text-sm font-medium">
+                Staff
+            </div>
+<div class="flex h-9 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-5 text-gray-600 dark:text-gray-300 text-sm font-medium">
+                Security
+            </div>
+</div>
+<!-- Staff List -->
+<div class="space-y-3">
+<!-- Staff Item 1 (Manager) -->
+<div class="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="relative">
+<div class="size-14 rounded-full bg-cover bg-center border-2 border-accent-manager/30" data-alt="Headshot of a male manager with a professional look" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCnNqhC1h9Jw6elig_jvpEUQSKZlIxI-t5zVBKYoKHBbMKnpN_C_Nroh6Pa2YMbWz7D-7hlfuQ_j7y6Z8EW3txRJ8JKjPIpZtNQGaRysgjpxn6aLeTkCzJ41QSdF6lR8WmPTc2kjyDJvcCd-6Cz9g8bsGm85hYD8PYpFDLhjhzVrIvIHtPMSLBe1uCgvbtYuucj3lR0Jozc0w1kIitYl-cWqPgvSyMQxWJwYmYxazBjvxqJUpk0KAQKWSgx49eI_ytUReaV35AhthQ");'></div>
+<div class="absolute bottom-0 right-0 size-4 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></div>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-0.5">
+<p class="font-semibold text-base">Alex Rivera</p>
+<span class="px-2 py-0.5 rounded-full bg-accent-manager/20 text-[#7a6b2e] text-[10px] font-bold uppercase tracking-wider">Manager</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400">Last active: 15m ago</p>
+</div>
+</div>
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full bg-[#e8f0f2] dark:bg-gray-700 p-0.5 transition-colors has-[:checked]:bg-primary">
+<input checked="" class="invisible absolute peer" type="checkbox"/>
+<div class="h-full w-[27px] rounded-full bg-white shadow-md transition-transform peer-checked:translate-x-[20px]"></div>
+</label>
+</div>
+<!-- Staff Item 2 (Staff) -->
+<div class="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="relative">
+<div class="size-14 rounded-full bg-cover bg-center border-2 border-accent-staff/30" data-alt="Headshot of a female staff member smiling" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBKP01oUBfukLYJjgAXq0_950in03qRjhqk657XRRxyheh1Xy6X979_cvLshFfZfL6cgBvHL59AS9zuFHpwYfncNinYI8j7q3kRDjd7fRCTHUfQ1cl2ESGvrzB3fPRD_gJgHzt49E9GJORcf9mCRyWXTRm_OAlgj4TFc2tWf36usGQYQQYzMhTISMCxyij1q-rbN5nM6AbXG-gCxnV_RAi3HPZFbq4lNglrFW1whxMUxUktR7QKlNmSukjC_zwqAZRTBXopN2nxv8s");'></div>
+<div class="absolute bottom-0 right-0 size-4 bg-gray-300 dark:bg-gray-600 border-2 border-white dark:border-gray-900 rounded-full"></div>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-0.5">
+<p class="font-semibold text-base">Jordan Smith</p>
+<span class="px-2 py-0.5 rounded-full bg-accent-staff/30 text-[#2e5d61] text-[10px] font-bold uppercase tracking-wider">Staff</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400">Last active: 4h ago</p>
+</div>
+</div>
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full bg-[#e8f0f2] dark:bg-gray-700 p-0.5 transition-colors has-[:checked]:bg-primary">
+<input class="invisible absolute peer" type="checkbox"/>
+<div class="h-full w-[27px] rounded-full bg-white shadow-md transition-transform peer-checked:translate-x-[20px]"></div>
+</label>
+</div>
+<!-- Staff Item 3 (Staff) -->
+<div class="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="relative">
+<div class="size-14 rounded-full bg-cover bg-center border-2 border-accent-staff/30" data-alt="Headshot of a male staff member with glasses" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAGWbnIOLH6xE3DkwToAtUx8jCI939Gl-ih-Bj5QHz9BA1z85u33ElkPRO1G-Jg23YxHZRNHn9XiE5Yn3g6rfEDXnsR3ALqgwLpA7q0upx-IaLol-7yCYVlBcGkG-WtchlQxNLqbUHLpgrE3ct1-TY65Uf8JpWq7tcxNbfq1IpwLb0loEmEOmKMUvZmUbt9QxsYaleOqI8tZyeGDfjA8mxJyQqZD0o6JBXju5wL3H73FANDDGOMJUkCVup0VB7_SYUrHJ3ojNg8F4s");'></div>
+<div class="absolute bottom-0 right-0 size-4 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></div>
+</div>
+<div>
+<div class="flex items-center gap-2 mb-0.5">
+<p class="font-semibold text-base">Marcus Chen</p>
+<span class="px-2 py-0.5 rounded-full bg-accent-staff/30 text-[#2e5d61] text-[10px] font-bold uppercase tracking-wider">Staff</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400">Last active: 2m ago</p>
+</div>
+</div>
+<label class="relative flex h-[31px] w-[51px] cursor-pointer items-center rounded-full bg-[#e8f0f2] dark:bg-gray-700 p-0.5 transition-colors has-[:checked]:bg-primary">
+<input checked="" class="invisible absolute peer" type="checkbox"/>
+<div class="h-full w-[27px] rounded-full bg-white shadow-md transition-transform peer-checked:translate-x-[20px]"></div>
+</label>
+</div>
+<!-- Loading Skeletons -->
+<div class="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between opacity-60">
+<div class="flex items-center gap-4">
+<div class="size-14 rounded-full skeleton"></div>
+<div class="space-y-2">
+<div class="h-4 w-28 skeleton rounded"></div>
+<div class="h-3 w-20 skeleton rounded"></div>
+</div>
+</div>
+<div class="h-8 w-12 skeleton rounded-full"></div>
+</div>
+<div class="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between opacity-40">
+<div class="flex items-center gap-4">
+<div class="size-14 rounded-full skeleton"></div>
+<div class="space-y-2">
+<div class="h-4 w-32 skeleton rounded"></div>
+<div class="h-3 w-24 skeleton rounded"></div>
+</div>
+</div>
+<div class="h-8 w-12 skeleton rounded-full"></div>
+</div>
+</div>
+</main>
+<!-- Fixed Bottom CTA -->
+<div class="fixed bottom-0 left-0 right-0 bg-background-light/95 dark:bg-background-dark/95 ios-blur border-t border-gray-200 dark:border-gray-800 p-4 pb-8 z-50">
+<div class="max-w-md mx-auto">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-semibold h-14 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined">person_add</span>
+                Generate Invite
+            </button>
+</div>
+</div>
+</body></html>

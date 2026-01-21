@@ -1,0 +1,24 @@
+{
+  "name": "@lux-night/shared",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    "./supabase/client": "./src/supabase/client.ts",
+    "./supabase/server": "./src/supabase/server.ts",
+    "./types": "./src/types.ts",
+    "./constants": "./src/constants.ts",
+    "./data/profile": "./src/data/profile.ts",
+    "./data/regions": "./src/data/regions.ts",
+    "./utils/qr": "./src/utils/qr.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.90.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~5.8.2"
+  }
+}

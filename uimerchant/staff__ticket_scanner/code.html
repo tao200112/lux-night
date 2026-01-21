@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "background-light": "#ffffff",
+                        "background-dark": "#0a0c10",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .scanner-viewfinder {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+        .scanner-corner {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-color: #006666;
+            border-style: solid;
+        }
+        .corner-tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-top-left-radius: 1.5rem; }
+        .corner-tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-top-right-radius: 1.5rem; }
+        .corner-bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-bottom-left-radius: 1.5rem; }
+        .corner-br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-bottom-right-radius: 1.5rem; }
+        
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #006666, transparent);
+            box-shadow: 0 0 15px #006666;
+            animation: scan 3s ease-in-out infinite;
+        }
+
+        @keyframes scan {
+            0%, 100% { top: 5%; }
+            50% { top: 95%; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white overflow-hidden">
+<div class="relative flex h-screen w-full flex-col overflow-hidden">
+<!-- Camera Background Simulation -->
+<div class="absolute inset-0 z-0">
+<div class="w-full h-full bg-slate-900 overflow-hidden">
+<div class="w-full h-full opacity-60 bg-[url('https://images.unsplash.com/photo-1514525253361-bee1a30091ca?q=80&amp;w=1000&amp;auto=format&amp;fit=crop')] bg-cover bg-center" data-alt="Dark nightclub interior with blurry neon lights"></div>
+<div class="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
+</div>
+</div>
+<!-- Top Bar (Operational Header) -->
+<div class="relative z-10 flex items-center justify-between p-4 pt-8">
+<div class="flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
+<div class="text-primary material-symbols-outlined text-xl">nightlife</div>
+<h2 class="text-white text-sm font-bold tracking-tight">The Onyx Club</h2>
+<span class="material-symbols-outlined text-white/50 text-sm">expand_more</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="bg-primary px-3 py-1 rounded-full shadow-lg shadow-primary/20">
+<span class="text-[10px] font-black tracking-[0.1em] uppercase">Staff</span>
+</div>
+<button class="size-10 flex items-center justify-center rounded-full bg-black/60 border border-white/10 text-white">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</div>
+<!-- Main Scanning Area -->
+<div class="relative z-10 flex-1 flex flex-col items-center justify-center">
+<!-- Section Header Style for Instruction -->
+<div class="mb-8">
+<h4 class="text-primary text-xs font-bold leading-normal tracking-[0.2em] px-4 py-1 text-center bg-primary/10 rounded-full border border-primary/20 uppercase">Ready to scan</h4>
+</div>
+<!-- Viewfinder -->
+<div class="scanner-viewfinder bg-black/20">
+<div class="scanner-corner corner-tl"></div>
+<div class="scanner-corner corner-tr"></div>
+<div class="scanner-corner corner-bl"></div>
+<div class="scanner-corner corner-br"></div>
+<div class="scan-line"></div>
+</div>
+<!-- Body Text Overlay -->
+<div class="mt-8 text-center px-8">
+<p class="text-white/90 text-lg font-medium tracking-tight">Scan ticket QR</p>
+<p class="text-white/50 text-xs mt-1">Center the code within the frame to validate</p>
+</div>
+</div>
+<!-- Camera Controls & Bottom Navigation -->
+<div class="relative z-10 px-6 pb-12">
+<!-- CameraControl-inspired Utility Buttons -->
+<div class="flex items-center justify-center gap-6 mb-8">
+<button class="flex shrink-0 items-center justify-center rounded-full size-12 bg-black/60 border border-white/10 text-white transition-all active:scale-95">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="flex shrink-0 items-center justify-center rounded-full size-20 bg-primary shadow-xl shadow-primary/30 text-white transition-all active:scale-90">
+<span class="material-symbols-outlined text-4xl leading-none">qr_code_scanner</span>
+</button>
+<button class="flex shrink-0 items-center justify-center rounded-full size-12 bg-black/60 border border-white/10 text-white transition-all active:scale-95 group">
+<span class="material-symbols-outlined group-active:text-primary">flashlight_on</span>
+</button>
+</div>
+<!-- ButtonGroup-inspired Actions -->
+<div class="flex justify-stretch gap-3">
+<button class="flex-1 flex cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-5 bg-white/10 backdrop-blur-md text-white border border-white/10 text-sm font-bold leading-normal tracking-wide transition-all active:bg-white/20">
+<span class="material-symbols-outlined mr-2 text-xl">search</span>
+<span class="truncate uppercase">Manual Lookup</span>
+</button>
+<button class="w-14 flex cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 bg-white/10 backdrop-blur-md text-white border border-white/10 transition-all active:bg-white/20">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Safe Area Home Indicator Background -->
+<div class="h-5 bg-transparent"></div>
+<!-- High-Contrast Status Gradient (Bottom) -->
+<div class="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black to-transparent pointer-events-none z-0"></div>
+</div>
+</body></html>

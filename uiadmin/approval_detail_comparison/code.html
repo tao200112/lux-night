@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Approval Detail Comparison</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2d3c4e",
+                        "primary-dark": "#1f2a37",
+                        "accent": "#3b82f6", 
+                        "background-light": "#f9fafb",
+                        "background-dark": "#111827",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1f2937",
+                        "border-light": "#e5e7eb",
+                        "border-dark": "#374151",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for textarea if needed */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased selection:bg-primary/20">
+<!-- Main Container -->
+<div class="relative flex min-h-screen flex-col pb-[240px]"> <!-- Padding bottom for fixed footer -->
+<!-- Top App Bar -->
+<!-- Using primary color for a strong enterprise header feel -->
+<header class="sticky top-0 z-30 bg-primary shadow-md">
+<div class="flex items-center justify-between px-4 py-3">
+<button class="flex size-10 items-center justify-center rounded-full text-white hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<div class="flex flex-col items-center">
+<h1 class="text-white text-base font-semibold tracking-tight">Approval #1024</h1>
+<span class="text-xs text-slate-300 font-medium opacity-80">Global Admin Portal</span>
+</div>
+<div class="flex size-10 items-center justify-center">
+<span class="material-symbols-outlined text-white/80">more_vert</span>
+</div>
+</div>
+<!-- Quick Context Bar attached to header -->
+<div class="bg-primary-dark px-6 py-3 border-t border-white/10 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<div class="size-2 rounded-full bg-yellow-400 animate-pulse"></div>
+<span class="text-xs font-semibold uppercase tracking-wider text-white">Pending Review</span>
+</div>
+<span class="text-xs text-slate-400 font-mono">REQ-8821</span>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 px-4 py-6 flex flex-col gap-6">
+<!-- Metadata Section -->
+<section class="grid grid-cols-2 gap-3">
+<div class="bg-surface-light dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark shadow-sm">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-slate-400 text-sm">storefront</span>
+<p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Merchant</p>
+</div>
+<p class="text-sm font-semibold truncate">Acme Events Ltd.</p>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark shadow-sm">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-slate-400 text-sm">schedule</span>
+<p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Timestamp</p>
+</div>
+<p class="text-sm font-semibold truncate">Oct 24, 10:42 AM</p>
+</div>
+</section>
+<!-- Section Header -->
+<div class="flex items-end justify-between border-b border-border-light dark:border-border-dark pb-2">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Proposed Changes</h3>
+<span class="text-xs text-slate-500 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">3 Fields Modified</span>
+</div>
+<!-- Comparison Cards: Interleaved Layout for Mobile -->
+<!-- We use a split card design: Left (Before) / Right (After) with a visual connector -->
+<!-- Card 1: Price -->
+<article class="group relative overflow-hidden rounded-xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-sm">
+<!-- Field Label -->
+<div class="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 border-b border-border-light dark:border-border-dark flex justify-between items-center">
+<span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Ticket Price (USD)</span>
+<span class="material-symbols-outlined text-slate-400 text-sm">payments</span>
+</div>
+<div class="grid grid-cols-2 divide-x divide-border-light dark:divide-border-dark">
+<!-- Before -->
+<div class="p-4 flex flex-col gap-1 opacity-60">
+<span class="text-[10px] uppercase font-bold text-slate-400">Original</span>
+<span class="text-lg font-mono text-slate-600 dark:text-slate-400 line-through decoration-slate-400/50">$50.00</span>
+</div>
+<!-- After -->
+<div class="p-4 flex flex-col gap-1 bg-blue-50/50 dark:bg-blue-900/10 relative">
+<span class="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400">Requested</span>
+<div class="flex items-center gap-2">
+<span class="text-xl font-bold font-mono text-blue-700 dark:text-blue-300">$55.00</span>
+<span class="inline-flex items-center justify-center rounded bg-green-100 dark:bg-green-900 px-1.5 py-0.5 text-[10px] font-bold text-green-700 dark:text-green-300">
+                                +10%
+                            </span>
+</div>
+<!-- Decorative Arrow Indicator -->
+<div class="absolute -left-3 top-1/2 -translate-y-1/2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full p-0.5 z-10 shadow-sm">
+<span class="material-symbols-outlined text-blue-500 text-sm block">arrow_forward</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 2: Inventory -->
+<article class="group relative overflow-hidden rounded-xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-sm">
+<div class="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 border-b border-border-light dark:border-border-dark flex justify-between items-center">
+<span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Inventory Count</span>
+<span class="material-symbols-outlined text-slate-400 text-sm">inventory_2</span>
+</div>
+<div class="grid grid-cols-2 divide-x divide-border-light dark:divide-border-dark">
+<div class="p-4 flex flex-col gap-1 opacity-60">
+<span class="text-[10px] uppercase font-bold text-slate-400">Original</span>
+<span class="text-lg font-mono text-slate-600 dark:text-slate-400">100</span>
+</div>
+<div class="p-4 flex flex-col gap-1 bg-blue-50/50 dark:bg-blue-900/10 relative">
+<span class="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400">Requested</span>
+<div class="flex items-center gap-2">
+<span class="text-xl font-bold font-mono text-blue-700 dark:text-blue-300">150</span>
+<span class="material-symbols-outlined text-green-600 text-sm">trending_up</span>
+</div>
+<div class="absolute -left-3 top-1/2 -translate-y-1/2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full p-0.5 z-10 shadow-sm">
+<span class="material-symbols-outlined text-blue-500 text-sm block">arrow_forward</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 3: Date/Time -->
+<article class="group relative overflow-hidden rounded-xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-sm">
+<div class="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 border-b border-border-light dark:border-border-dark flex justify-between items-center">
+<span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Event Start Time</span>
+<span class="material-symbols-outlined text-slate-400 text-sm">event</span>
+</div>
+<!-- Vertical Stack for text heavy content, but still comparative -->
+<div class="flex flex-col">
+<div class="p-3 flex items-center justify-between border-b border-dashed border-border-light dark:border-border-dark opacity-60">
+<span class="text-[10px] uppercase font-bold text-slate-400 w-16">Original</span>
+<span class="text-sm font-mono text-slate-600 dark:text-slate-400 text-right">Nov 12, 2023 - 8:00 PM</span>
+</div>
+<div class="p-3 flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10">
+<span class="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 w-16">Change</span>
+<span class="text-sm font-bold font-mono text-slate-800 dark:text-slate-200 text-right">Nov 12, 2023 - <span class="text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-1 rounded">7:30 PM</span></span>
+</div>
+</div>
+</article>
+<!-- Map Visualization (Optional context) -->
+<div class="mt-2">
+<p class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Venue Location</p>
+<div class="h-32 w-full rounded-lg overflow-hidden relative border border-border-light dark:border-border-dark shadow-inner">
+<!-- Abstract Map Pattern -->
+<div class="absolute inset-0 bg-slate-200 dark:bg-slate-700 opacity-50" data-alt="Abstract map grid pattern showing venue location context" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px;"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-red-500 text-3xl drop-shadow-md">location_on</span>
+<span class="text-xs font-bold text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-black/50 px-2 py-0.5 rounded backdrop-blur-sm mt-1">Moscone Center</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Bottom Action Bar -->
+<footer class="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-surface-dark border-t border-border-light dark:border-border-dark shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] pb-safe">
+<div class="p-4 flex flex-col gap-4 max-w-md mx-auto w-full">
+<!-- Notes Input -->
+<div class="relative">
+<label class="sr-only" for="notes">Review Notes</label>
+<textarea class="block w-full rounded-lg border-0 bg-slate-100 dark:bg-slate-800 py-3 px-4 text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-600 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 resize-none" id="notes" placeholder="Add required notes for audit log..." rows="2"></textarea>
+<div class="absolute right-2 bottom-2 text-[10px] text-slate-400 font-medium">REQUIRED</div>
+</div>
+<!-- Action Buttons -->
+<div class="grid grid-cols-2 gap-3">
+<button class="group relative flex w-full items-center justify-center gap-2 rounded-lg bg-white dark:bg-transparent border-2 border-red-100 dark:border-red-900/30 px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600" type="button">
+<span class="material-symbols-outlined text-lg group-hover:scale-110 transition-transform">close</span>
+                        Reject
+                    </button>
+<button class="group relative flex w-full items-center justify-center gap-2 rounded-lg bg-primary hover:bg-primary/90 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:shadow-md transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" type="button">
+<span class="material-symbols-outlined text-lg group-hover:scale-110 transition-transform">check</span>
+                        Approve
+                    </button>
+</div>
+</div>
+<!-- iOS Home Indicator Spacing -->
+<div class="h-6 w-full bg-white dark:bg-surface-dark"></div>
+</footer>
+</div>
+<!-- Background Pattern for Texture -->
+<div class="fixed inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05] z-0" data-alt="Subtle crosshatch pattern background" style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');">
+</div>
+</body></html>

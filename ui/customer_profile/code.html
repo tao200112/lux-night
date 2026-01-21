@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lux Night - Customer Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#cda037",
+                        "background-light": "#f7f7f7",
+                        "background-dark": "#080808",
+                        "surface-dark": "#121212", 
+                        "surface-highlight": "#1a1a1a",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                    backgroundImage: {
+                        'lux-gradient': 'linear-gradient(180deg, rgba(8,8,8,0) 0%, rgba(205,160,55,0.03) 100%)',
+                        'gold-shimmer': 'linear-gradient(45deg, rgba(255,255,255,0) 40%, rgba(205,160,55,0.2) 50%, rgba(255,255,255,0) 60%)'
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hide for cleaner UI */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased text-slate-900 dark:text-slate-100 selection:bg-primary/30">
+<div class="mx-auto flex min-h-screen w-full max-w-md flex-col overflow-hidden relative shadow-2xl bg-background-light dark:bg-background-dark">
+<!-- Background Ambient Effect (Deep Blue Hint) -->
+<div class="absolute top-0 left-0 w-full h-[500px] bg-blue-900/10 dark:bg-blue-950/20 blur-[100px] pointer-events-none z-0"></div>
+<!-- Top App Bar -->
+<header class="relative z-10 flex items-center justify-between px-6 py-5">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
+<span class="material-symbols-outlined text-slate-800 dark:text-white group-hover:text-primary transition-colors">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold tracking-wide uppercase text-slate-800 dark:text-white">Profile</h1>
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
+<span class="material-symbols-outlined text-slate-800 dark:text-white group-hover:text-primary transition-colors">notifications</span>
+</button>
+</header>
+<main class="relative z-10 flex-1 flex flex-col px-6 pb-8 overflow-y-auto no-scrollbar">
+<!-- Profile Header -->
+<section class="flex flex-col items-center mt-4 mb-10">
+<div class="relative group cursor-pointer">
+<!-- Gold Ring Animation/Effect -->
+<div class="absolute -inset-1 rounded-full bg-gradient-to-tr from-primary/50 to-transparent opacity-70 blur-sm group-hover:opacity-100 transition-opacity duration-500"></div>
+<div class="relative w-28 h-28 rounded-full p-[2px] bg-gradient-to-b from-primary via-primary/50 to-transparent">
+<div class="w-full h-full rounded-full overflow-hidden bg-surface-dark relative">
+<img alt="Portrait of a smiling man in a suit" class="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXzJVD41qxM39-XRf7NKgwX_4Z1Wo3jxVqsr489pxMidZtnbs_IM8Ei3etdZosJlm5FKq1ibIQl8g38lHnGiF52kTZunz-s3IQ4SxtwnZEOd5qAOzd0dthYJ-d5aYlQwipBYYyxZccps85eTeXNReTdAvU0JzCVqPMChnV6Tx3ffIomeOltsJlF4SjEfqLgtc6adpr7EzX_MRC11mqU19rWNcHhv4zJ-cngFSfom_7C3KTjbMVDmkUU5EAT9n2NF8dx-1E_L8tcEJL"/>
+</div>
+</div>
+<!-- Gold Badge -->
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gradient-to-r from-[#1a1a1a] to-[#2a2a2a] border border-primary/40 px-3 py-1 rounded-full shadow-lg shadow-black/50">
+<span class="material-symbols-outlined text-[14px] text-primary">verified</span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-primary">Gold Member</span>
+</div>
+</div>
+<div class="mt-5 text-center space-y-1">
+<h2 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Jonathan Sterling</h2>
+<p class="text-sm text-slate-500 dark:text-slate-400 font-medium">jonathan.sterling@luxnight.com</p>
+</div>
+</section>
+<!-- Navigation Menu -->
+<section class="flex flex-col gap-3 mb-8">
+<!-- Menu Item 1 -->
+<button class="group relative flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/50 dark:hover:border-primary/30 transition-all duration-300">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+<span class="text-base font-semibold text-slate-800 dark:text-slate-200 group-hover:translate-x-1 transition-transform">My Orders</span>
+</div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors text-xl">chevron_right</span>
+</button>
+<!-- Menu Item 2 -->
+<button class="group relative flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/50 dark:hover:border-primary/30 transition-all duration-300">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">contact_support</span>
+</div>
+<span class="text-base font-semibold text-slate-800 dark:text-slate-200 group-hover:translate-x-1 transition-transform">Help &amp; Support</span>
+</div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors text-xl">chevron_right</span>
+</button>
+<!-- Menu Item 3 -->
+<button class="group relative flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/50 dark:hover:border-primary/30 transition-all duration-300">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">public</span>
+</div>
+<div class="flex flex-col items-start">
+<span class="text-base font-semibold text-slate-800 dark:text-slate-200 group-hover:translate-x-1 transition-transform">Change Region</span>
+<span class="text-xs text-slate-500 dark:text-slate-500">Currently: New York</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors text-xl">chevron_right</span>
+</button>
+<!-- Menu Item 4 -->
+<button class="group relative flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-surface-dark border border-slate-200 dark:border-white/5 shadow-sm hover:border-primary/50 dark:hover:border-primary/30 transition-all duration-300">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</div>
+<span class="text-base font-semibold text-slate-800 dark:text-slate-200 group-hover:translate-x-1 transition-transform">Settings</span>
+</div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors text-xl">chevron_right</span>
+</button>
+</section>
+<!-- Special Staff Section -->
+<section class="mb-8">
+<div class="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-[#121212] to-[#0a0a0a] p-5">
+<!-- Abstract Pattern BG -->
+<div class="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-primary/5 blur-2xl"></div>
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-sm font-bold uppercase tracking-widest text-primary/80">Staff Upgrades</h3>
+<span class="material-symbols-outlined text-primary/50 text-sm">lock_open</span>
+</div>
+<div class="flex flex-col gap-3">
+<p class="text-xs text-slate-400">Enter your exclusive invite code to unlock VIP staff privileges.</p>
+<div class="flex gap-2">
+<input class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 uppercase tracking-widest transition-all" placeholder="INVITE-CODE" type="text"/>
+<button class="bg-transparent border border-primary text-primary hover:bg-primary hover:text-black font-bold text-xs px-4 py-2 rounded-lg transition-colors uppercase tracking-wide">
+                                Apply
+                            </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Logout -->
+<button class="mt-auto w-full py-3 text-center text-sm font-semibold text-red-500/80 hover:text-red-500 hover:bg-red-500/5 rounded-xl transition-colors">
+                Log Out
+            </button>
+<p class="mt-4 text-center text-[10px] text-slate-600 dark:text-slate-600 uppercase tracking-widest">
+                Lux Night v2.4.0
+            </p>
+</main>
+</div>
+</body></html>

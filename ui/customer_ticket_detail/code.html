@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Customer Ticket Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,100..900;1,100..900&amp;family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2B5C4E", 
+                        "background-light": "#f8f7f7",
+                        "background-dark": "#131417", 
+                        "surface-dark": "#1e2422",
+                        "accent-gold": "#DFA925",
+                        "qr-white": "#FFFFFF"
+                    },
+                    fontFamily: {
+                        "display": ["Epilogue", "sans-serif"],
+                        "body": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "2xl": "1.5rem", "3xl": "2rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(37, 39, 43, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .shimmer {
+            animation: shimmer 2s infinite linear;
+            background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+            background-size: 200% 100%;
+        }
+        @keyframes shimmer {
+            from { background-position: 200% 0; }
+            to { background-position: -200% 0; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-white min-h-screen flex flex-col font-display selection:bg-accent-gold selection:text-black">
+<div class="fixed top-0 w-full z-50 bg-background-dark/95 backdrop-blur-md border-b border-white/5">
+<div class="flex items-center justify-between px-4 py-4 max-w-md mx-auto w-full">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/5 transition-colors text-white">
+<span class="material-symbols-outlined" style="font-size: 20px;">arrow_back_ios_new</span>
+</button>
+<h2 class="text-base font-bold tracking-wide uppercase text-white/90">Ticket Details</h2>
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/5 transition-colors text-white">
+<span class="material-symbols-outlined" style="font-size: 22px;">ios_share</span>
+</button>
+</div>
+</div>
+<main class="flex-grow pt-24 pb-36 px-5 flex flex-col items-center max-w-md mx-auto w-full">
+<div class="text-center mb-6 w-full">
+<h1 class="text-3xl font-bold leading-tight mb-1 text-white">Neon Nights</h1>
+<p class="text-white/60 font-body text-sm font-medium">The Void Club • Downtown Sector 4</p>
+</div>
+<div class="relative w-full mb-12">
+<div class="bg-white rounded-3xl pt-10 pb-12 px-6 flex flex-col items-center shadow-2xl relative z-10 overflow-hidden">
+<div class="w-full flex justify-center mb-8">
+<img alt="High contrast QR code" class="w-64 h-64 object-contain mix-blend-multiply" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8Uu7bh69xzkw0X-t0vvaCCfcrFDZ8RIVNvHfF8f2420lKFoSfHgK6gF_rZQq1ZWmrIoNeqjD3xx3vjsT_CO_CuTNs0qtgOMtFEhhe_HqpfrStTm5lb7SfUGfiFDNKqfqOrC6fZ3hgAFzwjDbskkeR2ftQoSTI_t8KQjllpCDVadEmhyKaRnAu0vGv0mRXZHwNwOlcRy52rDM-qhtavL6GroWKhruhM4HDdg5lhNEuoVnnuP0wssfMzpUTstB1ptFKYLMyJ4LfUJpS"/>
+</div>
+<div class="flex flex-col items-center gap-1 w-full border-t border-gray-100 pt-6">
+<p class="text-gray-400 text-[10px] font-bold tracking-[0.25em] uppercase font-body">Ticket ID</p>
+<p class="text-black font-bold text-3xl tracking-[0.15em] font-mono">8493-2910</p>
+</div>
+</div>
+<div class="absolute -bottom-7 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap">
+<div class="bg-background-dark border-2 border-accent-gold text-accent-gold px-8 py-3 rounded-full text-lg font-bold tracking-[0.2em] shadow-[0_8px_20px_rgba(0,0,0,0.6)] flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1; font-size: 24px;">verified</span>
+                    ACTIVE
+                </div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 w-full mb-6 mt-2">
+<div class="glass-panel p-4 rounded-2xl flex flex-col items-start gap-2">
+<div class="p-2 rounded-lg bg-white/5 text-accent-gold">
+<span class="material-symbols-outlined" style="font-size: 20px;">diamond</span>
+</div>
+<div>
+<p class="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Access Tier</p>
+<p class="text-white text-base font-bold">VIP Entry</p>
+</div>
+</div>
+<div class="glass-panel p-4 rounded-2xl flex flex-col items-start gap-2">
+<div class="p-2 rounded-lg bg-white/5 text-white/80">
+<span class="material-symbols-outlined" style="font-size: 20px;">schedule</span>
+</div>
+<div>
+<p class="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Entry Before</p>
+<p class="text-white text-base font-bold">11:00 PM</p>
+</div>
+</div>
+</div>
+<div class="w-full glass-panel rounded-2xl p-6 mb-6">
+<h3 class="text-white font-bold text-xs uppercase tracking-widest mb-4 opacity-50">Redemption Guide</h3>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-accent-gold mt-0.5" style="font-size: 18px;">brightness_7</span>
+<p class="text-white/90 font-body text-sm leading-relaxed">Set screen brightness to <span class="text-white font-bold">100%</span>.</p>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-accent-gold mt-0.5" style="font-size: 18px;">badge</span>
+<p class="text-white/90 font-body text-sm leading-relaxed">Present government ID matching ticket.</p>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-accent-gold mt-0.5" style="font-size: 18px;">door_front</span>
+<p class="text-white/90 font-body text-sm leading-relaxed">Use the North Entrance VIP lane.</p>
+</li>
+</ul>
+</div>
+<button class="w-full bg-white/5 hover:bg-white/10 active:bg-white/15 text-white h-14 rounded-2xl flex items-center justify-center gap-2 transition-all border border-white/5 mb-2">
+<span class="material-symbols-outlined" style="font-size: 24px;">wallet</span>
+<span class="font-body font-bold text-sm">Add to Apple Wallet</span>
+</button>
+</main>
+<div class="fixed bottom-0 left-0 w-full p-5 bg-gradient-to-t from-[#131417] via-[#131417] to-transparent z-40">
+<div class="max-w-md mx-auto w-full">
+<button class="group relative w-full bg-primary hover:bg-[#244f43] text-white h-14 rounded-xl flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(43,92,78,0.4)] transition-all overflow-hidden">
+<div class="absolute inset-0 w-full h-full shimmer"></div>
+<span class="material-symbols-outlined relative z-10" style="font-size: 24px;">fullscreen</span>
+<span class="font-bold text-base tracking-wide relative z-10">Show Ticket</span>
+</button>
+</div>
+</div>
+
+</body></html>

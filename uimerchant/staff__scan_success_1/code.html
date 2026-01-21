@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "success-green": "#3CB371",
+                        "background-light": "#ffffff",
+                        "background-dark": "#1a1d23",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        /* Custom Success Background Override for this specific variant */
+        .bg-success-state {
+            background-color: #3CB371;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display antialiased">
+<!-- Main Success Container: Full Green Background for instant recognition -->
+<div class="relative flex h-screen w-full flex-col bg-success-state text-white overflow-hidden">
+<!-- Top App Bar (Simplified for Success State) -->
+<div class="flex items-center p-4 pb-2 justify-between">
+<div class="flex size-12 shrink-0 items-center justify-start">
+<span class="material-symbols-outlined text-white text-[28px]">close</span>
+</div>
+<h2 class="text-white text-lg font-bold leading-tight tracking-tight flex-1 text-center">Scan Status</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex items-center justify-center rounded-lg h-12 bg-transparent text-white gap-2 text-base font-bold">
+<span class="material-symbols-outlined text-[28px]">history</span>
+</button>
+</div>
+</div>
+<!-- Headline Area -->
+<div class="flex flex-col items-center justify-center pt-8 pb-4 px-6 text-center">
+<div class="mb-6 flex items-center justify-center w-24 h-24 rounded-full border-4 border-white/40 bg-white/10">
+<span class="material-symbols-outlined text-[64px] font-light">check</span>
+</div>
+<h1 class="text-white text-[32px] font-bold leading-tight tracking-tight mb-2">Check-in Successful</h1>
+<p class="text-white/80 text-sm font-medium uppercase tracking-widest">Entry Granted</p>
+</div>
+<!-- Ticket Summary Card (Floating on Green) -->
+<div class="px-6 flex-1">
+<div class="bg-white/95 dark:bg-background-dark/95 backdrop-blur-md rounded-xl p-6 shadow-2xl space-y-6">
+<!-- Guest Primary Details -->
+<div class="flex items-center gap-5">
+<div class="size-20 bg-primary/10 rounded-xl overflow-hidden flex items-center justify-center border border-primary/5">
+<div class="w-full h-full bg-cover bg-center" data-alt="Portrait of the checked-in guest Alex Rivers" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCoEy02aSWmX0KiN_dUutBwGZp1gNaWlVPheUWBapIhQdm57STg9cH98gx5fd5uQ4-O14T3GlhqB-nnMuvtlbk5vM3mVc2O7xbOr-kDic3BZ3sIDaP6vmhQ2DmyS3Ql2FkrywqCv00leRcXpz5gOkBHpMUxHaED0ErNqtY4rMCRws2TqaiYd9z8ta_G6qzLDqZdGaeMjrfy4u7obBuiT-tBvOzTZtrCwo4DM7Cy-5aC3M2vO8oOGG5qDX5O9axtdMe9fgbSENWqdnk");'>
+</div>
+</div>
+<div class="flex-1">
+<p class="text-primary text-xs font-bold uppercase tracking-wider mb-1">Guest Details</p>
+<h3 class="text-[#0c1d1d] dark:text-white text-2xl font-bold leading-tight">Alex Rivers</h3>
+<p class="text-primary/70 dark:text-primary/90 text-sm font-medium">VIP Early Bird • Member #8821</p>
+</div>
+</div>
+<!-- Divider -->
+<div class="h-px bg-gray-200 dark:bg-white/10 w-full"></div>
+<!-- Information List -->
+<div class="grid grid-cols-1 gap-4">
+<!-- Access Item -->
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 size-11">
+<span class="material-symbols-outlined text-[24px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<p class="text-[#0c1d1d] dark:text-white text-sm font-bold leading-tight">Access Level</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal">Main Floor + Backstage Lounge</p>
+</div>
+</div>
+<!-- Table Item -->
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 size-11">
+<span class="material-symbols-outlined text-[24px]">chair_alt</span>
+</div>
+<div class="flex flex-col">
+<p class="text-[#0c1d1d] dark:text-white text-sm font-bold leading-tight">Table / Section</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal">Table #12 • Terrace West</p>
+</div>
+</div>
+<!-- Group Item -->
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 size-11">
+<span class="material-symbols-outlined text-[24px]">group</span>
+</div>
+<div class="flex flex-col">
+<p class="text-[#0c1d1d] dark:text-white text-sm font-bold leading-tight">Party Size</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal">1 of 4 (Check-in partial)</p>
+</div>
+</div>
+</div>
+<!-- Secondary Button for Actions -->
+<div class="pt-2">
+<button class="w-full flex items-center justify-center gap-2 rounded-lg bg-primary text-white h-12 text-base font-bold transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined">person_search</span>
+                        View Full Profile
+                    </button>
+</div>
+</div>
+</div>
+<!-- Footer / Auto-redirect Hint -->
+<div class="p-8 text-center space-y-4">
+<div class="flex flex-col items-center gap-3">
+<div class="flex items-center gap-2 text-white/90 text-sm font-medium">
+<span class="material-symbols-outlined animate-spin text-[18px]">autorenew</span>
+                    Returning to scan in 1s...
+                </div>
+<!-- Mini Progress Bar for Redirect -->
+<div class="w-48 h-1 bg-white/20 rounded-full overflow-hidden">
+<div class="h-full bg-white w-2/3 rounded-full"></div>
+</div>
+</div>
+<button class="text-white/60 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-white/20">
+                Cancel Auto-Redirect
+            </button>
+</div>
+<!-- iOS Home Indicator Space -->
+<div class="h-8 w-full bg-transparent"></div>
+</div>
+</body></html>

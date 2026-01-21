@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Invite Gate: Invalid Error</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Lexend -->
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "error": "#D32F2F",
+                        "background-light": "#ffffff",
+                        "background-dark": "#17191c",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-status-bar {
+            height: 44px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white transition-colors duration-300">
+<!-- Main Container (Phone Form Factor) -->
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- iOS Status Bar Spacer (Simulated) -->
+<div class="ios-status-bar w-full flex justify-between items-end px-6 pb-2">
+<span class="text-xs font-semibold">9:41</span>
+<div class="flex gap-1.5 items-center">
+<span class="material-symbols-outlined text-[14px]">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-[14px]">wifi</span>
+<span class="material-symbols-outlined text-[14px]">battery_full</span>
+</div>
+</div>
+<!-- TopAppBar Navigation -->
+<div class="flex items-center px-4 py-3 justify-between">
+<div class="flex size-10 items-center justify-start cursor-pointer hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined text-[#0c1d1d] dark:text-white">arrow_back_ios</span>
+</div>
+<h2 class="text-sm font-bold uppercase tracking-widest text-center flex-1">Join Venue</h2>
+<div class="size-10 flex items-center justify-end">
+<span class="material-symbols-outlined opacity-0">more_horiz</span>
+</div>
+</div>
+<!-- Content Area -->
+<div class="flex-1 px-6 pt-12">
+<!-- HeadlineSection -->
+<div class="mb-2">
+<h1 class="text-[#0c1d1d] dark:text-white text-[32px] font-bold leading-tight tracking-tight">Enter Invite Code</h1>
+</div>
+<!-- BodyText Section -->
+<div class="mb-10">
+<p class="text-[#526060] dark:text-gray-400 text-base font-normal leading-relaxed max-w-[320px]">
+                    Enter the unique 6-digit code provided by your venue manager to access the staff portal.
+                </p>
+</div>
+<!-- Input Section (Error State) -->
+<div class="space-y-1.5">
+<label class="block text-xs font-bold uppercase tracking-wider text-[#0c1d1d] dark:text-white mb-2 ml-1">
+                    Invite Code
+                </label>
+<div class="relative group">
+<input class="w-full h-16 px-5 rounded-xl border-2 border-error bg-white dark:bg-gray-800 text-xl font-medium tracking-[0.2em] uppercase focus:outline-none focus:ring-0 focus:border-error placeholder:text-gray-300 dark:placeholder:text-gray-600 transition-all" placeholder="e.g. 123456" type="text" value="VX-920"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 text-error">
+<span class="material-symbols-outlined font-bold">warning</span>
+</div>
+</div>
+<!-- MetaText / Error Message -->
+<div class="flex items-center gap-2 mt-3 px-1">
+<span class="text-error text-[13px] font-medium leading-normal animate-pulse">
+                        Invalid code. Please check for typos and try again.
+                    </span>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="p-6 pb-12 flex flex-col gap-4">
+<!-- Primary Action Button -->
+<button class="w-full bg-primary hover:bg-[#004d4d] text-white h-14 rounded-xl font-bold text-base shadow-lg shadow-primary/20 flex items-center justify-center transition-all active:scale-[0.98]">
+                Verify Code
+            </button>
+<!-- Support Link -->
+<button class="w-full py-2 text-sm font-medium text-[#526060] dark:text-gray-400 hover:text-primary transition-colors">
+                Need help? <span class="underline underline-offset-4">Contact Admin</span>
+</button>
+</div>
+<!-- Bottom Home Indicator (iOS Style) -->
+<div class="w-full flex justify-center pb-2">
+<div class="w-32 h-1.5 bg-black/10 dark:bg-white/10 rounded-full"></div>
+</div>
+</div>
+<!-- Background Decorative Element (Subtle) -->
+<div class="fixed top-0 right-0 -z-10 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+<div class="fixed bottom-0 left-0 -z-10 w-96 h-96 bg-primary/5 rounded-full blur-[100px] -ml-48 -mb-48"></div>
+</body></html>

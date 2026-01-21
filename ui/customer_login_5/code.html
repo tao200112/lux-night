@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lux Night - Order History</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Noto+Serif:ital,wght@0,300;0,400;0,600;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#c8ab5f",
+                        "primary-light": "#e0c885",
+                        "secondary": "#AA8D55",
+                        "background-light": "#faf8f4",
+                        "background-dark": "#0B1121","surface-dark": "#131b2e","surface-highlight": "#1c2640",
+                        "success": "#4ade80",
+                        "error": "#f87171",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Serif", "serif"],
+                        "sans": ["Manrope", "sans-serif"],
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    }
+                },
+            },
+        }
+    </script>
+<style>.text-glow {
+            text-shadow: 0 0 20px rgba(200, 171, 95, 0.4);
+        }
+        .card-shadow {
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+        body {
+          min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark min-h-screen flex items-center justify-center relative overflow-hidden text-white font-sans">
+<div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+<div class="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px]"></div>
+<div class="absolute inset-0 opacity-[0.03]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0VxuNhdqjhWKWUOHRHwooYJM5aNIoQXc8RiSqAH8Ah95h0G79PvBog5-bvTrdvx3ToIwnNRv9uDSrjBnF25mh_O_I3sTeKPuZVjoqKC-qxl1mPjr-Hse62FV_B_w1qfgesCcw-U-teSm8_d0Fa_7qYk_6WznkAKlG12eRpAtjWQKnnrWXI32sXzu8SXKs4h8A1-gxl6oBiVitWLaG038C15u5v0Trn7E01RbGP_ZhXKHizwJYwYRxD_n3BsmcLYxazsPoPNOnoBoR');"></div>
+</div>
+<div class="relative z-10 w-full max-w-md flex flex-col h-screen max-h-[900px] bg-background-dark/50 backdrop-blur-sm sm:rounded-3xl sm:h-[85vh] sm:border sm:border-white/5 shadow-2xl overflow-hidden">
+<header class="flex-none px-6 pt-12 pb-6 flex items-center justify-between z-20 bg-gradient-to-b from-background-dark via-background-dark to-transparent">
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/5 active:bg-white/10 transition-colors group">
+<span class="material-symbols-outlined text-white/80 group-hover:text-primary transition-colors">arrow_back</span>
+</button>
+<h1 class="font-display text-xl tracking-wide text-white font-medium">Order History</h1>
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/5 active:bg-white/10 transition-colors group">
+<span class="material-symbols-outlined text-white/80 group-hover:text-primary transition-colors">filter_list</span>
+</button>
+</header>
+<main class="flex-1 overflow-y-auto no-scrollbar px-6 pb-8 space-y-4">
+<div class="sticky top-0 z-10 py-2 bg-background-dark/95 backdrop-blur-md">
+<h2 class="text-xs font-bold text-secondary uppercase tracking-[0.15em]">October 2023</h2>
+</div>
+<div class="group relative w-full bg-surface-dark border border-white/5 rounded-2xl p-5 card-shadow transition-all duration-300 active:scale-[0.98] cursor-pointer hover:border-primary/30">
+<div class="flex justify-between items-start mb-3">
+<div>
+<span class="text-[11px] font-semibold text-primary/80 uppercase tracking-wider block mb-1">Oct 28 • Sat</span>
+<h3 class="font-display text-lg text-white leading-tight">The Grand Ballroom</h3>
+</div>
+<div class="text-right">
+<span class="block font-sans font-bold text-white text-lg">$450.00</span>
+</div>
+</div>
+<div class="w-full h-[1px] bg-white/5 my-3"></div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(200,171,95,0.6)]"></div>
+<span class="text-xs font-medium text-zinc-300">Completed</span>
+</div>
+<div class="flex items-center text-secondary text-[11px] font-medium tracking-wide gap-1 group-hover:text-primary transition-colors">
+<span>VIEW DETAILS</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</div>
+</div>
+<div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none"></div>
+</div>
+<div class="group relative w-full bg-surface-dark border border-white/5 rounded-2xl p-5 card-shadow transition-all duration-300 active:scale-[0.98] cursor-pointer hover:border-primary/30">
+<div class="flex justify-between items-start mb-3">
+<div>
+<span class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block mb-1">Oct 15 • Sun</span>
+<h3 class="font-display text-lg text-white leading-tight">Sky Lounge</h3>
+</div>
+<div class="text-right">
+<span class="block font-sans font-bold text-white text-lg">$120.00</span>
+</div>
+</div>
+<div class="w-full h-[1px] bg-white/5 my-3"></div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(200,171,95,0.6)]"></div>
+<span class="text-xs font-medium text-zinc-300">Completed</span>
+</div>
+<div class="flex items-center text-secondary text-[11px] font-medium tracking-wide gap-1 group-hover:text-primary transition-colors">
+<span>VIEW DETAILS</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</div>
+</div>
+</div>
+<div class="sticky top-0 z-10 py-2 mt-6 bg-background-dark/95 backdrop-blur-md">
+<h2 class="text-xs font-bold text-secondary uppercase tracking-[0.15em]">September 2023</h2>
+</div>
+<div class="group relative w-full bg-surface-dark/60 border border-white/5 rounded-2xl p-5 transition-all duration-300 active:scale-[0.98] cursor-pointer">
+<div class="flex justify-between items-start mb-3">
+<div class="opacity-75">
+<span class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block mb-1">Sep 30 • Fri</span>
+<h3 class="font-display text-lg text-zinc-300 leading-tight line-through decoration-zinc-600">Neon Gardens</h3>
+</div>
+<div class="text-right opacity-75">
+<span class="block font-sans font-medium text-zinc-400 text-lg line-through decoration-zinc-600">$85.00</span>
+</div>
+</div>
+<div class="w-full h-[1px] bg-white/5 my-3"></div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-zinc-500">undo</span>
+<span class="text-xs font-medium text-zinc-400">Refunded</span>
+</div>
+<div class="flex items-center text-zinc-600 text-[11px] font-medium tracking-wide gap-1">
+<span>SUMMARY</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</div>
+</div>
+</div>
+<div class="group relative w-full bg-surface-dark border border-white/5 rounded-2xl p-5 card-shadow transition-all duration-300 active:scale-[0.98] cursor-pointer hover:border-primary/30">
+<div class="flex justify-between items-start mb-3">
+<div>
+<span class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block mb-1">Sep 12 • Tue</span>
+<h3 class="font-display text-lg text-white leading-tight">The Vault</h3>
+</div>
+<div class="text-right">
+<span class="block font-sans font-bold text-white text-lg">$1,200.00</span>
+</div>
+</div>
+<div class="w-full h-[1px] bg-white/5 my-3"></div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(200,171,95,0.6)]"></div>
+<span class="text-xs font-medium text-zinc-300">Completed</span>
+</div>
+<div class="flex items-center text-secondary text-[11px] font-medium tracking-wide gap-1 group-hover:text-primary transition-colors">
+<span>VIEW DETAILS</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</div>
+</div>
+</div>
+<div class="py-8 flex flex-col items-center justify-center opacity-30">
+<div class="w-1 h-8 bg-gradient-to-b from-primary to-transparent"></div>
+<p class="text-[10px] text-primary mt-2 font-display tracking-widest uppercase">End of History</p>
+</div>
+</main>
+<footer class="flex-none px-6 py-4 bg-surface-dark/80 backdrop-blur-lg border-t border-white/5">
+<div class="flex justify-between items-center max-w-[280px] mx-auto">
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-symbols-outlined text-zinc-500 group-hover:text-primary transition-colors">confirmation_number</span>
+</button>
+<button class="flex flex-col items-center gap-1 group relative">
+<div class="absolute -top-10 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(200,171,95,0.4)] mb-2 transform transition-transform group-active:scale-95">
+<span class="material-symbols-outlined text-background-dark">search</span>
+</div>
+<span class="text-[10px] font-medium text-primary mt-6">Explore</span>
+</button>
+<button class="flex flex-col items-center gap-1 group">
+<span class="material-symbols-outlined text-primary shadow-glow">person</span>
+</button>
+</div>
+</footer>
+</div>
+
+</body></html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Price Change Request</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "background-light": "#f9fafa",
+                        "background-dark": "#16181d",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>body {
+    font-family: "Lexend", sans-serif;
+    -webkit-tap-highlight-color: transparent
+    }
+.ios-shadow {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04)
+    }
+select {
+    appearance: none;
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuAhghYFxkfjJBGxr3JYe1EoYqLyYr26a-Z5trXP6c0suAfkg7uHsF7CxpspRgYFLmrZoTawq5Q8J2rGR1peuTM2v5wrRzlztqIjTkUeaA-i-KmGPVyyJm6izf3pz_xzzBzptGF8sZGOV-xeef67riuPC3rkuHJVTMHu8d7RRPXo5MMtpoTBfDyzpObhyt3qGM8uUpTrUseV8UtISoayUthaN6Z-b0erM28JjeYzTYwRtc8Ett_Ri444wCZbGKpCOUJjU_Vqp0uu22c);
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em
+    }</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen text-[#1a1c1e] dark:text-gray-100">
+<div class="max-w-[480px] mx-auto min-h-screen flex flex-col pb-10">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-200/50 dark:border-gray-800/50">
+<button class="text-primary flex items-center justify-center p-1 -ml-2">
+<span class="material-symbols-outlined text-[28px]">chevron_left</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight flex-1 text-center pr-8">Price Change Request</h1>
+</header>
+<main class="flex-1 px-4 pt-6 space-y-6">
+<!-- Selection Section -->
+<section class="space-y-4">
+<div class="flex flex-col gap-1.5">
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400 ml-1">Select Event</label>
+<div class="relative">
+<select class="w-full h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 text-base focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ios-shadow">
+<option value="">Choose an event...</option>
+<option value="neon-nights">Neon Nights - Saturday Bash</option>
+<option value="underground">Underground Techno Session</option>
+<option value="rooftop">Rooftop Sunset Mix</option>
+</select>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400 ml-1">Ticket Type</label>
+<select class="w-full h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 text-base focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ios-shadow">
+<option value="">General Admission, VIP, etc.</option>
+<option value="ga">General Admission</option>
+<option value="vip">VIP Table Access</option>
+<option value="early">Early Bird Special</option>
+</select>
+</div>
+</section>
+<!-- Price Comparison Card -->
+<section class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-1.5">
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400 ml-1">Current Price</label>
+<div class="h-14 bg-gray-100 dark:bg-gray-900 border border-transparent rounded-xl px-4 flex items-center text-gray-400 dark:text-gray-500 font-semibold cursor-not-allowed">
+                        $25.00
+                    </div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400 ml-1">New Price</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+<input class="w-full h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-8 pr-4 text-base font-semibold text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ios-shadow" placeholder="0.00" step="0.01" type="number"/>
+</div>
+</div>
+</section>
+<!-- Time Selection -->
+<section class="flex flex-col gap-1.5">
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400 ml-1">Effective Time</label>
+<div class="relative group">
+<input class="w-full h-14 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 text-base focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ios-shadow" type="datetime-local"/>
+<span class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 pointer-events-none">calendar_today</span>
+</div>
+</section>
+<!-- Justification -->
+<section class="flex flex-col gap-1.5">
+<label class="text-sm font-medium text-gray-500 dark:text-gray-400 ml-1">Reason for Change <span class="text-red-500">*</span></label>
+<textarea class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 text-base focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ios-shadow resize-none" placeholder="Explain why the price is changing..." rows="4"></textarea>
+</section>
+<!-- Info Box -->
+<div class="bg-primary/5 dark:bg-primary/10 rounded-xl p-4 flex gap-3 border border-primary/10">
+<span class="material-symbols-outlined text-primary text-[20px]">info</span>
+<p class="text-xs text-primary/80 leading-relaxed">
+                    Changes will be sent to the Venue Manager for approval. Once approved, the new price will automatically reflect on the ticketing portal at the scheduled effective time.
+                </p>
+</div>
+<!-- Primary CTA -->
+<div class="pt-4">
+<button class="w-full h-16 bg-primary text-white font-bold text-lg rounded-2xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    Submit Price Request
+                    <span class="material-symbols-outlined">send</span>
+</button>
+<p class="text-center text-xs text-gray-400 mt-4 px-8 leading-tight">
+                    By submitting, you confirm that this change adheres to the venue's pricing policy.
+                </p>
+</div>
+</main>
+<!-- Bottom Tab Placeholder for iOS look -->
+<div class="fixed bottom-2 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full opacity-50 pointer-events-none"></div>
+</div>
+</body></html>

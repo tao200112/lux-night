@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lux Night - Discover</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#dfb52a",
+                        "background-light": "#f5f3ef",
+                        "background-dark": "#121212",
+                        "surface-dark": "#1e1e1e",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "2xl": "2rem",
+                        "full": "9999px"
+                    },
+                    backgroundImage: {
+                        'lux-gradient': 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.95) 100%)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Custom scrollbar hide */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display min-h-screen flex flex-col items-center">
+<!-- Mobile Wrapper -->
+<div class="relative w-full max-w-md mx-auto min-h-screen flex flex-col bg-background-light dark:bg-background-dark overflow-hidden shadow-2xl">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl border-b border-black/5 dark:border-white/5 transition-all duration-300">
+<div class="px-4 py-3 flex items-center justify-between">
+<!-- Left Spacer for Balance -->
+<div class="w-10"></div>
+<!-- Region Switcher -->
+<button class="group relative flex items-center justify-center gap-2 bg-primary px-5 py-2 rounded-full shadow-[0_0_15px_rgba(223,181,42,0.3)] active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-background-dark text-[20px] font-medium">location_on</span>
+<span class="text-background-dark font-bold text-sm tracking-wide uppercase">Shanghai</span>
+<span class="material-symbols-outlined text-background-dark text-[18px]">expand_more</span>
+</button>
+<!-- Search Action -->
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-black/5 dark:bg-white/10 text-slate-900 dark:text-white hover:bg-black/10 dark:hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined text-[24px]">search</span>
+</button>
+</div>
+<!-- Tabs -->
+<div class="px-4 pt-2">
+<div class="flex items-end gap-8">
+<button class="pb-3 border-b-2 border-primary text-slate-900 dark:text-white font-bold text-lg leading-none tracking-tight">
+                        Bars
+                    </button>
+<button class="pb-3 border-b-2 border-transparent text-slate-500 dark:text-gray-500 font-semibold text-lg leading-none tracking-tight hover:text-slate-700 dark:hover:text-gray-300 transition-colors">
+                        Events
+                    </button>
+</div>
+</div>
+</header>
+<!-- Main Content Feed -->
+<main class="flex-1 overflow-y-auto pb-24 px-4 pt-6 space-y-8 scrollbar-hide">
+<!-- Featured Bar Card -->
+<article class="group relative w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-lg transform transition-all hover:shadow-primary/20">
+<img alt="Dimly lit luxurious bar interior with gold accents" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhXkjDV4Jrs5YGXi-v_0TlLMMXIU1w1P6S-9df-NN88cWVgm-Z8BU1aa5oTpfNFwouMt9JrhSEsNWH4IFnDWfCoAFadKJN53IhpyGdFSlOVnt5zIDcd8tmWivbYYAQfgV5Pn7GaPo7N8e8SBXoHuoZP0erRXhQ3bSDkSh4jCPjXd9wd-bf3eflbV3oYH2f-F-GWPJqzpYVWdpzUe9jJpXVfgwLkRsMOX4i1TFz8CLlqP2UtVNQnP-a6GKN926E6mw5rkT05JyK_8U0"/>
+<!-- Gradient Overlay -->
+<div class="absolute inset-0 bg-lux-gradient"></div>
+<!-- Badges -->
+<div class="absolute top-4 left-4 flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-primary text-background-dark text-xs font-bold uppercase tracking-wider rounded-full shadow-lg">Tonight</span>
+<span class="px-3 py-1 bg-surface-dark/90 backdrop-blur text-primary border border-primary/30 text-xs font-bold uppercase tracking-wider rounded-full">21+</span>
+</div>
+<!-- Content -->
+<div class="absolute bottom-0 left-0 w-full p-5 flex flex-col gap-1">
+<div class="flex justify-between items-end mb-1">
+<h3 class="text-white text-2xl font-bold leading-tight tracking-tight">The Obsidian Lounge</h3>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px] fill-1">star</span>
+<span class="text-sm font-bold">4.9</span>
+</div>
+</div>
+<p class="text-gray-300 text-sm font-medium flex items-center gap-2">
+<span>0.4 mi</span>
+<span class="w-1 h-1 rounded-full bg-gray-500"></span>
+<span>Jazz &amp; Cocktails</span>
+</p>
+</div>
+</article>
+<!-- Secondary Bar Card -->
+<article class="group relative w-full aspect-video rounded-2xl overflow-hidden shadow-lg bg-surface-dark">
+<img alt="Velvet ropes and neon lights at a nightclub entrance" class="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlmA2Eee-9xgubjb-KPZJkla8RyBuxXHGHydLtDtz6VnWLEWdtfjpytwBmf5Ga0oBAm9p6ABpsW0hVqI9pUTwG9oUtjNsPyKhMhpvBSuKebqHrOBZEWATf4thOetTPwfFQmPsvNjiMgIpIj7hhAxcOe_01jA7ZsKRx0KmvIytquMTVw7sgNlALjpDba4mkjU1VUc_L40Fi-lM1C7tPuUlt_FSHUIKtFcGP-awuu3r4OxMw1HoMxILgsWWvIFvO-CYQNzLPMJ4eVowo"/>
+<div class="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent"></div>
+<div class="absolute top-4 left-4">
+<span class="px-3 py-1 bg-surface-dark/90 backdrop-blur text-white text-xs font-bold uppercase tracking-wider rounded-full border border-white/10">Open Late</span>
+</div>
+<div class="absolute bottom-0 left-0 w-full p-5">
+<h3 class="text-white text-xl font-bold leading-tight">Velvet Room</h3>
+<p class="text-gray-400 text-sm mt-1">1.2 mi • Speakeasy</p>
+</div>
+</article>
+<!-- Events Section Header (Bridge to Events Tab) -->
+<div class="pt-4 pb-2 flex items-center justify-between">
+<h2 class="text-slate-900 dark:text-white text-lg font-bold">Trending Events</h2>
+<button class="text-primary text-sm font-semibold">View All</button>
+</div>
+<!-- Event List Item 1 -->
+<div class="group flex gap-4 p-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 hover:border-primary/30 transition-colors">
+<div class="relative w-20 aspect-[3/4] shrink-0 rounded-lg overflow-hidden">
+<img alt="Abstract golden glitter event poster" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbRpJYMs57YydZlP3NjZyQ_n2SldjdbfzTirL6FPZLE_-uhtAmfSdO6AAbEAr_-jzYN9_6QcSp-xZ9ZLjoKQe8MQnlcimzJ5NeF-Gp7Qq4Is7A7Dl_E-gEibDOMaAa_H_pjrNMW9ElihkYuLbzwm-u_uQuoBYo4dbBRwXNRy18pMrkfk83yN92IgcUwPyCqxjPEMCFlsuzGh4JsT5RJeTGHkxkgMNg__Fu_RbtB_KVd0wtyADhPZoM38QoPbXSr_tABmQAz22E5SQw"/>
+</div>
+<div class="flex-1 flex flex-col justify-center py-1">
+<h4 class="text-slate-900 dark:text-white font-bold text-lg leading-tight line-clamp-1">Midnight Gold Gala</h4>
+<div class="flex items-center gap-2 mt-2 text-slate-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wide">
+<span class="text-primary">Fri, Oct 24</span>
+<span class="w-1 h-1 rounded-full bg-gray-600"></span>
+<span>10:00 PM</span>
+</div>
+<div class="mt-auto pt-2 flex items-center justify-between">
+<p class="text-slate-400 dark:text-gray-500 text-xs">The Bund</p>
+<p class="text-primary font-bold text-sm">From $50</p>
+</div>
+</div>
+</div>
+<!-- Event List Item 2 -->
+<div class="group flex gap-4 p-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 hover:border-primary/30 transition-colors">
+<div class="relative w-20 aspect-[3/4] shrink-0 rounded-lg overflow-hidden">
+<img alt="DJ silhouette against purple lights" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtzwPTFmG482WX9iO9Hbtf82KC7kOLZGkHS1y8uUnB3cCRj-ieYtLQ713KnDUUA8GiI7FYwYGhZlhIG_YlGaqQrIIPN2MuMpfEaJ5k-ucLgRjUAMLD-sEC7MBBZcLSSDaoi1qFDKpir9jRs6OAVIIBnFMUTSfKN7hq5PRsF0zMZHOWiK1wLFrY8QqGvrowsbyuszFzOSaxyjpgStKAzpFnRVerT0t1pVnhX_QCvDggIqdia6mTRaUKS84WBbR8sIye_XYqiAzEoC-n"/>
+</div>
+<div class="flex-1 flex flex-col justify-center py-1">
+<h4 class="text-slate-900 dark:text-white font-bold text-lg leading-tight line-clamp-1">Neon Nights: Deep House</h4>
+<div class="flex items-center gap-2 mt-2 text-slate-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wide">
+<span class="text-primary">Sat, Oct 25</span>
+<span class="w-1 h-1 rounded-full bg-gray-600"></span>
+<span>11:00 PM</span>
+</div>
+<div class="mt-auto pt-2 flex items-center justify-between">
+<p class="text-slate-400 dark:text-gray-500 text-xs">M1NT</p>
+<p class="text-primary font-bold text-sm">From $35</p>
+</div>
+</div>
+</div>
+<!-- Bottom Spacer -->
+<div class="h-8"></div>
+</main>
+<!-- Floating Action Button -->
+<div class="absolute bottom-6 left-0 right-0 flex justify-center z-50 pointer-events-none">
+<button class="pointer-events-auto flex items-center gap-3 bg-[#1e1e1e] text-white pl-5 pr-6 py-3.5 rounded-full border border-primary/40 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] shadow-primary/10 active:scale-95 transition-transform hover:bg-[#252525]">
+<span class="material-symbols-outlined text-primary">tune</span>
+<span class="font-bold text-sm tracking-wide">Filters</span>
+<span class="flex items-center justify-center bg-primary text-[#121212] text-[10px] font-bold h-5 w-5 rounded-full ml-1">2</span>
+</button>
+</div>
+</div>
+</body></html>

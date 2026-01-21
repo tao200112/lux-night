@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lux Night - Customer Login</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Noto+Serif:ital,wght@0,300;0,400;0,600;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#c8ab5f",
+                        "secondary": "#AA8D55",
+                        "background-light": "#faf8f4",
+                        "background-dark": "#1a1a1a",
+                        "surface-dark": "#222222",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Serif", "serif"],
+                        "sans": ["Manrope", "sans-serif"],
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Utilities */
+        .text-glow {
+            text-shadow: 0 0 20px rgba(200, 171, 95, 0.4);
+        }
+        .gold-border-gradient {
+            border-image: linear-gradient(to right, transparent, #c8ab5f, transparent) 1;
+        }
+        /* Custom Spinner Animation */
+        @keyframes elegant-spin {
+            0% { transform: rotate(0deg); stroke-dasharray: 10, 150; stroke-dashoffset: 0; }
+            50% { transform: rotate(360deg); stroke-dasharray: 100, 150; stroke-dashoffset: -35; }
+            100% { transform: rotate(720deg); stroke-dasharray: 10, 150; stroke-dashoffset: -124; }
+        }
+        .spinner-path {
+            animation: elegant-spin 3s ease-in-out infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+<!-- Ambient Background Effects -->
+<div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+<!-- Top center gold glow simulating a spotlight -->
+<div class="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px]"></div>
+<!-- Bottom noise texture overlay (optional CSS pattern) -->
+<div class="absolute inset-0 opacity-[0.03]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0VxuNhdqjhWKWUOHRHwooYJM5aNIoQXc8RiSqAH8Ah95h0G79PvBog5-bvTrdvx3ToIwnNRv9uDSrjBnF25mh_O_I3sTeKPuZVjoqKC-qxl1mPjr-Hse62FV_B_w1qfgesCcw-U-teSm8_d0Fa_7qYk_6WznkAKlG12eRpAtjWQKnnrWXI32sXzu8SXKs4h8A1-gxl6oBiVitWLaG038C15u5v0Trn7E01RbGP_ZhXKHizwJYwYRxD_n3BsmcLYxazsPoPNOnoBoR');"></div>
+</div>
+<!-- Main Content Container -->
+<div class="relative z-10 w-full max-w-md flex flex-col items-center justify-between min-h-[600px] py-8">
+<!-- Brand Header -->
+<div class="flex flex-col items-center mt-12 mb-8 w-full">
+<div class="mb-6 opacity-80">
+<!-- Abstract Art Deco Logo Mark -->
+<svg class="text-primary" fill="none" height="48" viewbox="0 0 48 48" width="48" xmlns="http://www.w3.org/2000/svg">
+<path d="M24 0L26.5 18L44 24L26.5 30L24 48L21.5 30L4 24L21.5 18L24 0Z" fill="currentColor"></path>
+<circle cx="24" cy="24" fill="#1a1a1a" r="3"></circle>
+</svg>
+</div>
+<h1 class="font-display text-primary text-5xl font-bold tracking-[0.2em] leading-tight text-center text-glow uppercase">
+                Lux Night
+            </h1>
+<div class="h-[1px] w-24 bg-gradient-to-r from-transparent via-secondary/50 to-transparent my-4"></div>
+<h2 class="font-display text-secondary text-xl italic tracking-wide text-center font-light">
+                Elevate Your Night
+            </h2>
+</div>
+<!-- Authentication Zone -->
+<div class="w-full space-y-4 mb-8">
+<!-- Apple Button -->
+<button class="group relative w-full h-14 bg-black hover:bg-zinc-900 border border-[#4A4A4A] rounded-lg flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-primary/5 active:scale-[0.99]">
+<div class="text-white">
+<svg aria-hidden="true" fill="currentColor" height="20" viewbox="0 0 384 512" width="20">
+<path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 46.9 96.3 78.6 95.3 36-.8 49.4-26.2 93.3-26.2s56.5 25.2 92.1 26.2c32.8 1.1 66-61.9 79-98.3-25.9-11.2-42.5-35.8-42.7-83zm-63.1-125c15.7-19.1 26.2-45.7 23.3-72.2-22.7 1.2-50.6 15.3-67.4 34.8-15.8 17.9-29.6 46.2-25.8 71.9 25.1 1.8 51.5-15.3 69.9-34.5z"></path>
+</svg>
+</div>
+<span class="font-sans font-semibold text-white text-[15px] tracking-wide">Continue with Apple</span>
+<!-- Subtle internal shine on hover -->
+<div class="absolute inset-0 rounded-lg bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
+</button>
+<!-- Google Button -->
+<button class="group relative w-full h-14 bg-white hover:bg-gray-50 rounded-lg flex items-center justify-center gap-3 transition-all duration-300 shadow-lg active:scale-[0.99]">
+<div class="flex items-center justify-center w-5 h-5">
+<svg height="20" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+<g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
+<path d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" fill="#4285F4"></path>
+<path d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" fill="#34A853"></path>
+<path d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.489 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.989 -25.464 56.619 L -21.484 53.529 Z" fill="#FBBC05"></path>
+<path d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" fill="#EA4335"></path>
+</g>
+</svg>
+</div>
+<span class="font-sans font-bold text-surface-dark text-[15px] tracking-wide">Continue with Google</span>
+</button>
+<!-- Loading Spinner (Demonstration of request) -->
+<!-- Note: In a real app, this would replace the buttons or overlay. Showing here for visual completeness of the theme. -->
+<div class="h-6 flex items-center justify-center mt-6 opacity-0 animate-[pulse_3s_infinite] group-hover:opacity-100 transition-opacity">
+<!-- Using SVG stroke animation for elegance -->
+<svg class="w-8 h-8 text-primary" viewbox="0 0 50 50">
+<circle class="opacity-20" cx="25" cy="25" fill="none" r="20" stroke="currentColor" stroke-width="2"></circle>
+<circle class="spinner-path" cx="25" cy="25" fill="none" r="20" stroke="currentColor" stroke-linecap="round" stroke-width="2"></circle>
+</svg>
+</div>
+</div>
+<!-- Footer -->
+<div class="mt-auto flex flex-col items-center">
+<a class="group flex items-center gap-1 text-secondary text-xs font-display tracking-[0.15em] uppercase hover:text-primary transition-colors pb-1 border-b border-transparent hover:border-primary/30" href="#">
+<span>Terms &amp; Privacy</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100 transition-opacity translate-x-[-5px] group-hover:translate-x-0 duration-300">arrow_forward</span>
+</a>
+<p class="text-[10px] text-zinc-600 mt-4 font-sans tracking-wide">v2.0.4 • LUX NIGHT INC.</p>
+</div>
+</div>
+</body></html>

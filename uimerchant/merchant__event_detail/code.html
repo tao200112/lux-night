@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Merchant: Event Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "background-light": "#ffffff",
+                        "background-dark": "#1a1d23",
+                        "warning": "#DC143C",
+                        "success": "#3CB371",
+                        "info": "#007AFF"
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { min-height: max(884px, 100dvh); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white antialiased">
+<header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
+<div class="flex items-center justify-between p-4 h-16 max-w-md mx-auto">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#0c1d1d] dark:text-white cursor-pointer">arrow_back</span>
+<div class="flex flex-col">
+<h1 class="text-sm font-bold leading-none">Event Detail</h1>
+<span class="text-[10px] uppercase tracking-widest text-primary font-bold">Merchant Portal</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="flex h-2 w-2 rounded-full bg-success animate-pulse"></span>
+<span class="text-xs font-medium text-success">Live</span>
+<button class="ml-2 text-[#0c1d1d] dark:text-white">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</header>
+<main class="max-w-md mx-auto pb-48">
+<div class="p-4 flex gap-4 items-center">
+<div class="w-20 h-20 rounded-xl bg-cover bg-center shrink-0 shadow-sm border border-gray-100 dark:border-gray-800" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAr9xNEDAJ1sUYaQFBBzjNyROtURVXMCafLYlG3i2LkFJQgDHGbMkcyqUujlV85nJB563zWdVmQ3t009Ova1htYiN2y6BMyjfSCd23ZxnWhe-A8ciUDD-Um9D6CJu4sCYXdlj6IwcHw8nSq4V7bD9OfzEMs-Ck2hLi322b9kklUvSeSZ53H93Oupypes-VB6fEmpyYsYofKGGw_crBrL3ekB5Fj63bqK78hz4vqPXAU9rpRq1IPfgUJp3N1v6jjKNQ3tGp-ZuzpdhQ')">
+</div>
+<div class="flex flex-col">
+<h2 class="text-xl font-bold tracking-tight">Midnight Masquerade</h2>
+<p class="text-sm text-gray-500 dark:text-gray-400">Friday, Oct 27 • 10:00 PM</p>
+<div class="flex items-center gap-1 mt-1 text-xs text-primary font-medium">
+<span class="material-symbols-outlined text-xs">location_on</span>
+<span>The Neon Foundry, Brooklyn</span>
+</div>
+</div>
+</div>
+<div class="mx-4 mb-4 p-3 bg-warning/10 border border-warning/20 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-warning text-xl">error</span>
+<div class="flex-1">
+<p class="text-xs font-bold text-warning uppercase tracking-tight">Critical Alert</p>
+<p class="text-sm text-warning/90 font-medium text-[13px]">VIP Tables are below 10% inventory.</p>
+</div>
+<button class="text-xs font-bold text-warning underline">Manage</button>
+</div>
+<div class="grid grid-cols-2 gap-3 px-4 mb-6">
+<div class="bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-gray-800 col-span-2">
+<div class="flex justify-between items-end">
+<div class="flex flex-col">
+<span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Total Revenue</span>
+<div class="flex items-center gap-2">
+<span class="text-3xl font-bold tracking-tight text-primary">$12,400.00</span>
+<span class="text-xs font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full flex items-center">
+<span class="material-symbols-outlined text-[10px]">trending_up</span> 12%
+                            </span>
+</div>
+</div>
+<span class="text-[10px] text-gray-400 dark:text-gray-500 mb-1">Updated 2m ago</span>
+</div>
+</div>
+<div class="bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
+<span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Tickets Sold</span>
+<span class="text-xl font-bold tracking-tight">450 <span class="text-gray-300 dark:text-gray-600 font-normal">/ 500</span></span>
+<div class="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-full mt-3 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 90%;"></div>
+</div>
+</div>
+<div class="bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
+<span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Check-ins</span>
+<span class="text-xl font-bold tracking-tight">210 <span class="text-gray-400 dark:text-gray-500 text-sm font-medium">(46%)</span></span>
+<div class="flex gap-1 mt-3">
+<div class="flex-1 h-1 bg-primary rounded-full"></div>
+<div class="flex-1 h-1 bg-primary/20 rounded-full"></div>
+<div class="flex-1 h-1 bg-primary/20 rounded-full"></div>
+</div>
+</div>
+</div>
+<section class="mb-6">
+<div class="px-4 flex items-center justify-between mb-3">
+<h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.1em]">Ticket Types &amp; Inventory</h3>
+</div>
+<div class="mx-4 mb-4 p-3 bg-info/10 border border-info/20 rounded-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-info text-xl">info</span>
+<p class="text-[13px] text-info font-medium leading-tight">Price changes only affect future purchases.</p>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+<div class="flex items-center gap-4">
+<div class="size-10 bg-primary/10 flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined text-primary">confirmation_number</span>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-sm">General Admission</span>
+<div class="flex items-center gap-2 text-xs">
+<span class="text-gray-900 dark:text-white font-semibold">$40.00</span>
+<span class="text-gray-400">•</span>
+<span class="text-gray-500">350 / 350 Units</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1.5">
+<span class="text-[10px] font-bold text-success px-2 py-0.5 bg-success/10 rounded-full">SOLD OUT</span>
+<div class="w-16 h-1 bg-success rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-800 bg-warning/5">
+<div class="flex items-center gap-4">
+<div class="size-10 bg-warning/10 flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined text-warning">stars</span>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-sm">VIP Table (Main Floor)</span>
+<div class="flex items-center gap-2 text-xs">
+<span class="text-gray-900 dark:text-white font-semibold">$1,200.00</span>
+<span class="text-gray-400">•</span>
+<span class="text-gray-500">9 / 10 Units</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1.5">
+<span class="text-[10px] font-bold text-warning px-2 py-0.5 bg-warning/10 rounded-full">90% SOLD</span>
+<div class="w-16 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+<div class="bg-warning h-full" style="width: 90%;"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+<div class="flex items-center gap-4">
+<div class="size-10 bg-primary/10 flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined text-primary">liquor</span>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-sm">Drink Voucher Bundle</span>
+<div class="flex items-center gap-2 text-xs">
+<span class="text-gray-900 dark:text-white font-semibold">$15.00</span>
+<span class="text-gray-400">•</span>
+<span class="text-gray-500">120 Units Sold</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1.5">
+<span class="text-[10px] font-bold text-gray-400 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full uppercase">Open</span>
+<div class="w-16 h-1 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+</div>
+</div>
+</div>
+<div class="p-4 grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center gap-2 py-3 px-2 border border-primary/30 rounded-xl text-primary text-xs font-bold active:bg-primary/5">
+<span class="material-symbols-outlined text-lg">payments</span>
+                    Request Price Change
+                </button>
+<button class="flex items-center justify-center gap-2 py-3 px-2 border border-primary/30 rounded-xl text-primary text-xs font-bold active:bg-primary/5">
+<span class="material-symbols-outlined text-lg">inventory_2</span>
+                    Request Inventory Change
+                </button>
+</div>
+</section>
+<div class="px-4 py-4 bg-gray-50 dark:bg-white/5 rounded-2xl mx-4 mb-4 border border-gray-100 dark:border-gray-800">
+<div class="flex items-center justify-between mb-4">
+<span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Operational Info</span>
+<span class="text-[10px] text-primary underline">Edit Schedule</span>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm">
+<span class="text-gray-500">Staff Assigned</span>
+<span class="font-medium">12 members</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-gray-500">Guestlist Count</span>
+<span class="font-medium">42 pending</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-gray-500">Last Entry</span>
+<span class="font-medium">2:30 AM</span>
+</div>
+</div>
+</div>
+</main>
+<footer class="fixed bottom-0 left-0 right-0 bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-4 pt-4 pb-8 max-w-md mx-auto z-50">
+<div class="flex flex-col gap-3">
+<div class="flex gap-3">
+<button class="flex-1 flex items-center justify-center gap-2 h-12 bg-gray-100 dark:bg-white/10 rounded-xl font-bold text-sm active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-lg">content_copy</span>
+                    Copy Event Link
+                </button>
+<button class="size-12 flex items-center justify-center bg-gray-100 dark:bg-white/10 rounded-xl active:scale-[0.98]">
+<span class="material-symbols-outlined">share</span>
+</button>
+</div>
+<button class="w-full h-14 bg-primary text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined">pause_circle</span>
+                Pause Ticket Sales
+            </button>
+</div>
+</footer>
+
+</body></html>

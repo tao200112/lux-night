@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Staff: Confirm Check-in</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "background-light": "#ffffff",
+                        "background-dark": "#1a1d23",
+                        "danger": "#DC143C",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-zinc-200 dark:bg-black min-h-screen flex flex-col justify-end">
+<!-- Background Mockup (Simulating the scanner screen behind the modal) -->
+<div class="fixed inset-0 z-0 flex flex-col items-center justify-start pt-20 opacity-40 grayscale pointer-events-none">
+<span class="material-symbols-outlined text-9xl text-primary">qr_code_scanner</span>
+<p class="text-xl font-bold mt-4">Scanning...</p>
+</div>
+<!-- Bottom Sheet Container -->
+<div class="relative z-10 w-full max-w-md mx-auto bg-background-light dark:bg-background-dark rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden border-t border-zinc-100 dark:border-zinc-800">
+<!-- BottomSheetHandle -->
+<div class="flex h-auto w-full flex-col items-stretch pt-4 pb-2">
+<button class="flex h-1.5 w-full items-center justify-center">
+<div class="h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+</button>
+</div>
+<!-- SectionHeader -->
+<div class="px-4 pt-2">
+<h4 class="text-primary text-xs font-bold leading-normal tracking-[0.15em] uppercase text-center">Confirm Entry</h4>
+</div>
+<!-- Card: Ticket Summary -->
+<div class="p-6">
+<div class="flex flex-col items-stretch justify-start rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+<!-- Image Section with Gradient Overlay -->
+<div class="relative w-full aspect-[21/9] bg-center bg-no-repeat bg-cover" data-alt="Vibrant nightlife event with neon lights and crowd" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCBYrRt1uEu5ccCNcmCRC_7gbq5heGjG8ovy99eT2pqs7-rzspfxXSV-2zIU90RkhY8KoGJIUCdBP-IX5lMOYCWTCubLuh1VO-wf4BsUtzMcs4C8ihsCVnPt1Py7mRaQ777CX1Xj_eIJ5rxnEsdh_P5eGU34nrRP-HOwOvhJAQBRVvGdNjEdg58K3q_PJsAYpU0YiPNVjZnseiEyqoWThgvsBnTCmPTHsxeOxg4R_lT9qJ9UB012N3YuncEaYz6jyer1oVA4WT_biU");'>
+<div class="absolute inset-0 bg-gradient-to-t from-zinc-900/80 to-transparent"></div>
+<div class="absolute bottom-3 left-4">
+<span class="bg-primary text-white text-[10px] font-black px-2 py-0.5 rounded tracking-widest uppercase">Entry</span>
+</div>
+</div>
+<div class="flex w-full flex-col items-stretch justify-center gap-3 p-5">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-zinc-900 dark:text-white text-xl font-bold leading-tight tracking-tight">Neon Nights</p>
+<p class="text-zinc-500 dark:text-zinc-400 text-sm font-medium mt-0.5">Today • Starts 10:00 PM</p>
+</div>
+<div class="bg-danger/10 border border-danger/20 px-2 py-1 rounded-lg">
+<p class="text-danger text-xs font-bold leading-none">21+</p>
+</div>
+</div>
+<div class="h-px bg-zinc-200 dark:bg-zinc-800 w-full"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-lg">confirmation_number</span>
+<p class="text-zinc-700 dark:text-zinc-300 text-sm font-semibold leading-normal">General Admission (GA)</p>
+</div>
+</div>
+</div>
+</div>
+<!-- BodyText: Role Context -->
+<div class="px-8 pb-8">
+<div class="bg-primary/5 dark:bg-primary/10 rounded-xl p-4 flex items-center gap-4 border border-primary/10">
+<div class="bg-primary text-white p-2 rounded-lg">
+<span class="material-symbols-outlined text-xl">badge</span>
+</div>
+<p class="text-zinc-800 dark:text-zinc-200 text-sm font-medium leading-relaxed">
+                    You are checking in as <span class="text-primary font-bold">STAFF</span> at <span class="text-primary font-bold">The Midnight Lounge</span>
+</p>
+</div>
+</div>
+<!-- ButtonGroup -->
+<div class="flex justify-center bg-zinc-50 dark:bg-zinc-900/80 p-6 pt-8 border-t border-zinc-100 dark:border-zinc-800">
+<div class="flex flex-1 gap-4 max-w-[480px] flex-col items-stretch">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl h-16 px-5 bg-primary text-white text-lg font-bold leading-normal tracking-wide w-full shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform">
+<span class="truncate">Confirm Check-in</span>
+</button>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl h-14 px-5 bg-transparent text-zinc-500 dark:text-zinc-400 text-base font-semibold leading-normal w-full active:bg-zinc-100 dark:active:bg-zinc-800 transition-colors">
+<span class="truncate">Cancel</span>
+</button>
+</div>
+</div>
+<!-- Safe area spacer for modern phones -->
+<div class="h-8 bg-zinc-50 dark:bg-zinc-900/80"></div>
+</div>
+</body></html>

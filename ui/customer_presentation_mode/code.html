@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Refined Presentation Mode QR</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0096d6",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#0f1d23",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                    animation: {
+                        'scan': 'scan 2.5s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        scan: {
+                            '0%, 100%': { top: '0%', opacity: '0' },
+                            '10%': { opacity: '1' },
+                            '50%': { top: '100%' },
+                            '90%': { opacity: '1' },
+                        }
+                    }
+                },
+            },
+        }
+    </script>
+<style>.brightness-max {
+            filter: brightness(1.2) contrast(1.1);
+        }
+        body {
+            background-color: black;
+            overscroll-behavior-y: none;}
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black text-white antialiased">
+<div class="relative flex h-[100dvh] w-full flex-col overflow-hidden font-display brightness-max">
+<div class="flex items-start justify-between pt-8 px-6 pb-2 z-20 w-full mt-4">
+<div class="w-14"></div>
+<div class="flex flex-col items-center pt-2 gap-1.5 opacity-90">
+<span class="material-symbols-outlined text-[22px] animate-pulse-slow">brightness_7</span>
+<span class="text-[11px] font-bold uppercase tracking-widest text-center leading-tight">Screen brightness<br/>increased</span>
+</div>
+<div class="flex w-14 items-center justify-end">
+<button class="flex items-center justify-center rounded-full h-14 w-14 bg-white/15 backdrop-blur-md text-white hover:bg-white/25 active:scale-95 transition-all border border-white/10 shadow-lg">
+<span class="material-symbols-outlined" style="font-size: 32px;">close</span>
+</button>
+</div>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center p-6 z-10 w-full relative">
+<div class="relative w-full max-w-[350px] aspect-square">
+<div class="relative bg-white h-full w-full rounded-3xl overflow-hidden shadow-[0_0_50px_-10px_rgba(255,255,255,0.1)]">
+<div class="absolute top-5 left-5 w-8 h-8 border-t-[5px] border-l-[5px] border-black rounded-tl-sm z-20"></div>
+<div class="absolute top-5 right-5 w-8 h-8 border-t-[5px] border-r-[5px] border-black rounded-tr-sm z-20"></div>
+<div class="absolute bottom-5 left-5 w-8 h-8 border-b-[5px] border-l-[5px] border-black rounded-bl-sm z-20"></div>
+<div class="absolute bottom-5 right-5 w-8 h-8 border-b-[5px] border-r-[5px] border-black rounded-br-sm z-20"></div>
+<div class="absolute inset-0 flex items-center justify-center p-12">
+<img alt="Large scannable QR code" class="w-full h-full object-contain mix-blend-multiply" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAViPyTI5ARpgd6BFacCcxAfMxMrsVHYAvgmhMoY-TwsUXcdwsnIyX9wPRrVZWafLJaoGf-nzb07vPyp5hcZvI99c6zIiBwxP0NuEhgxIuzWYlfbz0EN51UeinFAVKTNVI7LBr7CGhkYvSeWrBGRk5WLavyL39pQo_TrAxxMSBRW6S_sViZ9Zi49QAtTghOg56PUzbTbKKrvMTLssTSesOpVFVoJmojycCMQtZQArxvgEwfkPqdFXuk59NezMidY7vX7rOchIhcSiu9"/>
+</div>
+<div class="absolute inset-0 pointer-events-none z-30">
+<div class="w-full h-[2px] bg-primary shadow-[0_0_30px_4px_rgba(0,150,214,0.5)] absolute top-0 animate-scan"></div>
+</div>
+</div>
+</div>
+<div class="mt-8 flex items-center gap-3">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+</span>
+<span class="text-white text-xs font-bold tracking-[0.2em] uppercase">Ready to Scan</span>
+</div>
+</div>
+<div class="flex flex-col w-full pb-12 px-8 z-20 bg-black pt-4">
+<h1 class="text-white text-xl font-bold leading-tight text-center mb-1">
+                Midnight Gala 2024
+            </h1>
+<p class="text-white text-sm font-medium text-center uppercase tracking-wider mb-3">
+                VIP Table - Row A
+            </p>
+<div class="h-[1px] w-12 bg-white/30 mx-auto mb-3"></div>
+<div class="flex items-center justify-center gap-2 text-white/80 text-xs font-normal">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+<p>Oct 31 • 11:00 PM</p>
+</div>
+</div>
+</div>
+
+</body></html>

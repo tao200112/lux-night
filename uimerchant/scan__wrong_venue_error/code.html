@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Scan: Wrong Venue Error</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#cd1d35",
+                        "background-light": "#fafafa",
+                        "background-dark": "#22252a",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+        .ios-shadow {
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300">
+<!-- Top Navigation Bar -->
+<div class="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10">
+<div class="text-primary flex size-12 shrink-0 items-center cursor-pointer" data-icon="ArrowBack">
+<span class="material-symbols-outlined text-[28px]">arrow_back_ios_new</span>
+</div>
+<h2 class="text-[#1b0e10] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-12">Scan Ticket</h2>
+</div>
+<main class="flex-1 flex flex-col items-center justify-center px-6">
+<!-- Error Feedback Container -->
+<div class="w-full max-w-sm bg-white dark:bg-[#2d3139] rounded-xl p-8 ios-shadow border border-primary/10 flex flex-col items-center text-center">
+<!-- Distinctive Error Icon -->
+<div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-primary text-5xl">location_off</span>
+</div>
+<!-- Headline Text -->
+<h1 class="text-primary tracking-tight text-[32px] font-bold leading-tight pb-4">
+                Wrong Venue
+            </h1>
+<!-- Message with emphasized venue names -->
+<p class="text-[#1b0e10] dark:text-gray-300 text-lg font-normal leading-relaxed mb-8">
+                This ticket is for <span class="text-primary font-bold">The Sapphire Lounge</span>. 
+                <br/><br/>
+                You are currently at <span class="font-bold border-b-2 border-primary/30">Neon District HQ</span>.
+            </p>
+<!-- Image/Map Context (Small Visual Indicator) -->
+<div class="w-full h-32 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden mb-8 relative">
+<div class="absolute inset-0 bg-cover bg-center opacity-80" data-alt="Abstract map showing two different locations" data-location="Miami" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAOuxvLzHDM7ncm_GDD0bzx4WfRWGL9EDrd-sSl47LtXjLXZMvNVKSXf3nlOzcIFd9V8WznUGwQgAjuCfXJq_OpIxqXf7HosJIP722vf2GSEk-4LnqAQTB_nABmuzZIQ2cRRqBiamqoryILUDhbgjxF_vY9qAskUmGy6G287sq-gphoKrni6AgCLvhCiuhj9qnI78sIe2FOmTZRKO14z20vlHoGBe2t4cINeQ3zpN252FU8vWA0b1mra6mtRbphqPknGi6CyRQ2fQk');">
+</div>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="bg-white/90 dark:bg-black/70 px-3 py-1 rounded-full text-xs font-bold text-primary shadow-sm uppercase tracking-widest">
+                        Location Mismatch
+                    </div>
+</div>
+</div>
+<!-- Action Group -->
+<div class="flex flex-col gap-3 w-full">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-14 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] w-full active:scale-[0.98] transition-transform">
+<span class="truncate">Switch to Sapphire Lounge</span>
+</button>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-14 px-5 bg-primary/10 dark:bg-primary/20 text-primary text-base font-bold leading-normal tracking-[0.015em] w-full active:scale-[0.98] transition-transform">
+<span class="truncate">Back to Scan</span>
+</button>
+</div>
+</div>
+<!-- Help Link -->
+<p class="mt-8 text-gray-500 dark:text-gray-400 text-sm font-medium cursor-pointer hover:underline underline-offset-4">
+            Need help? Contact Floor Manager
+        </p>
+</main>
+<!-- Bottom Spacing for iOS Home Indicator -->
+<div class="h-10"></div>
+</body></html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>System Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2d3c4e",
+                        "primary-active": "#2563EB",
+                        "background-light": "#f9fafb",
+                        "background-dark": "#19212e",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#232d3d",
+                        "border-light": "#e5e7eb",
+                        "border-dark": "#374151",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem", // 2px
+                        "sm": "0.125rem", // 2px
+                        "md": "0.25rem", // 4px
+                        "lg": "0.25rem", // 4px (Matching prompt request for square-ish)
+                        "xl": "0.5rem", 
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hiding for clean mobile look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-primary dark:text-white font-display antialiased selection:bg-primary-active selection:text-white">
+<!-- Main Container -->
+<div class="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto bg-background-light dark:bg-background-dark border-x border-border-light dark:border-border-dark shadow-2xl">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-50 flex items-center justify-between bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md px-4 py-3 border-b border-border-light dark:border-border-dark">
+<button class="flex size-10 items-center justify-center rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-primary dark:text-white">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h1 class="text-base font-bold uppercase tracking-wide text-primary dark:text-white">System Settings</h1>
+<button class="flex h-10 px-3 items-center justify-center text-primary-active font-semibold text-sm hover:opacity-80 transition-opacity">
+                Done
+            </button>
+</header>
+<!-- Content -->
+<main class="flex-1 flex flex-col p-4 gap-6">
+<!-- Profile Stats / Global Overview -->
+<section aria-label="System Overview">
+<div class="grid grid-cols-2 gap-3">
+<!-- Stat Card 1 -->
+<div class="flex flex-col justify-between gap-3 rounded bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+<div class="flex items-center gap-2">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+</span>
+<span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</span>
+</div>
+<div>
+<p class="text-2xl font-bold text-primary dark:text-white">Active</p>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">99.9% Uptime</p>
+</div>
+</div>
+<!-- Stat Card 2 -->
+<div class="flex flex-col justify-between gap-3 rounded bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark p-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-gray-400 text-[18px]">history</span>
+<span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Last Audit</span>
+</div>
+<div>
+<p class="text-2xl font-bold text-primary dark:text-white">12:05</p>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Today, PM</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Regional Configuration -->
+<section>
+<div class="flex items-center justify-between mb-2 px-1">
+<h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Regional Config</h3>
+<span class="text-xs font-medium text-primary-active bg-primary-active/10 px-2 py-0.5 rounded">3 Active</span>
+</div>
+<div class="flex flex-col bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded overflow-hidden">
+<!-- List Item 1 -->
+<div class="group flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded flex items-center justify-center bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+<span class="material-symbols-outlined text-[20px]">public</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary dark:text-white">North America</span>
+<span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Operational</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-gray-400 dark:text-gray-600 text-[20px]">chevron_right</span>
+</div>
+<!-- List Item 2 -->
+<div class="group flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded flex items-center justify-center bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+<span class="material-symbols-outlined text-[20px]">euro</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary dark:text-white">EMEA</span>
+<span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Operational</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-gray-400 dark:text-gray-600 text-[20px]">chevron_right</span>
+</div>
+<!-- List Item 3 -->
+<div class="group flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded flex items-center justify-center bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined text-[20px]">sunny</span>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary dark:text-white">APAC</span>
+<span class="text-xs text-orange-600 dark:text-orange-400 font-medium">Maintenance</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-gray-400 dark:text-gray-600 text-[20px]">chevron_right</span>
+</div>
+<!-- Add Button -->
+<button class="flex items-center justify-center gap-2 p-3 w-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 text-primary-active text-sm font-semibold transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                        Add New Region
+                    </button>
+</div>
+</section>
+<!-- Admin Users -->
+<section>
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between px-1">
+<h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Admin Users</h3>
+<button class="text-xs font-medium text-primary-active hover:underline">Manage All</button>
+</div>
+<!-- Search -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
+<input class="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded pl-10 pr-4 py-2.5 text-sm text-primary dark:text-white placeholder-gray-400 focus:outline-none focus:border-primary-active focus:ring-1 focus:ring-primary-active transition-all" placeholder="Search admins..." type="text"/>
+</div>
+<div class="flex flex-col bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded overflow-hidden mt-1">
+<!-- User 1 -->
+<div class="flex items-center justify-between p-3 border-b border-border-light dark:border-border-dark">
+<div class="flex items-center gap-3">
+<img alt="Portrait of a female administrator in business attire" class="h-10 w-10 rounded object-cover border border-border-light dark:border-border-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwknQ4dgBAuFdaOQoMH2k8opgKE08t2RL0A5ALfJIySIRHC5WuS7Q2mRBKih4NJgpOGoHKzIKZfBt1qK9VgKv-8t5YQXZsb_sw9fHWQYkHeTfFiTB4u-IMTbrWIYYMDe5xow5lW6SCtEL4tQYCAeP3H7qoG1Gb0Yb93_65Kjj8H5ms3J67PG4SvLLnnhSgzPjp9KC_MTZjR3MBRgmjmhWM2ufqpco89Xh0C3KTrJXj1eUa0O1wg3XsSugBvCVpcN9NGQjvvzVNkWU"/>
+<div class="flex flex-col">
+<span class="text-sm font-bold text-primary dark:text-white">Sarah Jenkins</span>
+<span class="text-xs text-gray-500 dark:text-gray-400">Global Super Admin</span>
+</div>
+</div>
+<span class="px-2 py-1 text-[10px] font-bold uppercase tracking-wide bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded">Full Access</span>
+</div>
+<!-- User 2 -->
+<div class="flex items-center justify-between p-3 border-b border-border-light dark:border-border-dark">
+<div class="flex items-center gap-3">
+<img alt="Portrait of a male administrator smiling" class="h-10 w-10 rounded object-cover border border-border-light dark:border-border-dark" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBlHClVoy-4bbiF6sCBSJE488n7tUPMCVP_6jYYQqJuqbOZtGwW8wpPBCEaIwSkpQbPKPVIf-Nd-YTbG_Hn8E3pQd3-sBYB0nFY7q4AVi55hLqSw3ohGaT9eeulb3HuBH9wqhrL1BnwqQfFdsVf5Ve-N5_NA93L0-_WgfdRisKVR4Brj49eVtMDaYBcha2wc8h9Ns8bCnbAr5Nk_WiiCRpA96QIWqzoJvKx_KlhiWHRA8_kSGjrgQ5wPLSKNSh9Gwrr2lERCtNRQs"/>
+<div class="flex flex-col">
+<span class="text-sm font-bold text-primary dark:text-white">Marcus Chen</span>
+<span class="text-xs text-gray-500 dark:text-gray-400">Regional Manager (APAC)</span>
+</div>
+</div>
+<span class="px-2 py-1 text-[10px] font-bold uppercase tracking-wide bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded">Ltd Access</span>
+</div>
+<!-- Action -->
+<button class="flex items-center justify-center gap-2 p-3 w-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 text-primary-active text-sm font-semibold transition-colors">
+<span class="material-symbols-outlined text-[18px]">person_add</span>
+                            Add Admin
+                        </button>
+</div>
+</div>
+</section>
+<!-- Permissions / Security -->
+<section class="pb-6">
+<div class="flex items-center justify-between mb-2 px-1">
+<h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Security &amp; Permissions</h3>
+</div>
+<div class="flex flex-col bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded overflow-hidden divide-y divide-border-light dark:divide-border-dark">
+<!-- Toggle 1 -->
+<div class="flex items-center justify-between p-4">
+<div class="flex flex-col pr-4">
+<span class="text-sm font-semibold text-primary dark:text-white">Force 2FA</span>
+<span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Require 2-factor auth for all admin levels</span>
+</div>
+<!-- Toggle Switch -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-active"></div>
+</label>
+</div>
+<!-- Toggle 2 -->
+<div class="flex items-center justify-between p-4">
+<div class="flex flex-col pr-4">
+<span class="text-sm font-semibold text-primary dark:text-white">API Write Access</span>
+<span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Allow external services to modify data</span>
+</div>
+<!-- Toggle Switch -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-active"></div>
+</label>
+</div>
+<!-- Link Item -->
+<div class="group flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary dark:text-white">Audit Logs</span>
+<span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">View full system change history</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 dark:text-gray-600 text-[20px]">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Danger Zone -->
+<div class="mt-4 px-1">
+<button class="w-full py-3 rounded border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 text-sm font-bold uppercase tracking-wide hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors">
+                     Maintenance Mode
+                 </button>
+</div>
+</main>
+</div>
+</body></html>

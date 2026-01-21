@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lux Night - Payment Success</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Noto+Serif:ital,wght@0,300;0,400;0,600;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#c8ab5f",
+                        "secondary": "#AA8D55",
+                        "background-light": "#faf8f4",
+                        "background-dark": "#1a1a1a",
+                        "surface-dark": "#222222",
+                        "surface-light": "#2a2a2a",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Serif", "serif"],
+                        "sans": ["Manrope", "sans-serif"],
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    }
+                },
+            },
+        }
+    </script>
+<style>.text-glow {
+            text-shadow: 0 0 20px rgba(200, 171, 95, 0.4);
+        }
+        .icon-glow {
+            filter: drop-shadow(0 0 15px rgba(200, 171, 95, 0.3));
+        }
+        .glass-panel {
+            background: linear-gradient(180deg, rgba(34, 34, 34, 0.7) 0%, rgba(26, 26, 26, 0.9) 100%);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .receipt-scallop {
+            mask-image: radial-gradient(circle at 0px 10px, transparent 10px, black 11px);
+            mask-position: -10px 0;
+            mask-repeat: repeat-y;
+            mask-size: 20px 20px;
+        }@keyframes scale-up {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes slide-up {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .animate-enter-icon {
+            animation: scale-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animate-enter-content {
+            animation: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+            opacity: 0;
+        }
+        .animate-enter-delay {
+            animation: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards;
+            opacity: 0;
+        }
+    </style>
+<style>
+        body {
+            min-height: max(667px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+<div class="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px]"></div>
+<div class="absolute inset-0 opacity-[0.03]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0VxuNhdqjhWKWUOHRHwooYJM5aNIoQXc8RiSqAH8Ah95h0G79PvBog5-bvTrdvx3ToIwnNRv9uDSrjBnF25mh_O_I3sTeKPuZVjoqKC-qxl1mPjr-Hse62FV_B_w1qfgesCcw-U-teSm8_d0Fa_7qYk_6WznkAKlG12eRpAtjWQKnnrWXI32sXzu8SXKs4h8A1-gxl6oBiVitWLaG038C15u5v0Trn7E01RbGP_ZhXKHizwJYwYRxD_n3BsmcLYxazsPoPNOnoBoR');"></div>
+</div>
+<div class="relative z-10 w-full max-w-sm flex flex-col items-center min-h-[600px] py-4">
+<div class="flex flex-col items-center justify-center mt-12 mb-8 animate-enter-icon">
+<div class="relative flex items-center justify-center">
+<div class="absolute inset-0 rounded-full border border-primary/20 scale-150"></div>
+<div class="absolute inset-0 rounded-full border border-primary/10 scale-[1.8]"></div>
+<div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-transparent border border-primary/40 flex items-center justify-center shadow-[0_0_30px_rgba(200,171,95,0.2)]">
+<span class="material-symbols-outlined text-5xl text-primary icon-glow font-bold">check</span>
+</div>
+</div>
+<h1 class="mt-8 font-display text-3xl text-white font-medium tracking-wide text-center">
+                Payment Successful
+            </h1>
+<p class="text-secondary/80 font-sans text-sm mt-2 tracking-wide">
+                Your night awaits.
+            </p>
+</div>
+<div class="w-full glass-panel rounded-2xl p-6 mb-8 animate-enter-content relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent"></div>
+<div class="space-y-6">
+<div class="flex justify-between items-start border-b border-white/5 pb-5">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1 font-bold">Event</span>
+<h2 class="font-display text-white text-xl leading-tight">Obsidian Lounge:<br/>Midnight Gala</h2>
+<span class="text-xs text-zinc-400 mt-1 font-sans">Oct 24 • 10:00 PM</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-dark border border-white/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary/80 text-xl">local_activity</span>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-sm text-zinc-400">Ticket Type</span>
+<span class="text-sm text-white font-medium">VIP Table Access</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm text-zinc-400">Guests</span>
+<span class="text-sm text-white font-medium">4 People</span>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2 border-t border-white/5">
+<span class="text-sm text-zinc-300 font-medium">Total Paid</span>
+<span class="text-xl text-primary font-display font-bold">$840.00</span>
+</div>
+</div>
+<div class="absolute inset-0 opacity-[0.02] pointer-events-none" style="background-image: radial-gradient(#c8ab5f 1px, transparent 1px); background-size: 12px 12px;"></div>
+</div>
+<div class="w-full space-y-3 animate-enter-delay mt-auto">
+<button class="group w-full h-14 bg-gradient-to-r from-[#c8ab5f] to-[#aa8d55] hover:brightness-110 text-black rounded-lg flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(200,171,95,0.25)] transition-all duration-300 active:scale-[0.98]">
+<span class="material-symbols-outlined text-[20px] group-hover:translate-x-[-2px] transition-transform">wallet</span>
+<span class="font-sans font-bold text-[15px] tracking-wide">Go to Wallet</span>
+</button>
+<button class="w-full h-14 bg-transparent border border-primary/30 hover:bg-primary/5 hover:border-primary/50 text-primary rounded-lg flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.98]">
+<span class="font-sans font-semibold text-[15px] tracking-wide">Invite Friends</span>
+</button>
+</div>
+</div>
+
+</body></html>

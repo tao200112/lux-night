@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Merchant Management</title>
+<!-- Fonts & Icons -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2d3c4e", // Slate Blue
+                        "primary-action": "#2563EB", // Action Blue
+                        "background-light": "#f9fafb", // Off-white
+                        "background-dark": "#19212e", // Dark Navy
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1e293b",
+                        "border-light": "#e5e7eb",
+                        "border-dark": "#334155",
+                        "success-bg": "#dcfce7",
+                        "success-text": "#166534",
+                        "danger-bg": "#fee2e2",
+                        "danger-text": "#991b1b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    // Mapping config sizes to user requirements (approximate)
+                    borderRadius: {
+                        "DEFAULT": "0.125rem", // 2px
+                        "sm": "0.125rem",
+                        "lg": "0.25rem", // 4px (Requested size)
+                        "xl": "0.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hiding for clean UI */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Native-like tap highlight removal */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        .safe-area-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-primary dark:text-white font-display antialiased overflow-x-hidden pb-24 selection:bg-primary-action selection:text-white">
+<!-- Global Header -->
+<header class="sticky top-0 z-40 w-full bg-surface-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-border-light dark:border-border-dark transition-colors duration-200">
+<div class="flex items-center justify-between px-4 h-14">
+<h1 class="text-primary dark:text-white text-lg font-bold tracking-tight">Merchants</h1>
+<div class="flex items-center gap-3">
+<button class="flex items-center justify-center text-primary dark:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg w-9 h-9 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 24px;">download</span>
+</button>
+<button class="flex items-center justify-center text-primary-action hover:bg-primary-action/10 rounded-lg w-9 h-9 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 26px;">add</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Search & Filter Section -->
+<section class="sticky top-14 z-30 bg-background-light dark:bg-background-dark pt-3 pb-1 transition-colors duration-200 shadow-sm">
+<div class="px-4 mb-3">
+<div class="relative flex items-center w-full h-10 rounded-lg bg-[#f3f4f6] dark:bg-surface-dark border border-transparent focus-within:border-primary-action/50 focus-within:bg-white dark:focus-within:bg-surface-dark transition-all overflow-hidden">
+<div class="flex items-center justify-center pl-3 pr-2 text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined" style="font-size: 20px;">search</span>
+</div>
+<input class="w-full bg-transparent border-none text-sm text-primary dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-0 h-full p-0" placeholder="Search by ID or name..." type="text"/>
+</div>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar items-center">
+<button class="flex shrink-0 items-center gap-1.5 h-8 px-3 rounded-lg bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-sm active:bg-gray-50 dark:active:bg-white/5 transition-colors">
+<span class="text-xs font-medium text-primary dark:text-gray-200">Region: All</span>
+<span class="material-symbols-outlined text-gray-500" style="font-size: 16px;">arrow_drop_down</span>
+</button>
+<button class="flex shrink-0 items-center gap-1.5 h-8 px-3 rounded-lg bg-primary-action/10 border border-primary-action/20 shadow-sm transition-colors">
+<span class="text-xs font-medium text-primary-action dark:text-blue-400">Status: Active</span>
+<span class="material-symbols-outlined text-primary-action dark:text-blue-400" style="font-size: 16px;">close</span>
+</button>
+<button class="flex shrink-0 items-center gap-1.5 h-8 px-3 rounded-lg bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-sm active:bg-gray-50 dark:active:bg-white/5 transition-colors">
+<span class="text-xs font-medium text-primary dark:text-gray-200">Sort: Rev High-Low</span>
+<span class="material-symbols-outlined text-gray-500" style="font-size: 16px;">arrow_drop_down</span>
+</button>
+<button class="flex shrink-0 items-center justify-center w-8 h-8 rounded-lg bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-sm active:bg-gray-50 dark:active:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-gray-500" style="font-size: 18px;">tune</span>
+</button>
+</div>
+</section>
+<!-- Merchant List -->
+<main class="px-4 space-y-3 pt-2">
+<!-- Merchant Card 1 (Active) -->
+<article class="group relative bg-surface-light dark:bg-surface-dark rounded-lg p-3 border border-border-light dark:border-border-dark shadow-sm hover:border-primary-action/30 transition-all duration-200">
+<div class="flex justify-between items-start mb-2">
+<div class="flex gap-3">
+<div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center shrink-0 text-primary dark:text-gray-300">
+<span class="material-symbols-outlined filled" style="font-size: 20px;">storefront</span>
+</div>
+<div>
+<h3 class="text-base font-semibold text-primary dark:text-white leading-tight">TicketMaster Global</h3>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">North America (NA)</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="inline-flex items-center px-2 py-0.5 rounded-full bg-success-bg dark:bg-green-900/30 border border-success-text/10 dark:border-green-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-success-text dark:bg-green-400 mr-1.5"></span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-success-text dark:text-green-400">Active</span>
+</div>
+</div>
+</div>
+<!-- Metrics Grid -->
+<div class="grid grid-cols-2 gap-px bg-gray-100 dark:bg-border-dark rounded-lg overflow-hidden border border-gray-100 dark:border-border-dark mt-3">
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Total Revenue</p>
+<p class="text-sm font-semibold text-primary dark:text-white tabular-nums">$14,240,500</p>
+</div>
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Active Events</p>
+<p class="text-sm font-semibold text-primary dark:text-white tabular-nums">342</p>
+</div>
+</div>
+<!-- Context Menu Trigger -->
+<button class="absolute top-2 right-2 p-1 text-gray-400 hover:text-primary dark:hover:text-white rounded transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</article>
+<!-- Merchant Card 2 (Suspended) -->
+<article class="group relative bg-surface-light dark:bg-surface-dark rounded-lg p-3 border border-border-light dark:border-border-dark shadow-sm hover:border-primary-action/30 transition-all duration-200">
+<div class="flex justify-between items-start mb-2">
+<div class="flex gap-3">
+<div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center shrink-0 text-primary dark:text-gray-300">
+<span class="material-symbols-outlined" style="font-size: 20px;">theater_comedy</span>
+</div>
+<div>
+<h3 class="text-base font-semibold text-primary dark:text-white leading-tight">Festive Tix Ltd</h3>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Europe (EMEA)</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="inline-flex items-center px-2 py-0.5 rounded-full bg-danger-bg dark:bg-red-900/30 border border-danger-text/10 dark:border-red-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-danger-text dark:bg-red-400 mr-1.5"></span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-danger-text dark:text-red-400">Suspended</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-px bg-gray-100 dark:bg-border-dark rounded-lg overflow-hidden border border-gray-100 dark:border-border-dark mt-3">
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Total Revenue</p>
+<p class="text-sm font-semibold text-primary dark:text-white tabular-nums">$120,450</p>
+</div>
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Active Events</p>
+<p class="text-sm font-semibold text-gray-400 dark:text-gray-500 tabular-nums">0</p>
+</div>
+</div>
+<button class="absolute top-2 right-2 p-1 text-gray-400 hover:text-primary dark:hover:text-white rounded transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</article>
+<!-- Merchant Card 3 (Active) -->
+<article class="group relative bg-surface-light dark:bg-surface-dark rounded-lg p-3 border border-border-light dark:border-border-dark shadow-sm hover:border-primary-action/30 transition-all duration-200">
+<div class="flex justify-between items-start mb-2">
+<div class="flex gap-3">
+<div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center shrink-0 text-primary dark:text-gray-300">
+<span class="material-symbols-outlined" style="font-size: 20px;">stadium</span>
+</div>
+<div>
+<h3 class="text-base font-semibold text-primary dark:text-white leading-tight">LiveNation Asia</h3>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Asia Pacific (APAC)</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="inline-flex items-center px-2 py-0.5 rounded-full bg-success-bg dark:bg-green-900/30 border border-success-text/10 dark:border-green-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-success-text dark:bg-green-400 mr-1.5"></span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-success-text dark:text-green-400">Active</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-px bg-gray-100 dark:bg-border-dark rounded-lg overflow-hidden border border-gray-100 dark:border-border-dark mt-3">
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Total Revenue</p>
+<p class="text-sm font-semibold text-primary dark:text-white tabular-nums">$8,942,100</p>
+</div>
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Active Events</p>
+<p class="text-sm font-semibold text-primary dark:text-white tabular-nums">156</p>
+</div>
+</div>
+<button class="absolute top-2 right-2 p-1 text-gray-400 hover:text-primary dark:hover:text-white rounded transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</article>
+<!-- Merchant Card 4 (Active) -->
+<article class="group relative bg-surface-light dark:bg-surface-dark rounded-lg p-3 border border-border-light dark:border-border-dark shadow-sm hover:border-primary-action/30 transition-all duration-200">
+<div class="flex justify-between items-start mb-2">
+<div class="flex gap-3">
+<div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center shrink-0 text-primary dark:text-gray-300">
+<span class="material-symbols-outlined" style="font-size: 20px;">local_activity</span>
+</div>
+<div>
+<h3 class="text-base font-semibold text-primary dark:text-white leading-tight">Neon Events Inc.</h3>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">South America (LATAM)</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="inline-flex items-center px-2 py-0.5 rounded-full bg-success-bg dark:bg-green-900/30 border border-success-text/10 dark:border-green-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-success-text dark:bg-green-400 mr-1.5"></span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-success-text dark:text-green-400">Active</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-px bg-gray-100 dark:bg-border-dark rounded-lg overflow-hidden border border-gray-100 dark:border-border-dark mt-3">
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Total Revenue</p>
+<p class="text-sm font-semibold text-primary dark:text-white tabular-nums">$4,100,200</p>
+</div>
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Active Events</p>
+<p class="text-sm font-semibold text-primary dark:text-white tabular-nums">84</p>
+</div>
+</div>
+<button class="absolute top-2 right-2 p-1 text-gray-400 hover:text-primary dark:hover:text-white rounded transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</article>
+<!-- Merchant Card 5 (Suspended) -->
+<article class="group relative bg-surface-light dark:bg-surface-dark rounded-lg p-3 border border-border-light dark:border-border-dark shadow-sm hover:border-primary-action/30 transition-all duration-200">
+<div class="flex justify-between items-start mb-2">
+<div class="flex gap-3">
+<div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center shrink-0 text-primary dark:text-gray-300">
+<span class="material-symbols-outlined" style="font-size: 20px;">confirmation_number</span>
+</div>
+<div>
+<h3 class="text-base font-semibold text-primary dark:text-white leading-tight">SmallTix Direct</h3>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">North America (NA)</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="inline-flex items-center px-2 py-0.5 rounded-full bg-danger-bg dark:bg-red-900/30 border border-danger-text/10 dark:border-red-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-danger-text dark:bg-red-400 mr-1.5"></span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-danger-text dark:text-red-400">Suspended</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-px bg-gray-100 dark:bg-border-dark rounded-lg overflow-hidden border border-gray-100 dark:border-border-dark mt-3">
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Total Revenue</p>
+<p class="text-sm font-semibold text-primary dark:text-white tabular-nums">$25,000</p>
+</div>
+<div class="bg-white dark:bg-surface-dark/50 p-2.5">
+<p class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-medium mb-0.5">Active Events</p>
+<p class="text-sm font-semibold text-gray-400 dark:text-gray-500 tabular-nums">0</p>
+</div>
+</div>
+<button class="absolute top-2 right-2 p-1 text-gray-400 hover:text-primary dark:hover:text-white rounded transition-colors">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</article>
+<!-- Loading Indicator -->
+<div class="flex items-center justify-center py-6 text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined animate-spin mr-2" style="font-size: 20px;">progress_activity</span>
+<span class="text-sm">Loading more merchants...</span>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 w-full bg-surface-light dark:bg-background-dark border-t border-border-light dark:border-border-dark z-50 safe-area-bottom">
+<div class="flex justify-around items-center h-16 px-1">
+<button class="flex flex-col items-center justify-center w-full h-full space-y-1 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-size: 24px;">dashboard</span>
+<span class="text-[10px] font-medium">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full space-y-1 text-primary-action dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-white/5 active:scale-95 transition-all relative">
+<div class="absolute top-3 right-6 w-2 h-2 bg-primary-action rounded-full"></div>
+<span class="material-symbols-outlined filled" style="font-size: 24px; font-variation-settings: 'FILL' 1;">store</span>
+<span class="text-[10px] font-semibold">Merchants</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full space-y-1 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-size: 24px;">verified</span>
+<span class="text-[10px] font-medium">Approvals</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full space-y-1 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-size: 24px;">settings</span>
+<span class="text-[10px] font-medium">Settings</span>
+</button>
+</div>
+</nav>
+</body></html>

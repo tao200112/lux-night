@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Select Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f7575",
+                        "background-light": "#ffffff",
+                        "background-dark": "#1a1a1a",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-[#0e1b1b] dark:text-white min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 ios-blur border-b border-gray-100 dark:border-gray-800">
+<div class="flex items-center p-4 justify-between max-w-md mx-auto w-full">
+<div class="flex size-10 items-center justify-start cursor-pointer">
+<span class="material-symbols-outlined text-2xl">arrow_back_ios</span>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-10">Select Workspace</h2>
+</div>
+</header>
+<main class="flex-1 w-full max-w-md mx-auto px-4 py-6">
+<div class="flex flex-col gap-4">
+<!-- Workspace Card 1 -->
+<div class="group relative flex flex-col gap-3 bg-[#f7f7f7] dark:bg-[#2a2a2a] p-5 rounded-xl border border-transparent hover:border-primary/30 active:scale-[0.98] transition-all cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<h3 class="text-lg font-bold text-[#1A1A1A] dark:text-white leading-tight">Nebula Group</h3>
+<p class="text-sm font-normal text-gray-500 dark:text-gray-400">General Manager</p>
+</div>
+<span class="material-symbols-outlined text-primary opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-2">
+<span class="px-3 py-1 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold rounded-full uppercase tracking-wider">Downtown Club</span>
+</div>
+<div class="absolute right-4 bottom-4 opacity-10">
+<span class="material-symbols-outlined text-4xl">nightlife</span>
+</div>
+</div>
+<!-- Workspace Card 2 -->
+<div class="group relative flex flex-col gap-3 bg-[#f7f7f7] dark:bg-[#2a2a2a] p-5 rounded-xl border border-transparent hover:border-primary/30 active:scale-[0.98] transition-all cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<h3 class="text-lg font-bold text-[#1A1A1A] dark:text-white leading-tight">Midnight Hospitality</h3>
+<p class="text-sm font-normal text-gray-500 dark:text-gray-400">Security Head</p>
+</div>
+<span class="material-symbols-outlined text-primary opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-2">
+<span class="px-3 py-1 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold rounded-full uppercase tracking-wider">Rooftop Lounge</span>
+</div>
+<div class="absolute right-4 bottom-4 opacity-10">
+<span class="material-symbols-outlined text-4xl">shield</span>
+</div>
+</div>
+<!-- Workspace Card 3 -->
+<div class="group relative flex flex-col gap-3 bg-[#f7f7f7] dark:bg-[#2a2a2a] p-5 rounded-xl border border-transparent hover:border-primary/30 active:scale-[0.98] transition-all cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<h3 class="text-lg font-bold text-[#1A1A1A] dark:text-white leading-tight">Aura Nightlife</h3>
+<p class="text-sm font-normal text-gray-500 dark:text-gray-400">Floor Staff</p>
+</div>
+<span class="material-symbols-outlined text-primary opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-2">
+<span class="px-3 py-1 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold rounded-full uppercase tracking-wider">Main Arena</span>
+</div>
+<div class="absolute right-4 bottom-4 opacity-10">
+<span class="material-symbols-outlined text-4xl">groups</span>
+</div>
+</div>
+<!-- Workspace Card 4 -->
+<div class="group relative flex flex-col gap-3 bg-[#f7f7f7] dark:bg-[#2a2a2a] p-5 rounded-xl border border-transparent hover:border-primary/30 active:scale-[0.98] transition-all cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<h3 class="text-lg font-bold text-[#1A1A1A] dark:text-white leading-tight">Pulse Entertainment</h3>
+<p class="text-sm font-normal text-gray-500 dark:text-gray-400">Promoter</p>
+</div>
+<span class="material-symbols-outlined text-primary opacity-0 group-hover:opacity-100 transition-opacity">chevron_right</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-2">
+<span class="px-3 py-1 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold rounded-full uppercase tracking-wider">The Warehouse</span>
+</div>
+<div class="absolute right-4 bottom-4 opacity-10">
+<span class="material-symbols-outlined text-4xl">campaign</span>
+</div>
+</div>
+</div>
+<div class="mt-12 text-center px-8">
+<p class="text-gray-400 dark:text-gray-500 text-xs font-light leading-relaxed">
+                Don't see your workspace? <br/>
+<a class="text-primary font-medium hover:underline" href="#">Contact your venue administrator</a>
+</p>
+</div>
+</main>
+<!-- BottomNavBar -->
+<footer class="sticky bottom-0 bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 pb-safe">
+<div class="flex gap-2 px-4 pb-4 pt-2 max-w-md mx-auto">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">workspaces</span>
+<p class="text-[10px] font-bold uppercase tracking-widest">Workspaces</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-gray-400 dark:text-gray-500" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<p class="text-[10px] font-bold uppercase tracking-widest">Alerts</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-gray-400 dark:text-gray-500" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<p class="text-[10px] font-bold uppercase tracking-widest">Profile</p>
+</a>
+</div>
+</footer>
+</body></html>

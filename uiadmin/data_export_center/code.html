@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Data Export Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2d3c4e",
+                        "primary-active": "#2563EB",
+                        "background-light": "#f9fafb",
+                        "background-dark": "#19212e",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#232e3e",
+                        "border-light": "#e2e8f0",
+                        "border-dark": "#334155",
+                        "text-main": "#2d3c4e",
+                        "text-secondary": "#64748b",
+                        "status-success-bg": "#ecfdf5",
+                        "status-success-text": "#047857",
+                        "status-pending-bg": "#fffbeb",
+                        "status-pending-text": "#b45309",
+                        "status-error-bg": "#fef2f2",
+                        "status-error-text": "#b91c1c",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "sm": "0.25rem",
+                        "lg": "0.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for mobile feel */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-main dark:text-gray-100 min-h-screen flex flex-col antialiased pb-20">
+<!-- Header -->
+<header class="sticky top-0 z-50 bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark px-4 py-3 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-3">
+<button class="p-1 -ml-1 text-text-main dark:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+<span class="material-symbols-outlined text-2xl">arrow_back_ios_new</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight text-primary dark:text-white">Data Export</h1>
+</div>
+<button class="text-primary-active font-medium text-sm">Help</button>
+</header>
+<main class="flex-1 w-full max-w-lg mx-auto p-4 flex flex-col gap-6">
+<!-- Export Configuration Card -->
+<section class="bg-surface-light dark:bg-surface-dark rounded-sm border border-border-light dark:border-border-dark shadow-sm">
+<div class="px-4 py-3 border-b border-border-light dark:border-border-dark bg-gray-50/50 dark:bg-gray-800/30">
+<h2 class="text-primary dark:text-white text-sm font-semibold uppercase tracking-wide">New Report Configuration</h2>
+</div>
+<div class="p-4 space-y-5">
+<!-- Data Type Selector -->
+<div class="space-y-2">
+<label class="text-xs font-medium text-text-secondary uppercase tracking-wider">Data Type</label>
+<div class="flex flex-wrap gap-2">
+<button class="flex-1 min-w-[80px] h-9 px-3 text-xs font-medium rounded-sm border border-primary-active bg-primary-active/10 text-primary-active flex items-center justify-center transition-all">
+                            Orders
+                        </button>
+<button class="flex-1 min-w-[80px] h-9 px-3 text-xs font-medium rounded-sm border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark text-text-secondary hover:border-primary-active hover:text-primary-active transition-all">
+                            Merchants
+                        </button>
+<button class="flex-1 min-w-[80px] h-9 px-3 text-xs font-medium rounded-sm border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark text-text-secondary hover:border-primary-active hover:text-primary-active transition-all">
+                            Events
+                        </button>
+<button class="flex-1 min-w-[80px] h-9 px-3 text-xs font-medium rounded-sm border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark text-text-secondary hover:border-primary-active hover:text-primary-active transition-all">
+                            Customers
+                        </button>
+</div>
+</div>
+<!-- Filters Stack -->
+<div class="space-y-4">
+<!-- Date Range -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-text-secondary uppercase tracking-wider">Date Range</label>
+<div class="relative">
+<select class="w-full appearance-none bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-gray-200 text-sm rounded-sm py-2.5 pl-3 pr-10 focus:outline-none focus:ring-1 focus:ring-primary-active focus:border-primary-active transition-shadow">
+<option>Last 30 Days</option>
+<option>Last 7 Days</option>
+<option>Last Quarter</option>
+<option>Custom Range</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-secondary">
+<span class="material-symbols-outlined text-xl">calendar_today</span>
+</div>
+</div>
+</div>
+<!-- Region & Merchant (Grid) -->
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-text-secondary uppercase tracking-wider">Region</label>
+<div class="relative">
+<select class="w-full appearance-none bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-gray-200 text-sm rounded-sm py-2.5 pl-3 pr-8 focus:outline-none focus:ring-1 focus:ring-primary-active focus:border-primary-active transition-shadow">
+<option>Global</option>
+<option>North America</option>
+<option>EMEA</option>
+<option>APAC</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-secondary">
+<span class="material-symbols-outlined text-lg">expand_more</span>
+</div>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-text-secondary uppercase tracking-wider">Format</label>
+<div class="relative">
+<select class="w-full appearance-none bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-gray-200 text-sm rounded-sm py-2.5 pl-3 pr-8 focus:outline-none focus:ring-1 focus:ring-primary-active focus:border-primary-active transition-shadow">
+<option>CSV</option>
+<option>XLSX</option>
+<option>JSON</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-secondary">
+<span class="material-symbols-outlined text-lg">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Merchant Picker -->
+<div class="space-y-1.5">
+<label class="text-xs font-medium text-text-secondary uppercase tracking-wider">Merchant Filter (Optional)</label>
+<div class="relative group cursor-pointer">
+<input class="w-full bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-gray-200 text-sm rounded-sm py-2.5 pl-9 pr-3 focus:outline-none focus:ring-1 focus:ring-primary-active focus:border-primary-active transition-shadow group-hover:border-primary/40" placeholder="Search specific merchant ID..." type="text"/>
+<div class="absolute inset-y-0 left-0 flex items-center px-2.5 text-text-secondary">
+<span class="material-symbols-outlined text-lg">search</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Primary Action -->
+<button class="w-full bg-primary-active hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm py-3 rounded-sm shadow-sm active:shadow-inner transition-all flex items-center justify-center gap-2 mt-2">
+<span class="material-symbols-outlined text-lg">bolt</span>
+                    Generate Report
+                </button>
+</div>
+</section>
+<!-- Export History List -->
+<section class="flex flex-col gap-3">
+<div class="flex items-center justify-between px-1">
+<h3 class="text-primary dark:text-white font-semibold text-base">Recent Activity</h3>
+<button class="text-primary-active text-xs font-medium">View All</button>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark rounded-sm border border-border-light dark:border-border-dark divide-y divide-border-light dark:divide-border-dark shadow-sm">
+<!-- Item 1: Success -->
+<div class="p-4 flex items-center justify-between group active:bg-gray-50 dark:active:bg-gray-800 transition-colors">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-base">description</span>
+<span class="text-sm font-medium text-text-main dark:text-white truncate">Orders_Global_Q3_2024.csv</span>
+</div>
+<div class="flex items-center gap-2 pl-6">
+<span class="text-xs text-text-secondary">Oct 24, 10:42 AM</span>
+<span class="text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-text-secondary font-medium">14.2 MB</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 shrink-0 ml-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-status-success-bg text-status-success-text uppercase tracking-wide">
+                            Ready
+                        </span>
+<button class="text-primary-active hover:text-blue-700 p-1">
+<span class="material-symbols-outlined text-xl">download</span>
+</button>
+</div>
+</div>
+<!-- Item 2: Processing -->
+<div class="p-4 flex items-center justify-between group active:bg-gray-50 dark:active:bg-gray-800 transition-colors">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-base">table_view</span>
+<span class="text-sm font-medium text-text-main dark:text-white truncate">Merchants_EMEA_Full.xlsx</span>
+</div>
+<div class="flex items-center gap-2 pl-6">
+<span class="text-xs text-text-secondary">Oct 24, 10:30 AM</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 shrink-0 ml-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-status-pending-bg text-status-pending-text uppercase tracking-wide animate-pulse">
+                            Processing
+                        </span>
+<div class="p-1">
+<span class="material-symbols-outlined text-xl text-text-secondary animate-spin">progress_activity</span>
+</div>
+</div>
+</div>
+<!-- Item 3: Failed -->
+<div class="p-4 flex items-center justify-between group active:bg-gray-50 dark:active:bg-gray-800 transition-colors">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-base">event</span>
+<span class="text-sm font-medium text-text-main dark:text-white truncate">Events_US_All_Filtered.csv</span>
+</div>
+<div class="flex items-center gap-2 pl-6">
+<span class="text-xs text-text-secondary">Oct 23, 04:15 PM</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 shrink-0 ml-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-status-error-bg text-status-error-text uppercase tracking-wide">
+                            Failed
+                        </span>
+<button class="text-text-secondary hover:text-primary-active p-1">
+<span class="material-symbols-outlined text-xl">refresh</span>
+</button>
+</div>
+</div>
+<!-- Item 4: Success -->
+<div class="p-4 flex items-center justify-between group active:bg-gray-50 dark:active:bg-gray-800 transition-colors">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-secondary text-base">group</span>
+<span class="text-sm font-medium text-text-main dark:text-white truncate">Customers_VIP_Q3.csv</span>
+</div>
+<div class="flex items-center gap-2 pl-6">
+<span class="text-xs text-text-secondary">Oct 22, 09:12 AM</span>
+<span class="text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-text-secondary font-medium">2.1 MB</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 shrink-0 ml-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-status-success-bg text-status-success-text uppercase tracking-wide">
+                            Ready
+                        </span>
+<button class="text-primary-active hover:text-blue-700 p-1">
+<span class="material-symbols-outlined text-xl">download</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark border-t border-border-light dark:border-border-dark flex justify-around items-center h-16 pb-safe z-50 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+<button class="flex flex-col items-center justify-center w-full h-full text-text-secondary active:bg-gray-50 dark:active:bg-gray-800">
+<span class="material-symbols-outlined text-2xl mb-0.5">dashboard</span>
+<span class="text-[10px] font-medium">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full text-text-secondary active:bg-gray-50 dark:active:bg-gray-800 relative">
+<span class="absolute top-2 right-6 w-2 h-2 bg-red-500 rounded-full"></span>
+<span class="material-symbols-outlined text-2xl mb-0.5">verified_user</span>
+<span class="text-[10px] font-medium">Approvals</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full text-primary-active active:bg-blue-50 dark:active:bg-blue-900/20">
+<span class="material-symbols-outlined text-2xl mb-0.5 filled">download</span>
+<span class="text-[10px] font-medium">Exports</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full text-text-secondary active:bg-gray-50 dark:active:bg-gray-800">
+<span class="material-symbols-outlined text-2xl mb-0.5">settings</span>
+<span class="text-[10px] font-medium">Settings</span>
+</button>
+</nav>
+<!-- CSS for bottom safe area on newer iPhones -->
+<style>
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+</body></html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Venue Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#11a4d4",
+                        "background-light": "#f9fafa",
+                        "background-dark": "#1a1e23",
+                        "card-light": "#ffffff",
+                        "card-dark": "#2d343c",
+                        "border-light": "#e2e8f0",
+                        "border-dark": "#3e4752",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Lexend', sans-serif; }
+        .ios-blur { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        input:focus, textarea:focus, select:focus {
+            border-color: #11a4d4 !important;
+            box-shadow: 0 0 0 1px #11a4d4 !important;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-[#0d181b] dark:text-gray-100 min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<nav class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 ios-blur border-b border-border-light dark:border-border-dark px-4 py-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<button class="p-1 -ml-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+<span class="material-symbols-outlined text-2xl align-middle">arrow_back_ios_new</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight">Venue Settings</h1>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-primary">verified</span>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto pb-32">
+<form class="max-w-md mx-auto space-y-6 p-4">
+<!-- Basic Info Section -->
+<section class="space-y-3">
+<div class="flex items-center gap-2 px-1">
+<span class="material-symbols-outlined text-sm text-primary">info</span>
+<h2 class="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Basic Info</h2>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
+<!-- Venue Name -->
+<div class="p-4 border-b border-border-light dark:border-border-dark">
+<label class="block mb-1.5 text-sm font-medium">Venue Name</label>
+<input class="w-full bg-transparent border-none p-0 text-base focus:ring-0 placeholder:text-gray-400" placeholder="e.g. The Neon Lounge" type="text" value="The Electric Room"/>
+</div>
+<!-- Address -->
+<div class="p-4">
+<label class="block mb-1.5 text-sm font-medium">Physical Address</label>
+<textarea class="w-full bg-transparent border-none p-0 text-base focus:ring-0 resize-none placeholder:text-gray-400" placeholder="Street, City, Zip Code" rows="2">742 Evergreen Terrace, Downtown District, NY 10001</textarea>
+</div>
+</div>
+</section>
+<!-- Contact Section -->
+<section class="space-y-3">
+<div class="flex items-center gap-2 px-1">
+<span class="material-symbols-outlined text-sm text-primary">contact_support</span>
+<h2 class="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Contact</h2>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden">
+<div class="p-4 border-b border-border-light dark:border-border-dark flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400">mail</span>
+<div class="flex-1">
+<label class="block text-xs font-medium text-gray-500 uppercase">Email</label>
+<input class="w-full bg-transparent border-none p-0 text-base focus:ring-0" type="email" value="ops@electricroom.co"/>
+</div>
+</div>
+<div class="p-4 border-b border-border-light dark:border-border-dark flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400">call</span>
+<div class="flex-1">
+<label class="block text-xs font-medium text-gray-500 uppercase">Phone</label>
+<input class="w-full bg-transparent border-none p-0 text-base focus:ring-0" type="tel" value="+1 (555) 0123"/>
+</div>
+</div>
+<div class="p-4 flex items-center gap-3">
+<span class="material-symbols-outlined text-gray-400">alternate_email</span>
+<div class="flex-1">
+<label class="block text-xs font-medium text-gray-500 uppercase">Instagram</label>
+<input class="w-full bg-transparent border-none p-0 text-base focus:ring-0" type="text" value="electricroom_ny"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Policies Section -->
+<section class="space-y-3">
+<div class="flex items-center gap-2 px-1">
+<span class="material-symbols-outlined text-sm text-primary">policy</span>
+<h2 class="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Policies</h2>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm overflow-hidden divide-y divide-border-light dark:divide-border-dark">
+<!-- Age Limit -->
+<div class="p-4 flex items-center justify-between">
+<div>
+<p class="font-medium">21+ Age Limit</p>
+<p class="text-xs text-gray-500">Only adults allowed entrance</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<!-- ID Required -->
+<div class="p-4 flex items-center justify-between">
+<div>
+<p class="font-medium">Physical ID Required</p>
+<p class="text-xs text-gray-500">Digital copies not accepted</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<!-- Refund Policy -->
+<div class="p-4">
+<label class="block mb-2 text-sm font-medium">Refund Policy</label>
+<div class="relative">
+<select class="w-full bg-background-light dark:bg-background-dark/50 border border-border-light dark:border-border-dark rounded-lg py-3 px-4 appearance-none focus:outline-none">
+<option>Strict: No Refunds</option>
+<option selected="">Moderate: 24h Notice</option>
+<option>Flexible: Case-by-case</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</form>
+</main>
+<!-- Bottom Action Bar -->
+<footer class="fixed bottom-0 left-0 right-0 p-4 pb-8 bg-background-light/90 dark:bg-background-dark/90 ios-blur border-t border-border-light dark:border-border-dark flex gap-3 max-w-md mx-auto">
+<button class="flex-1 py-3.5 px-6 rounded-xl border border-border-light dark:border-border-dark font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            Save Draft
+        </button>
+<button class="flex-[2] py-3.5 px-6 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:brightness-105 active:scale-95 transition-all">
+            Submit Request
+        </button>
+</footer>
+</body></html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Merchant: Event List</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "background-light": "#ffffff",
+                        "background-dark": "#1a1d23",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#0c1d1d] dark:text-gray-100">
+<div class="relative flex h-screen w-full flex-col overflow-hidden max-w-md mx-auto border-x border-gray-100 dark:border-gray-800 shadow-2xl bg-background-light dark:bg-background-dark">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-20 bg-background-light/80 dark:bg-background-dark/80 ios-blur px-4 pt-6 pb-2 border-b border-gray-100 dark:border-gray-800">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">nightlife</span>
+</div>
+<div>
+<h2 class="text-xs font-semibold uppercase tracking-wider text-primary">Merchant Portal</h2>
+<h1 class="text-xl font-bold leading-tight tracking-tight">Events</h1>
+</div>
+</div>
+<button class="flex size-10 items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
+<span class="material-symbols-outlined">tune</span>
+</button>
+</div>
+<!-- Segmented Control -->
+<div class="mt-6 mb-2">
+<div class="flex h-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 p-1">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-gray-700 has-[:checked]:shadow-sm has-[:checked]:text-primary text-gray-500 dark:text-gray-400 text-sm font-medium transition-all">
+<span class="truncate">Upcoming</span>
+<input checked="" class="hidden" name="filter-tabs" type="radio" value="Upcoming"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-gray-700 has-[:checked]:shadow-sm has-[:checked]:text-primary text-gray-500 dark:text-gray-400 text-sm font-medium transition-all">
+<span class="truncate">Live</span>
+<input class="hidden" name="filter-tabs" type="radio" value="Live"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-gray-700 has-[:checked]:shadow-sm has-[:checked]:text-primary text-gray-500 dark:text-gray-400 text-sm font-medium transition-all">
+<span class="truncate">Past</span>
+<input class="hidden" name="filter-tabs" type="radio" value="Past"/>
+</label>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+<!-- LIVE EVENT (Highlighted) -->
+<div class="relative group">
+<div class="absolute -inset-0.5 bg-gradient-to-r from-primary to-teal-400 rounded-xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
+<div class="relative flex flex-col items-stretch justify-start rounded-xl border border-primary/20 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+<div class="p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-bold uppercase tracking-widest">
+<span class="size-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                                    Live Now
+                                </span>
+<h3 class="text-lg font-bold mt-1 text-gray-900 dark:text-white">Midnight Mirage: Techno Solo</h3>
+</div>
+<button class="p-2 text-gray-400">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-sm">schedule</span>
+<span>Starts 10:00 PM • Main Stage</span>
+</div>
+<!-- Live Progress -->
+<div class="mt-2 space-y-3">
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between text-xs font-medium uppercase tracking-tight text-gray-500">
+<span>Check-in Attendance</span>
+<span class="text-primary">842 / 1,200</span>
+</div>
+<div class="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 70%;"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
+<p class="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Tickets Sold</p>
+<p class="text-lg font-bold text-gray-800 dark:text-gray-100">1,150</p>
+</div>
+<div class="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
+<p class="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Revenue</p>
+<p class="text-lg font-bold text-gray-800 dark:text-gray-100">$28.4k</p>
+</div>
+</div>
+</div>
+<div class="flex gap-2 mt-2">
+<button class="flex-1 h-10 rounded-lg bg-primary text-white text-sm font-semibold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">qr_code_scanner</span>
+                                Scan Tickets
+                            </button>
+<button class="w-12 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center">
+<span class="material-symbols-outlined text-base">analytics</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- UPCOMING EVENT 1 -->
+<div class="flex flex-col items-stretch justify-start rounded-xl bg-white dark:bg-gray-900 shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+<div class="relative h-32 w-full bg-center bg-cover" data-alt="vibrant neon lights at a dance club" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuChJ2tJ6W6U-wCUQbVGYY8x7rv2OqSebjaK3lXr-G_IYum593toGYug0qE-vH6rj6GGB2xe2FVFVcA2PpoSvh9eBS6w2f-El-aM78bMVgNVMM5I0of5t8tfGuRUaug2MrcuYMPF0qv9fNr-gjgKlokMfzE75y-NC5DYXTCTrwIPto2pXWOsdnhp2MUkNUxo7YHL0fICxKfxBcGdOtu8dcxHCuNFzDXrs-xjNUH-aleRBXnxzAVTEIVuO10g8LbHLaIZJM7dCF3GnGI");'>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-4">
+<span class="inline-flex px-2 py-0.5 rounded bg-primary text-white text-[10px] font-bold uppercase tracking-widest">Published</span>
+</div>
+</div>
+<div class="p-4 space-y-3">
+<div class="flex justify-between items-start">
+<h3 class="text-base font-bold text-gray-900 dark:text-white">Velvet Lounge: Jazz &amp; Gin</h3>
+<p class="text-xs font-medium text-primary">$45.00</p>
+</div>
+<div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+<span>Sat, Nov 04 • 08:00 PM</span>
+</div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+<span>Sales Progress</span>
+<span class="text-gray-700 dark:text-gray-200">210/300</span>
+</div>
+<div class="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800">
+<div class="h-full bg-primary/40 rounded-full" style="width: 70%;"></div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-1">
+<div class="flex -space-x-2">
+<div class="size-6 rounded-full border-2 border-white dark:border-gray-900 bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-[8px] font-bold">JD</div>
+<div class="size-6 rounded-full border-2 border-white dark:border-gray-900 bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-[8px] font-bold">MK</div>
+<div class="size-6 rounded-full border-2 border-white dark:border-gray-900 bg-primary/20 text-primary flex items-center justify-center text-[8px] font-bold">+5</div>
+</div>
+<button class="px-4 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Manage</button>
+</div>
+</div>
+</div>
+<!-- DRAFT EVENT -->
+<div class="flex flex-col items-stretch justify-start rounded-xl bg-gray-50/50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-800 p-4">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<span class="inline-flex px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Draft</span>
+<h3 class="text-base font-bold text-gray-600 dark:text-gray-400 italic">Neon Nights: Underground</h3>
+</div>
+<span class="material-symbols-outlined text-gray-400">edit_note</span>
+</div>
+<div class="mt-4 flex items-center justify-between">
+<p class="text-xs text-gray-400">Last edited 2 hours ago</p>
+<button class="text-xs font-bold text-primary flex items-center gap-1">
+                        Resume Editing
+                        <span class="material-symbols-outlined text-xs">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- UPCOMING EVENT 2 -->
+<div class="flex flex-col items-stretch justify-start rounded-xl bg-white dark:bg-gray-900 shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+<div class="relative h-32 w-full bg-center bg-cover" data-alt="minimalist club interior with red spotlights" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBJEc4a2uDJYmpF1vEn3aZktsvjrbVyVJ1ther5WNeCxygZ9FCkUM0kWW0IPgdU7-NxFO8I6XQs3zH5PbFwx6KOn9Cj72tyoclX6eCRGj8OesuYYFhuyAGtw7AeafRH5Us1wWaL3-S91Fer8b8wZPZN5WdvJHmvWi3olHXl0otCFCljXzn4rDSYTtQLqf5ASBkm29FWR4MRHT0TGSshva03kFA29ZmNnF4mwK_b2pJtxvKhfPbwofIjGjruLqPdLvmSYlyXMaiGBwk");'>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-4">
+<span class="inline-flex px-2 py-0.5 rounded bg-primary text-white text-[10px] font-bold uppercase tracking-widest">Published</span>
+</div>
+</div>
+<div class="p-4 space-y-3">
+<div class="flex justify-between items-start">
+<h3 class="text-base font-bold text-gray-900 dark:text-white">Warehouse Session: No-Phone Zone</h3>
+<p class="text-xs font-medium text-primary">$20.00</p>
+</div>
+<div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+<span>Fri, Nov 10 • 11:00 PM</span>
+</div>
+<div class="space-y-1.5">
+<div class="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+<span>Sales Progress</span>
+<span class="text-gray-700 dark:text-gray-200">542/800</span>
+</div>
+<div class="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800">
+<div class="h-full bg-primary/40 rounded-full" style="width: 67%;"></div>
+</div>
+</div>
+<div class="flex justify-between items-center pt-1">
+<div class="flex -space-x-2">
+<div class="size-6 rounded-full border-2 border-white dark:border-gray-900 bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
+<span class="material-symbols-outlined text-[12px]">group</span>
+</div>
+</div>
+<button class="px-4 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Manage</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Fixed Bottom Action Bar -->
+<div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white dark:from-background-dark via-white/90 dark:via-background-dark/90 to-transparent pointer-events-none">
+<div class="flex justify-center pointer-events-auto">
+<button class="flex items-center gap-2 bg-primary text-white px-6 h-14 rounded-full shadow-lg shadow-primary/25 font-bold transition-transform active:scale-95">
+<span class="material-symbols-outlined">add</span>
+                    Create New Event
+                </button>
+</div>
+</div>
+<!-- Navigation Bar (iOS Style) -->
+<nav class="absolute bottom-0 inset-x-0 h-20 bg-white/90 dark:bg-gray-900/90 ios-blur border-t border-gray-100 dark:border-gray-800 flex items-center justify-around px-6 pb-4">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined font-fill text-2xl" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Events</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400">
+<span class="material-symbols-outlined text-2xl">confirmation_number</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Sales</span>
+</button>
+<div class="w-16"></div> <!-- Spacer for FAB -->
+<button class="flex flex-col items-center gap-1 text-gray-400">
+<span class="material-symbols-outlined text-2xl">monitoring</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Stats</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400">
+<span class="material-symbols-outlined text-2xl">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Venue</span>
+</button>
+</nav>
+</div>
+</body></html>

@@ -1,0 +1,36 @@
+{
+  "name": "lux-night-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:customer": "pnpm --filter customer-web dev",
+    "dev:internal": "pnpm --filter internal-web dev",
+    "dev:admin": "pnpm --filter admin-web dev",
+    "dev": "pnpm run dev:customer",
+    "build:customer": "pnpm --filter customer-web build",
+    "build:internal": "pnpm --filter internal-web build",
+    "build:admin": "pnpm --filter admin-web build",
+    "build": "pnpm run build:customer && pnpm run build:internal && pnpm run build:admin",
+    "lint": "pnpm --filter \"*\" lint",
+    "supabase:start": "npx supabase start",
+    "supabase:stop": "npx supabase stop",
+    "supabase:reset": "npx supabase db reset",
+    "supabase:status": "npx supabase status",
+    "supabase:link": "npx supabase link --project-ref",
+    "supabase:push": "npx supabase db push",
+    "supabase:pull": "npx supabase db pull"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~5.8.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

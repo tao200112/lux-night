@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lux Night - Region Selection</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#dca31e",
+                        "primary-hover": "#eeb633",
+                        "background-light": "#f7f7f7",
+                        "background-dark": "#0a0a0a",
+                        "surface-dark": "#1C1C1E",
+                        "surface-light": "#FFFFFF",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                    boxShadow: {
+                        'glow': '0 0 20px -5px rgba(220, 163, 30, 0.15)',
+                        'sheet': '0 -4px 40px -10px rgba(0, 0, 0, 0.5)',
+                        'gold-lg': '0 10px 40px -10px rgba(220, 163, 30, 0.4)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar {
+            display: none
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none
+        }.noise-bg {
+            background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuAuLI_Ipgod4Ug6B3Hr7lNWTg7kFaxlj_yhSp4AJxO630VCKoig0nnMjL6EZTIeCXiOmbCv7Vg5eeKxj0EPlQVEI784l1wQKzDn48mseiYxjVZF1bhGas2UioT8IDIHbl38GDXsf4hWC0ynsDPQiTHMug3DpZkR1VOB9VugJudy1mGS351dDTknWErPE4y3C9YtriuM14BCChFdrTEpNR2AorCQS2xmUI9JNim32f3sA4gJ32XNA2B0X0uw1HMAKQGzVlJjj11eWZ35)
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display min-h-screen flex flex-col relative overflow-hidden antialiased selection:bg-primary selection:text-black">
+<div class="fixed top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none z-0"></div>
+<div class="fixed bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-blue-900/10 rounded-full blur-[80px] pointer-events-none z-0"></div>
+<div class="fixed inset-0 pointer-events-none noise-bg z-0 opacity-50 mix-blend-overlay"></div>
+<main class="relative z-10 flex-1 flex flex-col h-full overflow-y-auto no-scrollbar pb-32">
+<header class="pt-8 pb-4 px-6 flex flex-col gap-2">
+<h2 class="text-[32px] font-bold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+            Choose<br/>your area
+        </h2>
+</header>
+<section class="px-6 mb-8">
+<div class="group relative">
+<div class="absolute -inset-0.5 bg-gradient-to-r from-primary/30 to-primary/0 rounded-xl blur opacity-20 group-focus-within:opacity-50 transition duration-500"></div>
+<div class="relative flex items-center w-full h-14 bg-surface-light dark:bg-surface-dark rounded-xl transition-all duration-300 border border-slate-200 dark:border-white/5 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50">
+<div class="pl-4 pr-3 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[24px]">search</span>
+</div>
+<input class="w-full bg-transparent border-none focus:ring-0 text-[16px] placeholder-slate-400 dark:placeholder-white/30 text-slate-900 dark:text-white h-full p-0 pr-4 rounded-xl" placeholder="Search city or region..." type="text"/>
+</div>
+</div>
+</section>
+<section class="px-6 mb-10">
+<button class="w-full flex items-center justify-between p-1 pr-4 bg-surface-light dark:bg-surface-dark rounded-2xl border border-slate-200 dark:border-white/5 group active:scale-[0.99] transition-all duration-200 hover:shadow-glow hover:border-primary/30">
+<div class="flex items-center gap-4">
+<div class="flex items-center justify-center size-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary border border-primary/10">
+<span class="material-symbols-outlined filled">my_location</span>
+</div>
+<div class="flex flex-col items-start">
+<span class="text-base font-bold text-slate-900 dark:text-white">Current Location</span>
+<span class="text-xs text-slate-500 dark:text-white/40">Use GPS data</span>
+</div>
+</div>
+<div class="size-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-white/5 group-hover:bg-primary group-hover:text-black transition-colors duration-300">
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</div>
+</button>
+</section>
+<section class="px-6 flex-1">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Recommended</h3>
+<span class="text-xs text-primary cursor-pointer hover:underline">View all</span>
+</div>
+<div class="flex flex-col space-y-2">
+<button class="w-full group flex items-center justify-between py-4 px-2 border-b border-slate-200 dark:border-white/5 hover:bg-surface-light/50 dark:hover:bg-white/5 rounded-lg transition-all duration-200">
+<div class="flex flex-col items-start">
+<span class="text-xl font-medium text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">Shanghai</span>
+</div>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300">chevron_right</span>
+</button>
+<button class="w-full group flex items-center justify-between py-4 px-2 border-b border-slate-200 dark:border-white/5 hover:bg-surface-light/50 dark:hover:bg-white/5 rounded-lg transition-all duration-200">
+<div class="flex flex-col items-start">
+<span class="text-xl font-medium text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">Tokyo</span>
+</div>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300">chevron_right</span>
+</button>
+<button class="w-full group flex items-center justify-between py-4 px-2 border-b border-slate-200 dark:border-white/5 hover:bg-surface-light/50 dark:hover:bg-white/5 rounded-lg transition-all duration-200">
+<div class="flex flex-col items-start">
+<span class="text-xl font-medium text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">Singapore</span>
+</div>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300">chevron_right</span>
+</button>
+<button class="w-full group flex items-center justify-between py-4 px-2 border-b border-slate-200 dark:border-white/5 bg-primary/5 rounded-lg transition-all duration-200">
+<div class="flex flex-col items-start">
+<span class="text-xl font-medium text-primary">New York</span>
+</div>
+<span class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-all duration-300">chevron_right</span>
+</button>
+<button class="w-full group flex items-center justify-between py-4 px-2 border-b border-transparent hover:bg-surface-light/50 dark:hover:bg-white/5 rounded-lg transition-all duration-200">
+<div class="flex flex-col items-start">
+<span class="text-xl font-medium text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors">London</span>
+</div>
+<span class="material-symbols-outlined text-primary/40 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300">chevron_right</span>
+</button>
+</div>
+</section>
+</main>
+<div aria-hidden="true" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300"></div>
+<div class="fixed bottom-0 left-0 right-0 z-50 transform transition-transform duration-300 ease-out">
+<div class="relative bg-surface-light dark:bg-[#121212] rounded-t-[32px] p-6 pb-8 shadow-sheet border-t border-white/10 overflow-hidden">
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+<div class="w-12 h-1.5 bg-slate-300 dark:bg-white/10 rounded-full mx-auto mb-6 cursor-grab active:cursor-grabbing"></div>
+<div class="flex flex-col gap-6">
+<div class="space-y-3 text-center">
+<div class="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-[32px] text-primary">location_on</span>
+</div>
+<h3 class="text-2xl font-bold text-slate-900 dark:text-white leading-tight px-4">
+                    Use <span class="text-primary">Blacksburg</span> as your default region?
+                </h3>
+<p class="text-slate-500 dark:text-white/50 text-sm leading-relaxed max-w-xs mx-auto">
+                   This will tailor events, venue recommendations, and notifications to the Blacksburg area.
+                </p>
+</div>
+<div class="flex flex-col gap-3 pt-2">
+<button class="w-full h-14 bg-primary text-[#0a0a0a] font-bold text-lg rounded-xl shadow-gold-lg hover:shadow-[0_0_30px_-5px_#dca31e] hover:bg-primary-hover active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 group">
+<span>Confirm Region</span>
+</button>
+<button class="w-full h-12 rounded-xl font-medium text-sm text-slate-500 dark:text-white/40 hover:text-slate-900 dark:hover:text-white transition-colors">
+                    Choose Manually
+                </button>
+</div>
+</div>
+</div>
+</div>
+
+</body></html>

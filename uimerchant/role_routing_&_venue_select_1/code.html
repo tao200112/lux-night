@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Role Routing &amp; Venue Select</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "background-light": "#ffffff",
+                        "background-dark": "#1a1d23",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-status-bar {
+            height: 44px;
+        }
+        .action-card {
+            transition: transform 0.1s ease-in-out;
+        }
+        .action-card:active {
+            transform: scale(0.98);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-gray-100 min-h-screen flex flex-col">
+<!-- iOS Status Bar Spacer -->
+<div class="ios-status-bar w-full bg-background-light dark:bg-background-dark"></div>
+<!-- TopAppBar -->
+<nav class="flex items-center bg-background-light dark:bg-background-dark px-6 py-4 justify-between sticky top-0 z-50">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1">shield_person</span>
+<h2 class="text-[#0c1d1d] dark:text-white text-lg font-bold tracking-tight">Access Control</h2>
+</div>
+<button class="text-primary text-sm font-semibold hover:bg-primary/5 px-3 py-1 rounded-lg transition-colors">Logout</button>
+</nav>
+<!-- ProfileHeader -->
+<header class="flex flex-col items-center px-6 py-8 animate-in fade-in slide-in-from-top-4 duration-700">
+<div class="relative">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-24 w-24 border-2 border-primary/20 p-1" data-alt="Close up professional headshot of a young man smiling" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCJqar4VEFeKrzUFCSYCYSuAUZPSUHyAXcn4YZZgQlClNyJjCg0cm6BCqVYWhSDW6VLp1w7gYiwc6_ILgagIqPN8vDcDm7pSrRrL35hZhh_V4bU2E__PEwNqYEIYCv8Hmc1upGkOtvqBj6txHal2CXgKjMTGcnT-fKFmD6yyInD7SfYEQlKcz5J0RNjcSruIjQaUvnmVQSNleY8mNl80VehHJo5_AlaXG3kfr8re8K_QIQVneo2MXggxIFuzotGSUSlXydfsAYoCt8");'>
+</div>
+<div class="absolute bottom-0 right-0 bg-green-500 w-5 h-5 rounded-full border-4 border-background-light dark:border-background-dark"></div>
+</div>
+<div class="mt-4 text-center">
+<h1 class="text-[#0c1d1d] dark:text-white text-2xl font-bold tracking-tight">Good Evening, Alex</h1>
+<p class="text-primary dark:text-primary/80 text-sm font-medium mt-1">alex_manager@the-neon.com</p>
+<div class="flex gap-2 mt-3 justify-center">
+<span class="bg-primary/10 text-primary text-[10px] font-bold px-2.5 py-1 rounded uppercase tracking-wider">Manager</span>
+<span class="bg-primary/10 text-primary text-[10px] font-bold px-2.5 py-1 rounded uppercase tracking-wider">Floor Staff</span>
+</div>
+</div>
+</header>
+<main class="flex-1 px-6 pb-24 max-w-md mx-auto w-full">
+<!-- Section: Venue Selection -->
+<section class="mb-8">
+<div class="flex items-center justify-between mb-3">
+<h3 class="text-[#0c1d1d] dark:text-white text-sm font-bold uppercase tracking-widest">Select Active Venue</h3>
+<span class="text-xs text-primary font-semibold">3 Available</span>
+</div>
+<div class="relative group">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-primary text-xl">nightlife</span>
+</div>
+<select class="form-input block w-full pl-12 pr-10 py-4 text-base font-medium rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-primary focus:border-primary appearance-none transition-all">
+<option value="neon">The Neon Lounge (Live)</option>
+<option value="garden">Midnight Garden</option>
+<option value="basement">The Basement Club</option>
+</select>
+<div class="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-gray-400">unfold_more</span>
+</div>
+</div>
+</section>
+<!-- Section: Primary Actions -->
+<section class="space-y-4">
+<h3 class="text-[#0c1d1d] dark:text-white text-sm font-bold uppercase tracking-widest mb-3">Continue to Workspace</h3>
+<!-- Staff Path -->
+<button class="action-card w-full flex items-center gap-5 p-5 bg-background-light dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all text-left">
+<div class="size-14 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-3xl">qr_code_scanner</span>
+</div>
+<div class="flex-1">
+<h4 class="text-[#0c1d1d] dark:text-white font-bold text-lg leading-tight">Entry Management</h4>
+<p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Check-in guests and scan digital tickets.</p>
+</div>
+<span class="material-symbols-outlined text-primary/40">chevron_right</span>
+</button>
+<!-- Manager Path -->
+<button class="action-card w-full flex items-center gap-5 p-5 bg-background-light dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all text-left">
+<div class="size-14 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-3xl">query_stats</span>
+</div>
+<div class="flex-1">
+<h4 class="text-[#0c1d1d] dark:text-white font-bold text-lg leading-tight">Business Intelligence</h4>
+<p class="text-gray-500 dark:text-gray-400 text-sm mt-1">View real-time sales and performance data.</p>
+</div>
+<span class="material-symbols-outlined text-primary/40">chevron_right</span>
+</button>
+</section>
+<!-- Quick Toggle -->
+<div class="mt-10 flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/10">
+<div class="flex flex-col">
+<p class="text-xs font-bold text-primary uppercase">Efficiency Mode</p>
+<p class="text-sm text-[#0c1d1d] dark:text-gray-300">Skip this screen next time</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<footer class="fixed bottom-0 left-0 right-0 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-lg border-t border-gray-100 dark:border-gray-800 px-6 py-3 flex justify-between items-center max-w-md mx-auto">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">grid_view</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Routing</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400">
+<span class="material-symbols-outlined">notifications</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Alerts</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Setup</span>
+</button>
+</footer>
+</body></html>

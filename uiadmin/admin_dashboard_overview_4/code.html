@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Approval and Audit System</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2d3c4e",
+                        "primary-dark": "#1f2a36",
+                        "accent": "#2563EB",
+                        "background-light": "#f3f4f6",
+                        "background-dark": "#111827",
+                        "success": "#059669",
+                        "warning": "#d97706",
+                        "danger": "#dc2626",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem", 
+                        "sm": "0.125rem",
+                        "lg": "0.5rem", 
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    boxShadow: {
+                        "subtle": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                        "card": "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }.timeline-line {
+            position: absolute;
+            left: 24px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 font-display antialiased selection:bg-primary/20">
+<div class="relative flex min-h-screen w-full flex-col mx-auto max-w-[480px] bg-background-light dark:bg-background-dark border-x border-slate-200 dark:border-slate-800 shadow-2xl">
+<header class="sticky top-0 z-40 bg-white/95 dark:bg-[#1f2937]/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between transition-colors duration-300">
+<div class="flex items-center gap-3">
+<button class="p-2 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div>
+<h1 class="text-base font-bold text-slate-900 dark:text-white tracking-tight">Review Request</h1>
+<p class="text-[10px] text-slate-500 font-medium">ID: #REQ-2024-891</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/30 text-accent dark:text-blue-300 text-xs font-semibold border border-blue-100 dark:border-blue-800">Pending</span>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto overflow-x-hidden pb-24">
+<div class="px-4 py-5">
+<h2 class="text-lg font-bold text-slate-900 dark:text-white">Merchant Profile Update</h2>
+<p class="text-sm text-slate-500 mt-1">Submitted by <span class="font-medium text-slate-700 dark:text-slate-300">TicketMaster Ent.</span> for review.</p>
+</div>
+<section class="px-4 mb-6">
+<div class="bg-white dark:bg-slate-800 rounded-lg shadow-card border border-slate-200 dark:border-slate-700 overflow-hidden">
+<div class="grid grid-cols-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-700/50">
+<div class="p-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-center border-r border-slate-100 dark:border-slate-700">
+                            Original
+                        </div>
+<div class="p-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-center">
+                            Proposed
+                        </div>
+</div>
+<div class="divide-y divide-slate-100 dark:divide-slate-700 text-sm">
+<div class="grid grid-cols-2">
+<div class="p-4 border-r border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-transparent">
+<span class="block text-[10px] text-slate-400 font-medium uppercase mb-0.5">Entity Name</span>
+<span class="text-slate-600 dark:text-slate-400">TicketMaster Ent.</span>
+</div>
+<div class="p-4 bg-white dark:bg-slate-800">
+<span class="block text-[10px] text-slate-400 font-medium uppercase mb-0.5">Entity Name</span>
+<span class="text-slate-600 dark:text-slate-400">TicketMaster Ent.</span>
+</div>
+</div>
+<div class="grid grid-cols-2 relative group">
+<div class="p-4 border-r border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-transparent">
+<span class="block text-[10px] text-slate-400 font-medium uppercase mb-0.5">Commission Rate</span>
+<span class="font-mono text-slate-600 dark:text-slate-400">12.5%</span>
+</div>
+<div class="p-4 bg-green-50/50 dark:bg-green-900/10 relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-green-500"></div>
+<span class="block text-[10px] text-green-700 dark:text-green-400 font-medium uppercase mb-0.5">Commission Rate</span>
+<span class="font-mono font-bold text-slate-900 dark:text-white">10.0%</span>
+</div>
+</div>
+<div class="grid grid-cols-2">
+<div class="p-4 border-r border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-transparent">
+<span class="block text-[10px] text-slate-400 font-medium uppercase mb-0.5">Payout Schedule</span>
+<span class="text-slate-600 dark:text-slate-400">Weekly (Mon)</span>
+</div>
+<div class="p-4 bg-green-50/50 dark:bg-green-900/10 relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-green-500"></div>
+<span class="block text-[10px] text-green-700 dark:text-green-400 font-medium uppercase mb-0.5">Payout Schedule</span>
+<span class="font-bold text-slate-900 dark:text-white">Instant (Daily)</span>
+</div>
+</div>
+<div class="grid grid-cols-2">
+<div class="p-4 border-r border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-transparent">
+<span class="block text-[10px] text-slate-400 font-medium uppercase mb-0.5">Support Level</span>
+<span class="text-slate-600 dark:text-slate-400">Standard</span>
+</div>
+<div class="p-4 bg-green-50/50 dark:bg-green-900/10 relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-green-500"></div>
+<span class="block text-[10px] text-green-700 dark:text-green-400 font-medium uppercase mb-0.5">Support Level</span>
+<span class="font-bold text-slate-900 dark:text-white">Priority+</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 mt-4">
+<button class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">close</span>
+                        Reject
+                    </button>
+<button class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-primary hover:bg-primary-dark text-white font-medium text-sm transition-colors shadow-sm shadow-primary/30">
+<span class="material-symbols-outlined text-[18px]">check</span>
+                        Approve
+                    </button>
+</div>
+</section>
+<div class="px-4 py-2 flex items-center gap-4">
+<div class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></div>
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Audit Trail</span>
+<div class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></div>
+</div>
+<section class="px-4 py-4 relative">
+<div class="absolute left-[31px] top-4 bottom-4 w-0.5 bg-slate-200 dark:bg-slate-700"></div>
+<div class="space-y-6">
+<div class="relative pl-10">
+<div class="absolute left-0 top-1.5 h-8 w-8 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center z-10">
+<div class="h-2.5 w-2.5 rounded-full bg-accent"></div>
+</div>
+<div class="bg-white dark:bg-slate-800 p-3.5 rounded-lg border border-slate-100 dark:border-slate-700 shadow-subtle">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="h-5 w-5 rounded-full bg-primary flex items-center justify-center overflow-hidden">
+<img alt="User" class="h-full w-full object-cover opacity-90" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEeTElKmqjOJhIVfOnmk3XhC8w1mMPBVoLFy0irZpRUFvIPiqIu_3lHoG9z7vbzFOvv0gB2Nf93OiwyjF6hZMoTGZCK4ggdJJSOaDdP0c2g5ySUE3_4fwYAhMkV79htPTRRagi2ieK5VEH6xYSqs3vT2yEJtgww80nH_6QwFOUURogOGj8wqGzdiPI4Ywl5yCkHTKFAemfxfA03R_zC_K0wP1wvX83fvmauGTkaM3gp_pb4J2R1lYGZ-eA0LVHwF9YJC2-iYf80fs"/>
+</div>
+<span class="text-xs font-semibold text-slate-900 dark:text-white">Alex Morgan</span>
+</div>
+<span class="text-[10px] text-slate-400 font-mono">10:42 AM</span>
+</div>
+<div class="mb-1">
+<span class="text-xs font-bold text-slate-800 dark:text-slate-200">Request Initiated</span>
+</div>
+<p class="text-xs text-slate-500 leading-relaxed">
+                                Created change request #REQ-2024-891 for merchant profile update.
+                            </p>
+</div>
+</div>
+<div class="relative pl-10">
+<div class="absolute left-0 top-1.5 h-8 w-8 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center z-10">
+<div class="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+</div>
+<div class="bg-white dark:bg-slate-800 p-3.5 rounded-lg border border-slate-100 dark:border-slate-700 shadow-subtle opacity-90">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="h-5 w-5 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-[9px] font-bold">
+                                        SYS
+                                    </div>
+<span class="text-xs font-semibold text-slate-900 dark:text-white">System Bot</span>
+</div>
+<span class="text-[10px] text-slate-400 font-mono">Yesterday</span>
+</div>
+<div class="mb-1">
+<span class="text-xs font-bold text-slate-800 dark:text-slate-200">Compliance Check Passed</span>
+</div>
+<p class="text-xs text-slate-500 leading-relaxed">
+                                Automated scan verified business license #994021.
+                            </p>
+</div>
+</div>
+<div class="relative pl-10">
+<div class="absolute left-0 top-1.5 h-8 w-8 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center z-10">
+<div class="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+</div>
+<div class="bg-white dark:bg-slate-800 p-3.5 rounded-lg border border-slate-100 dark:border-slate-700 shadow-subtle opacity-75">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="h-5 w-5 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[9px] font-bold">
+                                        JD
+                                    </div>
+<span class="text-xs font-semibold text-slate-900 dark:text-white">John Doe</span>
+</div>
+<span class="text-[10px] text-slate-400 font-mono">Oct 24</span>
+</div>
+<div class="mb-1">
+<span class="text-xs font-bold text-slate-800 dark:text-slate-200">Profile Updated</span>
+</div>
+<p class="text-xs text-slate-500 leading-relaxed">
+                                Modified contact email from <span class="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-[10px]">admin@tmaster.com</span> to <span class="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-[10px]">support@tmaster.com</span>.
+                            </p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<div class="hidden absolute inset-0 z-50 bg-slate-900/50 backdrop-blur-sm">
+<div class="h-full w-3/4 bg-white dark:bg-[#1f2937] shadow-2xl flex flex-col">
+<div class="p-6 border-b border-slate-100 dark:border-slate-700">
+<p class="text-lg font-bold text-slate-900 dark:text-white">Admin Operator</p>
+<p class="text-xs text-slate-500 mt-1">Enterprise Portal</p>
+</div>
+<nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+                        Dashboard
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded text-primary dark:text-white bg-slate-100 dark:bg-slate-700 font-medium text-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+                        Approvals
+                    </a>
+</nav>
+</div>
+</div>
+</div>
+
+</body></html>

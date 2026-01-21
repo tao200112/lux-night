@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lux Night - Payment Failed</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Noto+Serif:ital,wght@0,300;0,400;0,600;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#c8ab5f",
+                        "secondary": "#AA8D55",
+                        "background-light": "#faf8f4",
+                        // Updated to a deep navy as requested
+                        "background-dark": "#050B14",
+                        "surface-dark": "#121826",
+                        "alert-red": "#D45D5D",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Serif", "serif"],
+                        "sans": ["Manrope", "sans-serif"],
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    }
+                },
+            },
+        }
+    </script>
+<style>.text-glow {
+            text-shadow: 0 0 20px rgba(200, 171, 95, 0.4);
+        }
+        .text-glow-error {
+            text-shadow: 0 0 25px rgba(212, 93, 93, 0.3);
+        }
+        .gold-border-gradient {
+            border-image: linear-gradient(to right, transparent, #c8ab5f, transparent) 1;
+        }@keyframes elegant-spin {
+            0% { transform: rotate(0deg); stroke-dasharray: 10, 150; stroke-dashoffset: 0; }
+            50% { transform: rotate(360deg); stroke-dasharray: 100, 150; stroke-dashoffset: -35; }
+            100% { transform: rotate(720deg); stroke-dasharray: 10, 150; stroke-dashoffset: -124; }
+        }
+        .spinner-path {
+            animation: elegant-spin 3s ease-in-out infinite;
+        }.text-gradient-gold-red {
+            background: linear-gradient(135deg, #e6c87e 0%, #D45D5D 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+<style>
+        body {
+          min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark min-h-screen flex items-center justify-center p-6 relative overflow-hidden text-white">
+<div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+<div class="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-alert-red/10 rounded-full blur-[120px]"></div>
+<div class="absolute inset-0 opacity-[0.03]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0VxuNhdqjhWKWUOHRHwooYJM5aNIoQXc8RiSqAH8Ah95h0G79PvBog5-bvTrdvx3ToIwnNRv9uDSrjBnF25mh_O_I3sTeKPuZVjoqKC-qxl1mPjr-Hse62FV_B_w1qfgesCcw-U-teSm8_d0Fa_7qYk_6WznkAKlG12eRpAtjWQKnnrWXI32sXzu8SXKs4h8A1-gxl6oBiVitWLaG038C15u5v0Trn7E01RbGP_ZhXKHizwJYwYRxD_n3BsmcLYxazsPoPNOnoBoR');"></div>
+</div>
+<div class="relative z-10 w-full max-w-md flex flex-col items-center justify-center min-h-[600px] py-8">
+<div class="flex flex-col items-center mb-8 relative group">
+<div class="absolute inset-0 bg-alert-red/20 blur-2xl rounded-full scale-75 group-hover:scale-100 transition-transform duration-700"></div>
+<div class="relative w-24 h-24 rounded-full border border-white/5 bg-gradient-to-b from-white/5 to-transparent flex items-center justify-center shadow-2xl backdrop-blur-sm">
+<div class="absolute inset-1 rounded-full border border-alert-red/20"></div>
+<span class="material-symbols-outlined text-[48px] text-gradient-gold-red drop-shadow-lg">
+                    warning
+                </span>
+</div>
+</div>
+<div class="flex flex-col items-center mb-12 w-full text-center space-y-3">
+<h1 class="font-display text-white text-4xl font-medium tracking-wide leading-tight">
+                Payment Failed
+            </h1>
+<p class="font-sans text-white/60 text-lg font-light max-w-[80%] leading-relaxed">
+                Insufficient funds or card expired
+            </p>
+</div>
+<div class="w-full space-y-4 mb-8">
+<button class="group relative w-full h-14 bg-primary hover:bg-[#D4B56A] text-background-dark rounded-lg flex items-center justify-center gap-2 transition-all duration-300 shadow-[0_4px_20px_-5px_rgba(200,171,95,0.3)] active:scale-[0.99]">
+<span class="font-sans font-bold text-[16px] tracking-wide uppercase text-sm">Try Again</span>
+<span class="material-symbols-outlined text-[18px] transition-transform duration-300 group-hover:translate-x-1">refresh</span>
+</button>
+<button class="group relative w-full h-14 bg-transparent hover:bg-white/5 border border-white/10 rounded-lg flex items-center justify-center gap-2 transition-all duration-300 active:scale-[0.99]">
+<span class="font-sans font-medium text-white/80 group-hover:text-white text-[15px] tracking-wide">Contact Support</span>
+</button>
+</div>
+<div class="mt-4">
+<p class="text-xs text-white/30 font-sans tracking-wider text-center">
+                ERROR CODE: 402_PAYMENT_DECLINED
+            </p>
+</div>
+</div>
+
+</body></html>

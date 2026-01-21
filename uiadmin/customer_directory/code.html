@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Customer Directory</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2d3c4e", // Slate Blue
+                        "primary-dark": "#3b4d61",
+                        "accent": "#2563EB", // Action Blue
+                        "background-light": "#f9fafb",
+                        "background-dark": "#111827",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1f2937",
+                        "border-light": "#e5e7eb",
+                        "border-dark": "#374151",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem", // 2px - very boxy
+                        "sm": "0.125rem",
+                        "lg": "0.25rem", // 4px
+                        "xl": "0.5rem",
+                        "full": "9999px"
+                    },
+                    fontSize: {
+                        "xxs": "0.625rem",
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom Utilities */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-primary dark:text-gray-100 font-display transition-colors duration-200 pb-20">
+<!-- Header Section -->
+<header class="sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm border-b border-border-light dark:border-border-dark">
+<div class="flex items-center justify-between px-4 py-3">
+<h1 class="text-primary dark:text-white text-xl font-bold tracking-tight">Customers</h1>
+<button class="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-primary dark:text-white">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<!-- Search Bar -->
+<div class="px-4 pb-3">
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+<span class="material-symbols-outlined text-gray-400 dark:text-gray-500 text-[20px]">search</span>
+</div>
+<input class="block w-full p-2.5 pl-10 text-sm text-gray-900 bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark rounded-lg focus:ring-1 focus:ring-accent focus:border-accent dark:text-white dark:placeholder-gray-400 dark:focus:ring-accent dark:focus:border-accent shadow-sm" placeholder="Search by email, ID or name..." type="text" value=""/>
+<div class="absolute inset-y-0 right-0 flex items-center pr-2">
+<button class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 px-4 pb-3 overflow-x-auto hide-scrollbar">
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium whitespace-nowrap border border-transparent shadow-sm">
+<span>All Customers</span>
+</button>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-dark text-gray-700 dark:text-gray-200 text-xs font-medium whitespace-nowrap border border-gray-200 dark:border-border-dark hover:border-gray-300 transition-colors">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+<span>Active</span>
+</button>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-dark text-gray-700 dark:text-gray-200 text-xs font-medium whitespace-nowrap border border-gray-200 dark:border-border-dark hover:border-gray-300 transition-colors">
+<span class="material-symbols-outlined text-[14px]">monetization_on</span>
+<span>High Spenders</span>
+</button>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-dark text-gray-700 dark:text-gray-200 text-xs font-medium whitespace-nowrap border border-gray-200 dark:border-border-dark hover:border-gray-300 transition-colors">
+<span>Recent Activity</span>
+</button>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-surface-dark text-gray-700 dark:text-gray-200 text-xs font-medium whitespace-nowrap border border-gray-200 dark:border-border-dark hover:border-gray-300 transition-colors">
+<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+<span>Banned</span>
+</button>
+</div>
+<!-- List Header Labels (Pseudo-Table) -->
+<div class="grid grid-cols-12 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-y border-gray-100 dark:border-border-dark text-xxs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+<div class="col-span-12 mb-1">Customer</div>
+<div class="col-span-3">Orders</div>
+<div class="col-span-5">Lifetime Spend</div>
+<div class="col-span-4 text-right">Last Active</div>
+</div>
+</header>
+<!-- Main List Content -->
+<main class="flex flex-col w-full divide-y divide-gray-100 dark:divide-border-dark bg-surface-light dark:bg-background-dark">
+<!-- Item 1 -->
+<div class="group relative flex flex-col p-4 hover:bg-gray-50 dark:hover:bg-surface-dark/50 transition-colors active:bg-gray-100 dark:active:bg-surface-dark">
+<div class="flex items-start justify-between mb-3">
+<div class="flex items-center gap-3">
+<div class="relative w-8 h-8">
+<img alt="Portrait of Alice Smith showing a confident smile" class="w-full h-full rounded-lg object-cover border border-gray-100 dark:border-gray-600" data-alt="Portrait of Alice Smith showing a confident smile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGVv466lvvjsjMU9KoC-dXde3391A6X8S___0y1_CrY7LCCTd3Ip6TkxHr0Bnco6_WW_GA7sX2EoW2TK4S4JQ1S5LiK6xgLAMpSBvQawzAxWuKMW7dmPfpQ0Jd-uAM1M--VINUFg7L4AjmRfh6i2aKmxAP20dEal2_hvRDqGNyPqyh2kpRXY75xLzmey9XPlQF5BNHGLJ0yuxZtXoQOcGkd3cQYwl-kbn_7GvtyQSrzd6IGVlCBrrmAg-k-sr-I7KvJstmEutsqUw"/>
+<div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white dark:border-surface-dark rounded-full"></div>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary dark:text-white leading-none">Alice Smith</span>
+<span class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">alice.smith@corporate.com</span>
+</div>
+</div>
+<button class="text-gray-400 hover:text-primary dark:hover:text-white">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<div class="grid grid-cols-12 items-baseline">
+<div class="col-span-3 flex items-center gap-1">
+<span class="text-sm font-medium text-gray-900 dark:text-gray-200 tabular-nums">12</span>
+</div>
+<div class="col-span-5 flex items-center gap-1">
+<span class="text-sm font-bold text-gray-900 dark:text-gray-200 tabular-nums">$4,500.00</span>
+</div>
+<div class="col-span-4 text-right">
+<span class="text-xs font-medium text-gray-500 dark:text-gray-400">2 mins ago</span>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="group relative flex flex-col p-4 hover:bg-gray-50 dark:hover:bg-surface-dark/50 transition-colors active:bg-gray-100 dark:active:bg-surface-dark">
+<div class="flex items-start justify-between mb-3">
+<div class="flex items-center gap-3">
+<div class="relative w-8 h-8 flex items-center justify-center bg-primary/10 dark:bg-primary/30 rounded-lg text-primary dark:text-blue-300 text-xs font-bold border border-primary/10 dark:border-primary/20">
+                        BJ
+                    </div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary dark:text-white leading-none">Bob Jones</span>
+<span class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">b.jones@enterprise.net</span>
+</div>
+</div>
+<button class="text-gray-400 hover:text-primary dark:hover:text-white">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<div class="grid grid-cols-12 items-baseline">
+<div class="col-span-3">
+<span class="text-sm font-medium text-gray-900 dark:text-gray-200 tabular-nums">5</span>
+</div>
+<div class="col-span-5">
+<span class="text-sm font-bold text-gray-900 dark:text-gray-200 tabular-nums">$850.50</span>
+</div>
+<div class="col-span-4 text-right">
+<span class="text-xs font-medium text-gray-500 dark:text-gray-400">1 day ago</span>
+</div>
+</div>
+</div>
+<!-- Item 3: Inactive -->
+<div class="group relative flex flex-col p-4 bg-gray-50/50 dark:bg-background-dark hover:bg-gray-50 dark:hover:bg-surface-dark/50 transition-colors">
+<div class="flex items-start justify-between mb-3">
+<div class="flex items-center gap-3 opacity-60">
+<div class="relative w-8 h-8">
+<img alt="Portrait of Charlie looking sideways" class="w-full h-full rounded-lg object-cover grayscale border border-gray-200 dark:border-gray-700" data-alt="Portrait of Charlie looking sideways" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1T9Z_RZwEeMpywXKw7u1lVrNYpnw_MgAb1pjTLAtGI5_PsoOrng02hx7ZLCBALB76_LL0QK8VFlMtarzf-PpqYpKao_S2jaz6TiKFbYm9yBsiJ9BDn-3vp7UMUULA9BtHrUctK3xCsAbc3Sw2IjlRt7V4vpaVhKRreAl0j1yzrNTVz0gDi084xGnrulalVXqajZTfPf11sL9FQbhefEJ2Jze3jiioNHlrd3KhO_Cxzn267xYByUicKZJTPrhUry5MJo6As6v8cIA"/>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-gray-700 dark:text-gray-300 leading-none">Charlie Davis</span>
+<span class="text-xs text-gray-400 dark:text-gray-500 mt-1 font-mono">charlie.d@tech.io</span>
+</div>
+</div>
+<div class="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xxs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Inactive</div>
+</div>
+<div class="grid grid-cols-12 items-baseline opacity-60">
+<div class="col-span-3">
+<span class="text-sm font-medium text-gray-500 dark:text-gray-400 tabular-nums">0</span>
+</div>
+<div class="col-span-5">
+<span class="text-sm font-bold text-gray-500 dark:text-gray-400 tabular-nums">$0.00</span>
+</div>
+<div class="col-span-4 text-right">
+<span class="text-xs font-medium text-gray-400 dark:text-gray-500">3 mos ago</span>
+</div>
+</div>
+</div>
+<!-- Item 4: High Spender -->
+<div class="group relative flex flex-col p-4 hover:bg-gray-50 dark:hover:bg-surface-dark/50 transition-colors active:bg-gray-100 dark:active:bg-surface-dark border-l-4 border-l-accent dark:border-l-accent">
+<div class="flex items-start justify-between mb-3">
+<div class="flex items-center gap-3">
+<div class="relative w-8 h-8 flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/40 rounded-lg text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800">
+                        DW
+                    </div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary dark:text-white leading-none">Diana Wright</span>
+<span class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">diana.w@global.org</span>
+</div>
+</div>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-amber-500 text-[18px]" title="VIP">star</span>
+</div>
+</div>
+<div class="grid grid-cols-12 items-baseline">
+<div class="col-span-3">
+<span class="text-sm font-medium text-gray-900 dark:text-gray-200 tabular-nums">42</span>
+</div>
+<div class="col-span-5">
+<span class="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums">$12,450.00</span>
+</div>
+<div class="col-span-4 text-right">
+<span class="text-xs font-medium text-gray-500 dark:text-gray-400">4 hrs ago</span>
+</div>
+</div>
+</div>
+<!-- Item 5 -->
+<div class="group relative flex flex-col p-4 hover:bg-gray-50 dark:hover:bg-surface-dark/50 transition-colors active:bg-gray-100 dark:active:bg-surface-dark">
+<div class="flex items-start justify-between mb-3">
+<div class="flex items-center gap-3">
+<div class="relative w-8 h-8">
+<img alt="Portrait of Evan looking professional" class="w-full h-full rounded-lg object-cover border border-gray-100 dark:border-gray-600" data-alt="Portrait of Evan looking professional" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLFJNeO_ROdfZouDOv5cSz4kSlMTTRvTr4QP0bbEF0ocu33Ap9K1CC6HMFhs_LM0jazSmkBlN7UE8PAiSrLnK-97VS7Pwf2B95J8IoqTYP7Gp6mRBcAXhV-fa6StY0CiiCgaugnj1pP9LIc3KX2gk6MQNhXZ2kiypWBnJMnvMkH1TTS1btPLDWSwTHm1ttlMIklXIKxyJE_b4RImY_SXHyuOt2bW2CveZkcwxe9RhDi3hEuzWgjgEZ7877XkX2lPn7KfF8IxTsecA"/>
+<div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white dark:border-surface-dark rounded-full"></div>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary dark:text-white leading-none">Evan Scott</span>
+<span class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">evan.s@startup.io</span>
+</div>
+</div>
+<button class="text-gray-400 hover:text-primary dark:hover:text-white">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<div class="grid grid-cols-12 items-baseline">
+<div class="col-span-3">
+<span class="text-sm font-medium text-gray-900 dark:text-gray-200 tabular-nums">8</span>
+</div>
+<div class="col-span-5">
+<span class="text-sm font-bold text-gray-900 dark:text-gray-200 tabular-nums">$2,100.00</span>
+</div>
+<div class="col-span-4 text-right">
+<span class="text-xs font-medium text-gray-500 dark:text-gray-400">2 days ago</span>
+</div>
+</div>
+</div>
+<!-- Item 6: Flagged -->
+<div class="group relative flex flex-col p-4 bg-red-50/30 dark:bg-red-900/10 hover:bg-red-50/50 dark:hover:bg-red-900/20 transition-colors">
+<div class="flex items-start justify-between mb-3">
+<div class="flex items-center gap-3">
+<div class="relative w-8 h-8 flex items-center justify-center bg-red-100 dark:bg-red-900/40 rounded-lg text-red-700 dark:text-red-300 text-xs font-bold border border-red-200 dark:border-red-800">
+                        !!
+                    </div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-primary dark:text-white leading-none">Frankie Z.</span>
+<span class="text-xs text-red-500 dark:text-red-400 mt-1 font-mono">fraud_check@unknown.com</span>
+</div>
+</div>
+<div class="px-2 py-0.5 bg-red-100 dark:bg-red-900/50 rounded text-xxs font-bold text-red-700 dark:text-red-300 uppercase tracking-wide">Flagged</div>
+</div>
+<div class="grid grid-cols-12 items-baseline">
+<div class="col-span-3">
+<span class="text-sm font-medium text-gray-900 dark:text-gray-200 tabular-nums">1</span>
+</div>
+<div class="col-span-5">
+<span class="text-sm font-bold text-gray-900 dark:text-gray-200 tabular-nums">$9,999.00</span>
+</div>
+<div class="col-span-4 text-right">
+<span class="text-xs font-medium text-gray-500 dark:text-gray-400">Just now</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-border-dark px-2 pb-safe pt-2 z-50">
+<div class="flex justify-around items-center h-14">
+<button class="flex flex-col items-center justify-center w-full h-full space-y-1 text-gray-400 hover:text-primary dark:hover:text-white group">
+<span class="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform">dashboard</span>
+<span class="text-[10px] font-medium">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full space-y-1 text-primary dark:text-accent group relative">
+<span class="absolute top-1 right-8 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+<span class="material-symbols-outlined text-[24px] font-variation-settings-fill">group</span>
+<span class="text-[10px] font-medium">Customers</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full space-y-1 text-gray-400 hover:text-primary dark:hover:text-white group">
+<span class="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform">confirmation_number</span>
+<span class="text-[10px] font-medium">Events</span>
+</button>
+<button class="flex flex-col items-center justify-center w-full h-full space-y-1 text-gray-400 hover:text-primary dark:hover:text-white group">
+<span class="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform">approval</span>
+<span class="text-[10px] font-medium">Approvals</span>
+</button>
+</div>
+</nav>
+<!-- Safe area spacing for mobile browsers -->
+<div class="h-6 w-full bg-surface-light dark:bg-background-dark"></div>
+<style>
+        /* Utility for filled material icons */
+        .font-variation-settings-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Mobile safe area for bottom nav */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+    </style>
+</body></html>

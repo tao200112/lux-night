@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Merchant Dashboard - Nightlife Venue</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "background-light": "#ffffff",
+                        "background-dark": "#1a1d23",
+                        "card-light": "#F5F7F9",
+                        "card-dark": "#252932",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#0c1d1d] dark:text-gray-100 antialiased">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
+<div class="flex items-center justify-between px-4 py-3">
+<div class="flex items-center gap-2">
+<div class="bg-primary/10 text-primary px-3 py-1.5 rounded-full flex items-center gap-2">
+<span class="text-sm font-bold tracking-tight">Club Neon</span>
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+<span class="material-symbols-outlined">calendar_today</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary overflow-hidden border border-primary/20">
+<img alt="Profile" class="w-full h-full object-cover" data-alt="Staff profile photo portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6YHJ7sxMAolQU-Zcqj82EvfIeGpoGZNwi9RTr__1gO5p7jBnDS-PGL1anbag78tsunoNI-vPOqIHs3pLj6n8KBq6YONFZGbqZhu_Q5-UH1bnxAsVkMTuzTY2NxqzFmtq0bvN6Dz7R-lrnljWKW9_IvbszWFOkTDMcgxIjxDcWzGduhtacsd65ti7bJby6LdmKPYM4RCe0E795Dyg1nDHjyAjq3a_e1xdji7f2ay-bzNONMvwJbJh7_CqLw5kzLsSsZcNPDqe__UI"/>
+</div>
+</div>
+</div>
+</header>
+<main class="pb-24">
+<!-- KPI Grid -->
+<section class="p-4">
+<div class="grid grid-cols-2 gap-3">
+<div class="flex flex-col gap-1 rounded-xl p-4 bg-card-light dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-sm">
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">Sales (GMV)</p>
+<div class="flex items-end gap-2">
+<p class="text-xl font-bold leading-tight">$12,450</p>
+<p class="text-[#3CB371] text-xs font-bold pb-0.5">+12%</p>
+</div>
+</div>
+<div class="flex flex-col gap-1 rounded-xl p-4 bg-card-light dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-sm">
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">Orders</p>
+<div class="flex items-end gap-2">
+<p class="text-xl font-bold leading-tight">342</p>
+<p class="text-[#3CB371] text-xs font-bold pb-0.5">+5%</p>
+</div>
+</div>
+<div class="flex flex-col gap-1 rounded-xl p-4 bg-card-light dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-sm">
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">Check-ins</p>
+<div class="flex items-end gap-2">
+<p class="text-xl font-bold leading-tight">892</p>
+<p class="text-[#3CB371] text-xs font-bold pb-0.5">+8%</p>
+</div>
+</div>
+<div class="flex flex-col gap-1 rounded-xl p-4 bg-card-light dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-sm">
+<p class="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">Refunds</p>
+<div class="flex items-end gap-2">
+<p class="text-xl font-bold leading-tight">2</p>
+<p class="text-[#DC143C] text-xs font-bold pb-0.5">-1%</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Revenue Chart Section -->
+<section class="px-4 py-2">
+<div class="bg-card-light dark:bg-card-dark rounded-xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<div>
+<h3 class="text-sm font-bold text-gray-900 dark:text-white">7-Day Revenue Trend</h3>
+<p class="text-xs text-gray-500 dark:text-gray-400">Total $84,200</p>
+</div>
+<span class="material-symbols-outlined text-primary text-xl">insights</span>
+</div>
+<div class="h-[140px] w-full relative">
+<svg class="w-full h-full" fill="none" preserveaspectratio="none" viewbox="0 0 478 150" xmlns="http://www.w3.org/2000/svg">
+<path d="M0 109C18 109 18 21 36 21C54 21 54 41 72 41C90 41 90 93 108 93C127 93 127 33 145 33C163 33 163 101 181 101C199 101 199 61 217 61C236 61 236 45 254 45C272 45 272 121 290 121C308 121 308 149 326 149C344 149 344 1 363 1C381 1 381 81 399 81C417 81 417 129 435 129C453 129 453 25 472 25V149H0V109Z" fill="url(#chartGradient)"></path>
+<path d="M0 109C18 109 18 21 36 21C54 21 54 41 72 41C90 41 90 93 108 93C127 93 127 33 145 33C163 33 163 101 181 101C199 101 199 61 217 61C236 61 236 45 254 45C272 45 272 121 290 121C308 121 308 149 326 149C344 149 344 1 363 1C381 1 381 81 399 81C417 81 417 129 435 129C453 129 453 25 472 25" stroke="#006666" stroke-linecap="round" stroke-width="3"></path>
+<defs>
+<lineargradient gradientunits="userSpaceOnUse" id="chartGradient" x1="236" x2="236" y1="1" y2="149">
+<stop stop-color="#006666" stop-opacity="0.2"></stop>
+<stop offset="1" stop-color="#006666" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+<div class="flex justify-between mt-2 px-1">
+<span class="text-[10px] font-bold text-gray-400 uppercase">Mon</span>
+<span class="text-[10px] font-bold text-gray-400 uppercase">Tue</span>
+<span class="text-[10px] font-bold text-gray-400 uppercase">Wed</span>
+<span class="text-[10px] font-bold text-gray-400 uppercase">Thu</span>
+<span class="text-[10px] font-bold text-gray-400 uppercase text-primary">Fri</span>
+<span class="text-[10px] font-bold text-gray-400 uppercase">Sat</span>
+<span class="text-[10px] font-bold text-gray-400 uppercase">Sun</span>
+</div>
+</div>
+</section>
+<!-- Tonight's Events List -->
+<section class="p-4">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-lg font-bold leading-tight tracking-tight">Tonight's Events</h3>
+<button class="text-primary text-sm font-semibold">View All</button>
+</div>
+<div class="space-y-3">
+<!-- Event 1 -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm flex">
+<div class="w-24 h-auto relative shrink-0">
+<img alt="Neon lights event" class="w-full h-full object-cover" data-alt="Vibrant neon club event crowd" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0ahKg-1rAUgbwHxlgGbgO55Sl56GDxtxuxcN_p0NwRb1LazHRUtwQBxmnEbZlj9dxhg2JNgcldl1y4iYGbH4U3JLix6_kVBoCu62CRspYt4_1LfSqJ8qQrvzn8bC9pwcEC-HuL9I5koW-8zlxYVgbQJFlx6bX67aywD4DBHS2etENjZNReDcpdgLl-TYKSc6IvKaizzyWgN6ZB3p-TlmE4TmZAxIeME-aI-e5_lcBpNPb38IZ7W41BL0CJlqAd1U5aecvzYe5nis"/>
+</div>
+<div class="p-3 flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-sm truncate">Electric Saturdays</h4>
+<span class="bg-primary/20 text-primary text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Staff</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400 mb-3">10:00 PM • Main Room</p>
+<div class="flex items-center gap-4">
+<div class="flex flex-col">
+<span class="text-xs font-bold">450/600</span>
+<span class="text-[10px] text-gray-400 uppercase font-medium">Sold</span>
+</div>
+<div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 75%"></div>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-xs font-bold">210</span>
+<span class="text-[10px] text-gray-400 uppercase font-medium">In</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Event 2 -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm flex">
+<div class="w-24 h-auto relative shrink-0">
+<img alt="Deep house dj" class="w-full h-full object-cover" data-alt="Close up of DJ mixer and hands" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCW6sczphvI8Bje6QuWJCO8baTHQ-4Vb9kBW78UWwS6B_-INDLE73ab3nQO45puUlu-PunM0D156UVWlatmweuxiXp-wcpKZ93Qzmgxq4DHGoX28RyRN5rlAFLlqrJ3M4qx5yYZumiHLdGqiTH8mdaowhmpjXqVnpDrIaPDF7zY62hFWm61W_ARtssuS7hPV2hl8bOhko3OL9P07NyzahNUxFmmRmGrB7mNX_H4vgAl_mVpre7bE0FjkkXY-ENQm7jDTxjr8wJYrk"/>
+</div>
+<div class="p-3 flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-sm truncate">Deep House Sessions</h4>
+<span class="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">VIP Only</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400 mb-3">11:30 PM • Lounge</p>
+<div class="flex items-center gap-4">
+<div class="flex flex-col">
+<span class="text-xs font-bold">120/150</span>
+<span class="text-[10px] text-gray-400 uppercase font-medium">Sold</span>
+</div>
+<div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 80%"></div>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-xs font-bold">45</span>
+<span class="text-[10px] text-gray-400 uppercase font-medium">In</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Event 3 -->
+<div class="bg-card-light dark:bg-card-dark rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm flex">
+<div class="w-24 h-auto relative shrink-0">
+<img alt="Rooftop bar" class="w-full h-full object-cover" data-alt="Rooftop bar with city lights view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUCmiY0KSlmP8IZl-i6jQE5NboJ_H9vO8Aq4q4MREc9kQjjFOyva73FsA5ANN8ZX2pEWovrDkCfWNrafWQAc2XgMrXL5R4cEfCkLSjYWY6M8lXSz3kG5jFpuFSD0BKtWtNcfpWZL4CC_FO_PTbyIFS0TH0KB5oEfBkVTW9eAg_9nZd8A9oerqJOeiyTkAgaryYQZucTmjFfa0gs0wxGhMYJCtFqH81xjr90faBFrkzXVMgXWFwXDIxZO5hvNeFaERWwWNf_MXMawk"/>
+</div>
+<div class="p-3 flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-sm truncate">Skyline Cocktails</h4>
+<span class="bg-primary/20 text-primary text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Staff</span>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400 mb-3">09:00 PM • Rooftop</p>
+<div class="flex items-center gap-4">
+<div class="flex flex-col">
+<span class="text-xs font-bold">88/100</span>
+<span class="text-[10px] text-gray-400 uppercase font-medium">Sold</span>
+</div>
+<div class="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 88%"></div>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-xs font-bold">76</span>
+<span class="text-[10px] text-gray-400 uppercase font-medium">In</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-6 py-3 flex items-center justify-between z-50">
+<div class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined font-bold">dashboard</span>
+<span class="text-[10px] font-bold">Dashboard</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-gray-400">
+<span class="material-symbols-outlined">event</span>
+<span class="text-[10px] font-bold">Events</span>
+</div>
+<div class="relative -top-6">
+<button class="w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center border-4 border-background-light dark:border-background-dark">
+<span class="material-symbols-outlined text-3xl">qr_code_scanner</span>
+</button>
+</div>
+<div class="flex flex-col items-center gap-1 text-gray-400">
+<span class="material-symbols-outlined">group</span>
+<span class="text-[10px] font-bold">Staff</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-gray-400">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold">Settings</span>
+</div>
+</nav>
+</body></html>

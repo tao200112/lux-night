@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Onyx Lounge - Venue Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,300;0,400;0,600;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#bfaf69",
+                        "background-light": "#f4f4f0",
+                        "background-dark": "#1c1c1c",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Serif", "serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar hiding for clean UI */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#1c1c1c] dark:text-white antialiased selection:bg-primary selection:text-black">
+<div class="relative min-h-screen w-full flex flex-col pb-28">
+<!-- Hero Section -->
+<div class="relative w-full h-[55vh] shrink-0">
+<!-- Back Navigation -->
+<div class="absolute top-0 left-0 w-full z-30 p-4 pt-12 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent">
+<button class="flex items-center justify-center size-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white hover:bg-white/20 transition-all active:scale-95">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="flex gap-3">
+<button class="flex items-center justify-center size-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white hover:bg-white/20 transition-all active:scale-95">
+<span class="material-symbols-outlined">ios_share</span>
+</button>
+<button class="flex items-center justify-center size-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white hover:bg-white/20 transition-all active:scale-95">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+</div>
+<!-- Hero Image -->
+<div class="absolute inset-0 w-full h-full bg-cover bg-center" data-alt="Luxurious dark lounge interior with ambient gold lighting and velvet seating" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA3bUnjS9psGWdvxIFATqyvzA-bVz3SlqniDqxTySc_yaQA_6VJAq1kj9jYW95T4zZWJ0_IOGCNCy2hCAI7sUyBGw7q8QfKi73uIEPJuO8nIlT3-jThlJIg7C0VX9gZn8Sc1K1DZpw1gcv1pRW2zTKtVUc59IxiLgb9e79Kdmif3tOPR1FoQbDMbp8IyJUlV5d5duymRLfSmuLlOGFTC_Vy2ayfFhP3CyIcwKtCxbwfauv2Ouh4wpBKC9gDP-TFqNELZjAMnk5EL6Xm');">
+</div>
+<!-- Gradient Overlay -->
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/50 to-transparent dark:from-background-dark dark:via-background-dark/60"></div>
+<!-- Hero Content -->
+<div class="absolute bottom-0 left-0 w-full p-6 z-20">
+<div class="flex items-center gap-2 mb-3">
+<span class="px-2 py-0.5 rounded border border-primary/40 bg-primary/10 text-primary text-xs tracking-wider uppercase font-semibold backdrop-blur-sm">
+                        Nightclub
+                    </span>
+<span class="text-gray-300 text-xs tracking-wider uppercase font-medium">
+                        • Cocktail Bar
+                    </span>
+</div>
+<h1 class="text-5xl font-bold text-white leading-none tracking-tight drop-shadow-sm">
+                    Onyx<br/><span class="text-gray-300">Lounge</span>
+</h1>
+</div>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 flex flex-col relative z-10 -mt-2">
+<!-- Location & Map Row -->
+<div class="px-6 py-6 border-b border-white/5 bg-background-light dark:bg-background-dark">
+<div class="flex items-center justify-between gap-6">
+<div class="flex-1">
+<p class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide mb-1">Location</p>
+<p class="text-xl text-gray-900 dark:text-gray-100 leading-snug">123 Midnight Blvd,<br/>New York, NY 10012</p>
+</div>
+<button class="shrink-0 group flex flex-col items-center justify-center size-[72px] bg-primary rounded-lg shadow-[0_4px_20px_rgba(191,175,105,0.2)] active:scale-95 transition-all hover:bg-[#d4c57e]">
+<span class="material-symbols-outlined text-background-dark !text-[28px] group-hover:-translate-y-0.5 transition-transform">map</span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-background-dark mt-1">Map</span>
+</button>
+</div>
+</div>
+<!-- About Section -->
+<div class="px-6 py-8">
+<h2 class="text-lg font-bold mb-3 text-gray-900 dark:text-white">The Experience</h2>
+<p class="text-gray-600 dark:text-gray-400 leading-relaxed text-[15px]">
+                    Step into a world where shadow meets brilliance. Onyx Lounge offers an intimate atmosphere curated for the discerning few. From our signature smoked cocktails to the curated deep house sessions, every detail is designed to transport you.
+                </p>
+</div>
+<!-- Events Section -->
+<div class="pb-8">
+<div class="px-6 flex items-baseline justify-between mb-5">
+<h2 class="text-2xl font-bold text-gray-900 dark:text-white">Upcoming</h2>
+<span class="text-primary text-sm font-medium cursor-pointer">November</span>
+</div>
+<!-- Horizontal Scroll Container -->
+<div class="flex overflow-x-auto snap-x snap-mandatory gap-4 px-6 pb-4 scrollbar-hide">
+<!-- Event Card 1 -->
+<div class="snap-center shrink-0 w-[260px] flex flex-col group cursor-pointer">
+<div class="relative w-full h-[320px] rounded-lg overflow-hidden bg-gray-800">
+<!-- Image -->
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" data-alt="DJ performing in a dark club with blue laser lights" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBL1-OyvqCZ_5GpSFI0zixPYP-kp-7kuHTuV0Ai52ABjQkVnu7_gC5gmfEPc3vebGgSfERKONh9AYKcCYYwZZ8cW7iyCaN9jp-GpOmxFuR5MpU1E-9deoyDmGgqRBFRzNIhd7rPPPn2iEKNuhv-Wq-GB-hrniuHGlQmpC6km6Ff9fsn7a6qbTA7ktsOfuNPvC8kGSMEYili1bpDkGCWvzccxfGcBbnQX13B-vV5vH8nWOZe3oir4otX7_YetL2qJJJiR4RRzUeQ7856');">
+</div>
+<!-- Gradient -->
+<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+<!-- Date Badge -->
+<div class="absolute top-4 right-4 bg-white/10 backdrop-blur-md border border-white/20 text-white px-3 py-2 rounded-lg text-center min-w-[60px]">
+<span class="block text-xs font-medium uppercase text-primary">Nov</span>
+<span class="block text-xl font-bold leading-none">12</span>
+</div>
+<!-- Card Content -->
+<div class="absolute bottom-0 left-0 p-5 w-full">
+<span class="inline-block px-2 py-1 mb-2 rounded bg-primary text-background-dark text-[10px] font-bold uppercase tracking-wide">
+                                    Selling Fast
+                                </span>
+<h3 class="text-xl font-bold text-white leading-tight mb-1">Golden Hour Gala</h3>
+<p class="text-gray-400 text-xs">8:00 PM • Live Jazz &amp; Cocktails</p>
+</div>
+</div>
+</div>
+<!-- Event Card 2 -->
+<div class="snap-center shrink-0 w-[260px] flex flex-col group cursor-pointer">
+<div class="relative w-full h-[320px] rounded-lg overflow-hidden bg-gray-800">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" data-alt="Abstract blurred colorful lights in a dark party environment" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDZuX8vEjM3eao7n3v36q8L4HwJBst6ML_s7bpZz70HiZzNH77cunvh084WSk7PN5m6dnllm0h1A5ZfcPdCIJguyMzjnQZNFwLz_AqzmnTzI18MEIX5pV55inGd6eDOQHK4sqPHo8BA3eLaJzH7-EgBIWStP9V9vUSU-zdKzb8gkWO4gsXegO3pMMWAubY5xQ2fMSw0wch7FDQ6lTwfMa_y4lmhQWeyXuvN7mFj4TCfe9sSC4-zI0mA8Viyv1jC1BlLVRGqkdrJ8lUC');">
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+<div class="absolute top-4 right-4 bg-white/10 backdrop-blur-md border border-white/20 text-white px-3 py-2 rounded-lg text-center min-w-[60px]">
+<span class="block text-xs font-medium uppercase text-primary">Nov</span>
+<span class="block text-xl font-bold leading-none">14</span>
+</div>
+<div class="absolute bottom-0 left-0 p-5 w-full">
+<h3 class="text-xl font-bold text-white leading-tight mb-1">Midnight Jazz Series</h3>
+<p class="text-gray-400 text-xs">11:00 PM • The Quartet</p>
+</div>
+</div>
+</div>
+<!-- Event Card 3 -->
+<div class="snap-center shrink-0 w-[260px] flex flex-col group cursor-pointer">
+<div class="relative w-full h-[320px] rounded-lg overflow-hidden bg-gray-800">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" data-alt="People toasting champagne glasses at a rooftop party at night" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD8ZXkSPBYnSNVfOEI0XvkOfxBPmOmqFiCK0_q0lOiTh5r8tOqPTuesQ4ac-rJAQvqWPRmrS2klUa3m5nr90b35b27wKKaQ5pfOT9XOhAFIMgXsp84rvzDO_fdWCZ7Gaje2J8ByjHutrM27srRNaKCH-LM3uoLq2tdAsy0daM3t2Kq54Uc_nuHNCdfeELB0shsf20F3P__5LINnEFy03XJaysJLEZYCGHxv8AAEN1wAtC7u_QAAL10aHta424YWYWww7tHmytNav3Lc');">
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+<div class="absolute top-4 right-4 bg-white/10 backdrop-blur-md border border-white/20 text-white px-3 py-2 rounded-lg text-center min-w-[60px]">
+<span class="block text-xs font-medium uppercase text-primary">Nov</span>
+<span class="block text-xl font-bold leading-none">18</span>
+</div>
+<div class="absolute bottom-0 left-0 p-5 w-full">
+<h3 class="text-xl font-bold text-white leading-tight mb-1">Rooftop Private</h3>
+<p class="text-gray-400 text-xs">10:00 PM • Guestlist Only</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Amenities Grid (Extra Polish) -->
+<div class="px-6 pb-8">
+<h3 class="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4">Amenities</h3>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-[20px]">wine_bar</span>
+<span class="text-sm font-medium">Full Bar</span>
+</div>
+<div class="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-[20px]">checkroom</span>
+<span class="text-sm font-medium">Coat Check</span>
+</div>
+<div class="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-[20px]">queue_music</span>
+<span class="text-sm font-medium">Live DJ</span>
+</div>
+<div class="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-[20px]">local_parking</span>
+<span class="text-sm font-medium">Valet</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Bottom CTA -->
+<div class="fixed bottom-0 left-0 w-full p-4 pb-8 z-40 bg-gradient-to-t from-background-dark via-background-dark to-transparent pt-8">
+<button class="w-full h-14 bg-primary rounded-lg flex items-center justify-between px-6 shadow-[0_0_25px_rgba(191,175,105,0.25)] hover:shadow-[0_0_35px_rgba(191,175,105,0.4)] transition-all active:scale-[0.98]">
+<span class="text-background-dark font-bold text-lg">View All Events</span>
+<span class="bg-black/10 size-8 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-background-dark">arrow_forward</span>
+</span>
+</button>
+</div>
+</body></html>

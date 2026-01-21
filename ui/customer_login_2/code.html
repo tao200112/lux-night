@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lux Night - Payment Processing</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Noto+Serif:ital,wght@0,300;0,400;0,600;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#c8ab5f",
+                        "secondary": "#AA8D55",
+                        "background-light": "#faf8f4",
+                        "background-dark": "#1a1a1a",
+                        "surface-dark": "#222222",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Serif", "serif"],
+                        "sans": ["Manrope", "sans-serif"],
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    }
+                },
+            },
+        }
+    </script>
+<style>.text-glow {
+            text-shadow: 0 0 20px rgba(200, 171, 95, 0.4);
+        }
+        .gold-border-gradient {
+            border-image: linear-gradient(to right, transparent, #c8ab5f, transparent) 1;
+        }@keyframes elegant-spin {
+            0% { transform: rotate(0deg); stroke-dasharray: 10, 150; stroke-dashoffset: 0; }
+            50% { transform: rotate(360deg); stroke-dasharray: 100, 150; stroke-dashoffset: -35; }
+            100% { transform: rotate(720deg); stroke-dasharray: 10, 150; stroke-dashoffset: -124; }
+        }
+        .spinner-path {
+            animation: elegant-spin 3s ease-in-out infinite;
+            transform-origin: center;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+<div class="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px]"></div>
+<div class="absolute inset-0 opacity-[0.03]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0VxuNhdqjhWKWUOHRHwooYJM5aNIoQXc8RiSqAH8Ah95h0G79PvBog5-bvTrdvx3ToIwnNRv9uDSrjBnF25mh_O_I3sTeKPuZVjoqKC-qxl1mPjr-Hse62FV_B_w1qfgesCcw-U-teSm8_d0Fa_7qYk_6WznkAKlG12eRpAtjWQKnnrWXI32sXzu8SXKs4h8A1-gxl6oBiVitWLaG038C15u5v0Trn7E01RbGP_ZhXKHizwJYwYRxD_n3BsmcLYxazsPoPNOnoBoR');"></div>
+</div>
+<div class="relative z-10 w-full max-w-md flex flex-col items-center justify-between min-h-[600px] py-8 h-full">
+<div class="flex flex-col items-center justify-center w-full h-16 opacity-30">
+<svg class="text-primary" fill="none" height="24" viewBox="0 0 48 48" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M24 0L26.5 18L44 24L26.5 30L24 48L21.5 30L4 24L21.5 18L24 0Z" fill="currentColor"></path>
+</svg>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center w-full -mt-16">
+<div class="relative mb-12">
+<div class="absolute inset-0 bg-primary/20 blur-[30px] rounded-full scale-150"></div>
+<svg class="w-24 h-24 text-primary relative z-10" viewBox="0 0 50 50">
+<circle class="opacity-10" cx="25" cy="25" fill="none" r="20" stroke="currentColor" stroke-width="1.5"></circle>
+<circle class="spinner-path" cx="25" cy="25" fill="none" r="20" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"></circle>
+</svg>
+</div>
+<h1 class="font-display text-white text-2xl font-medium tracking-wide leading-tight text-center mb-3">
+            Confirming payment...
+        </h1>
+<p class="font-sans text-secondary text-sm font-light tracking-wider text-center opacity-90">
+            Usually takes 10-20 seconds
+        </p>
+</div>
+<div class="mt-auto flex flex-col items-center pb-4">
+<a class="group relative py-2 px-4" href="#">
+<span class="font-sans text-xs font-semibold tracking-[0.15em] uppercase text-zinc-500 group-hover:text-secondary transition-colors duration-300">
+                Cancel
+            </span>
+<span class="absolute bottom-1 left-1/2 -translate-x-1/2 w-0 h-[1px] bg-secondary group-hover:w-1/2 transition-all duration-300 opacity-50"></span>
+</a>
+</div>
+</div>
+
+</body></html>

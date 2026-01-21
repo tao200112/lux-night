@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>No Access - Venue Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#203560",
+              "background-light": "#f9fafa",
+              "background-dark": "#21242c",
+            },
+            fontFamily: {
+              "display": ["Manrope"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      body {
+        font-family: 'Manrope', sans-serif;
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300">
+<!-- Top Navigation -->
+<div class="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10 border-b border-gray-100 dark:border-gray-800">
+<div class="w-12 flex justify-start">
+<button class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+<span class="material-symbols-outlined text-[#101318] dark:text-white">chevron_left</span>
+</button>
+</div>
+<h2 class="text-[#101318] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Restricted</h2>
+<div class="w-12"></div>
+</div>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col items-center justify-center px-6 py-12">
+<div class="w-full max-w-sm flex flex-col items-center text-center">
+<!-- Graphic Illustration Container -->
+<div class="mb-10 relative flex items-center justify-center">
+<div class="absolute w-24 h-24 bg-primary/5 dark:bg-primary/20 rounded-full scale-150 blur-xl"></div>
+<div class="relative w-20 h-20 bg-white dark:bg-gray-800 rounded-2xl shadow-xl flex items-center justify-center border border-gray-100 dark:border-gray-700">
+<span class="material-symbols-outlined text-primary dark:text-blue-400 !text-4xl">shield_lock</span>
+</div>
+</div>
+<!-- Empty State Content -->
+<div class="flex flex-col items-center gap-3 mb-10">
+<h1 class="text-[#101318] dark:text-white text-2xl font-bold leading-tight tracking-[-0.025em]">
+                    No Access
+                </h1>
+<p class="text-gray-500 dark:text-gray-400 text-base font-normal leading-relaxed max-w-[280px]">
+                    You don’t have permission to view this page. Contact your administrator if you believe this is an error.
+                </p>
+</div>
+<!-- Action Buttons -->
+<div class="w-full space-y-3">
+<!-- Primary Action -->
+<button class="w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-6 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] shadow-lg shadow-primary/20 active:scale-95 transition-transform">
+<span class="truncate">Back to Home</span>
+</button>
+<!-- Secondary Action -->
+<button class="w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-[#101318] dark:text-white text-base font-bold leading-normal tracking-[0.015em] active:scale-95 transition-transform">
+<span class="truncate">Switch Workspace</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Bar -->
+<div class="mt-auto border-t border-gray-100 dark:border-gray-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 pb-8 pt-2">
+<div class="flex gap-2 max-w-lg mx-auto">
+<a class="flex flex-1 flex-col items-center justify-end gap-1 rounded-full text-[#101318] dark:text-white py-2" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined !text-2xl" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<p class="text-xs font-semibold leading-normal tracking-[0.015em]">Home</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-gray-400 dark:text-gray-500 py-2" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined !text-2xl">group</span>
+</div>
+<p class="text-xs font-medium leading-normal tracking-[0.015em]">Staff</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-gray-400 dark:text-gray-500 py-2" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined !text-2xl">nightlife</span>
+</div>
+<p class="text-xs font-medium leading-normal tracking-[0.015em]">Venues</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-gray-400 dark:text-gray-500 py-2" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined !text-2xl">account_circle</span>
+</div>
+<p class="text-xs font-medium leading-normal tracking-[0.015em]">Account</p>
+</a>
+</div>
+</div>
+</body></html>

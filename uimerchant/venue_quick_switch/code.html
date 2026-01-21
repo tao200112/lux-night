@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Venue Quick Switch</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f6d76",
+                        "background-light": "#f6f8f8",
+                        "background-dark": "#112021",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-venue {
+            background-color: rgba(15, 109, 118, 0.15);
+            border: 1px solid rgba(15, 109, 118, 0.3);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white">
+<!-- Mock Background for Context (Top Bar) -->
+<div class="fixed top-0 left-0 w-full h-16 bg-background-dark flex items-center justify-between px-6 border-b border-[#356064]/20">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">nightlife</span>
+<span class="font-bold text-lg">The Midnight Lounge</span>
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</div>
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">person</span>
+</div>
+</div>
+<!-- Main Content Underlay (Blurred) -->
+<div class="pt-20 px-6 opacity-30">
+<h1 class="text-2xl font-bold mb-4">Tonight's Overview</h1>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-[#1b2b2c] p-4 rounded-xl h-32"></div>
+<div class="bg-[#1b2b2c] p-4 rounded-xl h-32"></div>
+</div>
+</div>
+<!-- Bottom Sheet Overlay -->
+<div class="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"></div>
+<!-- Venue Quick Switch Bottom Sheet -->
+<div class="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-stretch max-h-[85vh] bg-[#1b2b2c] rounded-t-[2.5rem] shadow-2xl border-t border-white/5">
+<!-- BottomSheetHandle -->
+<button class="flex h-8 w-full items-center justify-center">
+<div class="h-1.5 w-12 rounded-full bg-[#356064]/50"></div>
+</button>
+<!-- SectionHeader -->
+<div class="flex items-center justify-between px-6 pb-2 pt-2">
+<h2 class="text-white text-2xl font-bold leading-tight tracking-tight">Switch Venue</h2>
+<button class="text-[#94c2c7] hover:text-white">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- SearchBar -->
+<div class="px-6 py-4">
+<label class="flex flex-col min-w-40 h-12 w-full">
+<div class="flex w-full flex-1 items-stretch rounded-xl h-full border border-white/5">
+<div class="text-[#94c2c7] flex bg-[#254346]/50 items-center justify-center pl-4 rounded-l-xl">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-r-xl text-white focus:outline-0 focus:ring-0 border-none bg-[#254346]/50 focus:border-none h-full placeholder:text-[#94c2c7] px-4 pl-2 text-base font-normal" placeholder="Search your venues..." value=""/>
+</div>
+</label>
+</div>
+<!-- Scrollable Venue List -->
+<div class="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+<!-- Active Venue Item -->
+<div class="active-venue flex items-center gap-4 px-4 min-h-[80px] py-3 justify-between rounded-2xl">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-xl size-14 border-2 border-primary/50" data-alt="Aerial view of a dark upscale lounge interior" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBccRi7WlpbVI8FIBc5fQMFZWyJtSgpJITpe8t17lPnwG6VzzHaJVCFm2i5p_7NwkUAQ2spGMbmZHvK0x7_9TiIAQ-hI_o40A9Ko5DwvxhuL9D4HRK9H-JgnmR4I0mEHUlKjBS4ZpgKyq-_Y5blWNeG6LmCP2hWXYWVlT6ZgLY48dq2Pc8njAWC17x5mzxA624JWssEnrl5i3lMijJwbFLn8vsXsSkWLJxrXepWwTpzlcCQucNW0nAViEZBtiVGu3jmlchTcRCdTNw");'></div>
+<div class="flex flex-col justify-center">
+<p class="text-white text-base font-semibold leading-normal line-clamp-1">The Midnight Lounge</p>
+<p class="text-primary text-xs font-medium uppercase tracking-wider">Current Venue • Manager</p>
+</div>
+</div>
+<div class="shrink-0">
+<div class="flex size-8 items-center justify-center bg-primary rounded-full">
+<span class="material-symbols-outlined text-white text-[20px]">check</span>
+</div>
+</div>
+</div>
+<!-- Inactive Venue Item -->
+<div class="flex items-center gap-4 bg-transparent hover:bg-white/5 px-4 min-h-[80px] py-3 justify-between rounded-2xl transition-colors">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-xl size-14 opacity-80" data-alt="Neon signs on a rooftop garden bar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBh2nQYLXxdc57JeNlD02pe9vVbzbzZ4ygpvFCWPtB3rK2XcrC2ynqXHZVjuJt8wM5ncvkqMcqOkel1w04hqr3Na_BdS8wZQ65DhNe0RaCZWp_K_fzzi7ASMcCfYXf4yLT4t5S9g4aoCiBopDC6FPM_dWZTvznixd0Q3qXXEjwN7aHjVFvk8J1nTztQ7ljiyPZj_Aa9k_PsgDAFt6iwdHQFDrwqneS8Rsn_g_okqzkoX92HmsyGO-JYNwKEABDvStx4KZ-ABrEQY_E");'></div>
+<div class="flex flex-col justify-center">
+<p class="text-white text-base font-medium leading-normal line-clamp-1">Neon Garden Rooftop</p>
+<p class="text-[#94c2c7] text-sm font-normal leading-normal">Staff Member</p>
+</div>
+</div>
+<div class="shrink-0">
+<div class="text-[#356064] flex size-8 items-center justify-center">
+<span class="material-symbols-outlined">circle</span>
+</div>
+</div>
+</div>
+<!-- Inactive Venue Item -->
+<div class="flex items-center gap-4 bg-transparent hover:bg-white/5 px-4 min-h-[80px] py-3 justify-between rounded-2xl transition-colors">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-xl size-14 opacity-80" data-alt="Red velvet curtains and dark basement bar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDFW8BudhcXtmjVbQps0pOcSmNBLPJ97qGlIgTDaK-nUUhVp6nBETPsLkjoB6EmYv-q4Z4kHFfWqDSvbnHd1DxZKgG-C1qNre9Wdnhtl_6RBDA5aVJAp8YBGMfJLcw1Gf-1RbCTOXhKlbr6iEIYDjhRbuqjFYGG0OrG3ZyiJT-k7JpzsPRioUbXf6MzGE4h4dXJGah0lN7ZUehjKORWRxk3AXWQ75BOlHgnAx554sMo9I10_xB-2UM62DrtIpdWsCxre4-4YZqvwAg");'></div>
+<div class="flex flex-col justify-center">
+<p class="text-white text-base font-medium leading-normal line-clamp-1">Velvet Basement</p>
+<p class="text-[#94c2c7] text-sm font-normal leading-normal">Staff Member</p>
+</div>
+</div>
+<div class="shrink-0">
+<div class="text-[#356064] flex size-8 items-center justify-center">
+<span class="material-symbols-outlined">circle</span>
+</div>
+</div>
+</div>
+<!-- Inactive Venue Item -->
+<div class="flex items-center gap-4 bg-transparent hover:bg-white/5 px-4 min-h-[80px] py-3 justify-between rounded-2xl transition-colors">
+<div class="flex items-center gap-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-xl size-14 opacity-80" data-alt="Modern industrial concrete bar interior" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC-RylVUeCWdxKCDg2ypC2pn9Itd8F--KOC8iZGToQNbh_Fz1eNpLxt7EfwjOSkLKxsV52vbdenNjQjhl4CJn4iv88hFedLLen41eS3vQQ0ke4Es3TaSgV-OxR_oG-k9KxvL-KqdfZ7KBAqys7n-t6tdRVz66xnBHVqNWvAXVcH45_NGWnbNEmbO1kJLbjbmUStQbKR7RsUJNIzOeiIDhz79zK_0uZ3aCyiYDnE5iEwvrPWWji_eFmg3eBXmRnAFlIezYwyuIWM8z0");'></div>
+<div class="flex flex-col justify-center">
+<p class="text-white text-base font-medium leading-normal line-clamp-1">Industrial Social</p>
+<p class="text-[#94c2c7] text-sm font-normal leading-normal">Owner</p>
+</div>
+</div>
+<div class="shrink-0">
+<div class="text-[#356064] flex size-8 items-center justify-center">
+<span class="material-symbols-outlined">circle</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Action Button -->
+<div class="px-6 py-6 bg-[#1b2b2c] border-t border-white/5 rounded-b-[2.5rem]">
+<button class="flex w-full items-center justify-center gap-2 h-14 bg-primary text-white rounded-xl font-semibold text-lg shadow-lg active:scale-95 transition-transform">
+<span class="material-symbols-outlined">add_circle</span>
+                Add New Venue
+            </button>
+<!-- iOS Home Indicator Spacing -->
+<div class="h-4"></div>
+</div>
+</div>
+</body></html>

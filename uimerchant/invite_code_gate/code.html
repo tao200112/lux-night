@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Invite Code Gate</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006666",
+                        "background-light": "#ffffff",
+                        "background-dark": "#18181b",
+                        "charcoal": "#212121",
+                        "mid-gray": "#666666",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Custom focused state for input to match dark teal theme */
+        .form-input:focus {
+            border-color: #006666 !important;
+            box-shadow: 0 0 0 1px #006666 !important;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-charcoal dark:text-white transition-colors duration-200">
+<!-- Main Container: Centered vertically and horizontally for iOS Phone Factor -->
+<div class="flex flex-col min-h-screen w-full max-w-md mx-auto px-8 justify-center">
+<!-- Header/Logo Section (Abstract Icon) -->
+<div class="flex flex-col items-center mb-12">
+<div class="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-primary text-4xl">
+                    lock_open
+                </span>
+</div>
+<!-- HeadlineText Component Style -->
+<h1 class="text-charcoal dark:text-white tracking-tight text-[32px] font-bold leading-tight text-center">
+                Enter Invite Code
+            </h1>
+<!-- BodyText Component Style -->
+<p class="text-mid-gray dark:text-gray-400 text-base font-normal leading-relaxed mt-4 text-center max-w-[280px]">
+                To access the venue management platform, please enter the unique invite code provided by your administrator.
+            </p>
+</div>
+<!-- Input Section -->
+<div class="w-full space-y-8">
+<!-- TextField Component Style -->
+<div class="flex flex-col w-full">
+<div class="relative group">
+<input class="form-input block w-full text-center text-2xl font-semibold tracking-[0.2em] uppercase rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-900 h-20 placeholder:text-gray-300 dark:placeholder:text-gray-600 focus:outline-0 transition-all" maxlength="10" placeholder="XLK-992" type="text"/>
+<!-- Focus indicator dot -->
+<div class="absolute bottom-[-1.5rem] left-1/2 -translate-x-1/2 flex gap-1.5 opacity-40">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+</div>
+</div>
+</div>
+<!-- SingleButton Component Style -->
+<div class="flex flex-col pt-4">
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-14 bg-primary text-white text-lg font-bold leading-normal tracking-[0.015em] shadow-sm active:scale-[0.98] transition-transform">
+<span class="truncate">Verify Code</span>
+</button>
+<!-- Security Disclaimer -->
+<div class="mt-8 flex items-center justify-center gap-2 text-xs text-mid-gray/60 dark:text-gray-500 uppercase tracking-widest font-medium">
+<span class="material-symbols-outlined text-sm">verified_user</span>
+                    Secure Access Only
+                </div>
+</div>
+</div>
+<!-- Bottom Graphic/Spacing -->
+<div class="mt-24 flex justify-center opacity-5">
+<div class="grid grid-cols-4 gap-4">
+<div class="w-8 h-8 bg-charcoal dark:bg-white rounded-full"></div>
+<div class="w-8 h-8 bg-charcoal dark:bg-white rounded-full"></div>
+<div class="w-8 h-8 bg-charcoal dark:bg-white rounded-full"></div>
+<div class="w-8 h-8 bg-charcoal dark:bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Background Decorative Element (Subtle) -->
+<div class="fixed top-0 left-0 w-full h-full pointer-events-none z-[-1] overflow-hidden">
+<div class="absolute top-[-10%] right-[-10%] w-[40%] h-[30%] bg-primary/5 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-[-5%] left-[-5%] w-[30%] h-[25%] bg-primary/5 rounded-full blur-[100px]"></div>
+</div>
+</body></html>
