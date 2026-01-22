@@ -3,11 +3,21 @@
  * Internal Web - 邀请码兑换 API
  * 
  * 功能：
- * 1. 验证邀请码有效性（未使用、未过期、状态active）
+ * 1. 验证邀请码有效性（未禁用、未过期、未用尽）
  * 2. 创建 merchant_members 记录
- * 3. 标记邀请码为已使用
+ * 3. 更新邀请码使用计数和状态
  * 
  * 使用 Service Role Key 绕过 RLS
+ * 
+ * 数据库字段（invites 表）：
+ * - token (text) - 邀请码
+ * - merchant_id (uuid)
+ * - venue_id (uuid)
+ * - intended_role (text)
+ * - max_uses (int), used_count (int)
+ * - expires_at (timestamptz)
+ * - disabled (bool), is_active (bool)
+ * - redeemed_by (uuid), redeemed_at (timestamptz), revoked_at (timestamptz)
  */
 
 import { createClient } from '@/lib/supabase/server';
@@ -69,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     const trimmedCode = code.trim();
-    console.log('[INVITE CONSUME] Checking code:', trimmedCode);
+    console.log('[INVITE CONSUME] Checking token:', trimmedCode);
 
     // ============================================================
     // 3. 使用 Service Role Key 查询邀请码（绕过 RLS）
@@ -94,22 +104,15 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // 查询邀请码
+    // 查询邀请码 - 使用 token 字段和 maybeSingle()
     const { data: invite, error: inviteError } = await serviceSupabase
       .from('invites')
-      .select('id, code, merchant_id, role, status, used_by, used_at, expires_at')
-      .eq('code', trimmedCode)
-      .single();
+      .select('id, token, merchant_id, venue_id, intended_role, max_uses, used_count, expires_at, disabled, is_active, revoked_at')
+      .eq('token', trimmedCode)
+      .maybeSingle();
 
     if (inviteError) {
       console.error('[INVITE CONSUME] Invite query error:', inviteError);
-      if (inviteError.code === 'PGRST116') {
-        // No rows returned
-        return NextResponse.json<ConsumeInviteResponse>(
-          { success: false, error: 'Invalid invite code. Please check and try again.' },
-          { status: 404 }
-        );
-      }
       return NextResponse.json<ConsumeInviteResponse>(
         { success: false, error: 'Failed to verify invite code' },
         { status: 500 }
@@ -117,8 +120,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (!invite) {
+      console.warn('[INVITE CONSUME] Invite not found for token:', trimmedCode);
       return NextResponse.json<ConsumeInviteResponse>(
-        { success: false, error: 'Invalid invite code' },
+        { success: false, error: 'Invalid invite code. Please check and try again.' },
         { status: 404 }
       );
     }
@@ -126,29 +130,42 @@ export async function POST(request: NextRequest) {
     console.log('[INVITE CONSUME] Found invite:', {
       id: invite.id,
       merchant_id: invite.merchant_id,
-      status: invite.status,
-      used_by: invite.used_by,
+      intended_role: invite.intended_role,
+      disabled: invite.disabled,
+      is_active: invite.is_active,
+      revoked_at: invite.revoked_at,
       expires_at: invite.expires_at,
+      max_uses: invite.max_uses,
+      used_count: invite.used_count,
     });
 
     // ============================================================
-    // 4. 验证邀请码状态
+    // 4. 验证邀请码状态（使用新字段）
     // ============================================================
     
-    // 检查状态
-    if (invite.status !== 'active') {
-      console.warn('[INVITE CONSUME] Invite not active:', invite.status);
+    // 检查是否被禁用
+    if (invite.disabled === true) {
+      console.warn('[INVITE CONSUME] Invite disabled');
       return NextResponse.json<ConsumeInviteResponse>(
-        { success: false, error: `Invite code is ${invite.status}. Please contact your merchant owner.` },
+        { success: false, error: 'This invite code has been disabled. Please contact your merchant owner.' },
         { status: 400 }
       );
     }
 
-    // 检查是否已被使用
-    if (invite.used_by) {
-      console.warn('[INVITE CONSUME] Invite already used by:', invite.used_by);
+    // 检查是否非激活
+    if (invite.is_active === false) {
+      console.warn('[INVITE CONSUME] Invite not active');
       return NextResponse.json<ConsumeInviteResponse>(
-        { success: false, error: 'This invite code has already been used.' },
+        { success: false, error: 'This invite code is not active. Please contact your merchant owner.' },
+        { status: 400 }
+      );
+    }
+
+    // 检查是否已被撤销
+    if (invite.revoked_at) {
+      console.warn('[INVITE CONSUME] Invite revoked at:', invite.revoked_at);
+      return NextResponse.json<ConsumeInviteResponse>(
+        { success: false, error: 'This invite code has been revoked. Please contact your merchant owner.' },
         { status: 400 }
       );
     }
@@ -166,6 +183,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 检查使用次数是否已用尽
+    if (invite.max_uses !== null && invite.max_uses !== undefined) {
+      const currentUsedCount = invite.used_count || 0;
+      if (currentUsedCount >= invite.max_uses) {
+        console.warn('[INVITE CONSUME] Invite usage exhausted:', {
+          max_uses: invite.max_uses,
+          used_count: currentUsedCount,
+        });
+        return NextResponse.json<ConsumeInviteResponse>(
+          { success: false, error: 'This invite code has reached its maximum usage limit.' },
+          { status: 400 }
+        );
+      }
+    }
+
     // ============================================================
     // 5. 检查用户是否已经是该 merchant 的成员
     // ============================================================
@@ -174,7 +206,7 @@ export async function POST(request: NextRequest) {
       .select('id, role, is_active')
       .eq('user_id', user.id)
       .eq('merchant_id', invite.merchant_id)
-      .maybeSingle(); // 使用 maybeSingle() 允许返回 null
+      .maybeSingle();
 
     if (membershipCheckError) {
       console.error('[INVITE CONSUME] Membership check error:', membershipCheckError);
@@ -200,7 +232,8 @@ export async function POST(request: NextRequest) {
     // ============================================================
     // 6. 创建 merchant_member 记录
     // ============================================================
-    const roleToAssign = invite.role || 'staff';
+    // 使用 intended_role，为空则默认 'staff'
+    const roleToAssign = invite.intended_role || 'staff';
     
     console.log('[INVITE CONSUME] Creating membership:', {
       merchant_id: invite.merchant_id,
@@ -230,22 +263,48 @@ export async function POST(request: NextRequest) {
     console.log('[INVITE CONSUME] ✅ Membership created:', newMembership);
 
     // ============================================================
-    // 7. 标记邀请码为已使用
+    // 7. 更新邀请码使用状态（使用新字段）
     // ============================================================
+    const currentUsedCount = invite.used_count || 0;
+    const newUsedCount = currentUsedCount + 1;
+    const now = new Date().toISOString();
+
+    // 构建更新对象
+    const updateData: {
+      used_count: number;
+      redeemed_by: string;
+      redeemed_at: string;
+      is_active?: boolean;
+      disabled?: boolean;
+    } = {
+      used_count: newUsedCount,
+      redeemed_by: user.id,
+      redeemed_at: now,
+    };
+
+    // 如果 max_uses 为 1 或递增后已用尽，禁用邀请码
+    if (invite.max_uses !== null && invite.max_uses !== undefined) {
+      if (invite.max_uses === 1 || newUsedCount >= invite.max_uses) {
+        updateData.is_active = false;
+        updateData.disabled = true;
+        console.log('[INVITE CONSUME] Disabling invite (usage exhausted)');
+      }
+    }
+
     const { error: updateError } = await serviceSupabase
       .from('invites')
-      .update({
-        status: 'used',
-        used_by: user.id,
-        used_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', invite.id);
 
     if (updateError) {
-      console.error('[INVITE CONSUME] Failed to mark invite as used:', updateError);
+      console.error('[INVITE CONSUME] Failed to update invite:', updateError);
       // 不返回错误，membership 已创建成功
     } else {
-      console.log('[INVITE CONSUME] ✅ Invite marked as used');
+      console.log('[INVITE CONSUME] ✅ Invite updated:', {
+        used_count: newUsedCount,
+        redeemed_by: user.id,
+        redeemed_at: now,
+      });
     }
 
     // ============================================================

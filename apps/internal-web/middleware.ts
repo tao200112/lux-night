@@ -146,10 +146,19 @@ export async function middleware(request: NextRequest) {
       .eq('is_active', true)
       .limit(1);
 
-    // 如果查询出错，记录但不阻止访问
+    // 如果查询出错，不要当作未绑定；给出错误或重试路径
     if (membershipError) {
       console.error('[MIDDLEWARE] ❌ Membership query error:', membershipError);
-      // 允许继续，可能是数据库连接问题
+      // 查询失败时，如果是访问 /invite 或 /login，允许继续
+      // 否则重定向到错误页面，提示重试
+      if (pathname !== '/invite' && pathname !== '/login' && pathname !== '/error') {
+        const errorUrl = new URL('/error', request.url);
+        errorUrl.searchParams.set('reason', 'membership_check_failed');
+        errorUrl.searchParams.set('message', 'Failed to verify membership. Please try again.');
+        return NextResponse.redirect(errorUrl);
+      }
+      // 如果已经在错误页面或登录/邀请页面，允许继续
+      return response;
     }
 
     // DEBUG: 打印 membership 检查结果
@@ -164,7 +173,7 @@ export async function middleware(request: NextRequest) {
       });
     }
 
-    // 3. 如果有 membership，允许访问
+    // 3. 如果有 membership，允许访问（直接进入 dashboard/workspaces，不再跳转 /invite）
     if (memberships && memberships.length > 0) {
       if (process.env.NODE_ENV === 'development') {
         console.log('[MIDDLEWARE] ✅ Membership found, allowing access');
