@@ -25,19 +25,18 @@ export async function signInWithGoogle(): Promise<void> {
   // 使用统一的回调 URL 生成器
   const redirectTo = getOAuthRedirectTo(window.location.origin);
   
+  console.log('[Google OAuth] Initiating with redirectTo:', redirectTo);
+  
+  // 使用最简参数，不添加额外的 queryParams
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo,
-      queryParams: {
-        access_type: 'offline',
-        prompt: 'consent',
-      },
     },
   });
 
   if (error) {
-    console.error('Error signing in with Google:', error);
+    console.error('[Google OAuth] Error:', error);
     throw error;
   }
 }
