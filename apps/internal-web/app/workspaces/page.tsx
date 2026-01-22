@@ -114,9 +114,12 @@ export default function WorkspacesPage() {
     if (!selectedWorkspace) return;
 
     try {
+      setError(null); // 清除之前的错误
+
       const res = await fetch('/api/workspace/select', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           merchantId: selectedWorkspace.merchantId,
           venueId: selectedWorkspace.venueId,
@@ -124,7 +127,16 @@ export default function WorkspacesPage() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to select workspace');
+        const errorData = await res.json().catch(() => ({}));
+        const errorMsg = errorData.error || errorData.message || `Failed to select workspace (${res.status})`;
+        throw new Error(errorMsg);
+      }
+
+      const data = await res.json();
+
+      // DEBUG: 开发环境打印成功日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WORKSPACES PAGE] Workspace selected:', data);
       }
 
       // 根据角色跳转（统一使用小写）
@@ -139,7 +151,9 @@ export default function WorkspacesPage() {
         router.push('/dashboard');
       }
     } catch (err: any) {
-      setError('Failed to select workspace');
+      console.error('[WORKSPACES PAGE] Select workspace error:', err);
+      setError(err.message || 'Failed to select workspace');
+      // 不自动重试，让用户手动点击重试
     }
   };
 

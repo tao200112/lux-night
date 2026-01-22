@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 export interface Workspace {
@@ -51,6 +51,8 @@ export function MerchantProvider({ children }: { children: ReactNode }) {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const selectWorkspaceAbortControllerRef = useRef<AbortController | null>(null);
+  const hasAutoSelectedRef = useRef<boolean>(false);
 
   // 从 API 加载用户信息和 workspace
   const loadMerchantData = useCallback(async () => {
@@ -97,16 +99,49 @@ export function MerchantProvider({ children }: { children: ReactNode }) {
         };
         setWorkspace(defaultWs);
 
-        // 自动设置默认 workspace（后台操作，不阻塞）
-        fetch('/api/workspace/select', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            merchant_id: defaultWs.merchantId,
-            venue_id: defaultWs.venueId,
-          }),
-        }).catch(console.error);
+        // 自动设置默认 workspace（后台操作，不阻塞，只执行一次）
+        // 使用 ref 防止重复调用
+        if (!hasAutoSelectedRef.current) {
+          hasAutoSelectedRef.current = true;
+          
+          // 取消之前的请求（如果有）
+          if (selectWorkspaceAbortControllerRef.current) {
+            selectWorkspaceAbortControllerRef.current.abort();
+          }
+          
+          const controller = new AbortController();
+          selectWorkspaceAbortControllerRef.current = controller;
+          
+          fetch('/api/workspace/select', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            signal: controller.signal,
+            body: JSON.stringify({
+              merchantId: defaultWs.merchantId, // 统一使用 merchantId 格式
+              venueId: defaultWs.venueId,
+            }),
+          })
+            .then(res => {
+              if (!res.ok) {
+                console.warn('[MerchantContext] Auto-select workspace failed:', res.status);
+              } else {
+                console.log('[MerchantContext] Auto-select workspace success');
+              }
+            })
+            .catch(err => {
+              // 忽略 AbortError（正常取消）
+              if (err.name !== 'AbortError') {
+                console.error('[MerchantContext] Auto-select workspace error:', err);
+              }
+            })
+            .finally(() => {
+              // 清理 ref
+              if (selectWorkspaceAbortControllerRef.current === controller) {
+                selectWorkspaceAbortControllerRef.current = null;
+              }
+            });
+        }
       } else {
         // 无 workspace，跳转到 select-workspace
         router.push('/workspaces');
@@ -129,14 +164,14 @@ export function MerchantProvider({ children }: { children: ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          merchant_id: merchantId,
-          venue_id: venueId,
+          merchantId: merchantId, // 统一使用 merchantId 格式
+          venueId: venueId,
         }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to switch workspace');
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to switch workspace (${res.status})`);
       }
 
       const data = await res.json();
@@ -160,13 +195,23 @@ export function MerchantProvider({ children }: { children: ReactNode }) {
       // 重新加载数据以确保同步
       await loadMerchantData();
     } catch (err: any) {
-      console.error('Error switching workspace:', err);
+      console.error('[MerchantContext] Error switching workspace:', err);
       setError(err.message || 'Failed to switch workspace');
+      throw err; // 重新抛出错误，让调用方知道失败
     }
   }, [memberships, loadMerchantData]);
 
   useEffect(() => {
     loadMerchantData();
+    
+    // 清理函数：组件卸载时取消正在进行的请求
+    return () => {
+      if (selectWorkspaceAbortControllerRef.current) {
+        selectWorkspaceAbortControllerRef.current.abort();
+        selectWorkspaceAbortControllerRef.current = null;
+      }
+      hasAutoSelectedRef.current = false;
+    };
   }, [loadMerchantData]);
 
   return (
