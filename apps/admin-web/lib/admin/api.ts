@@ -226,18 +226,23 @@ export async function withTimeout<T>(
 // E) Handler Wrapper (确保所有错误都返回响应)
 // ============================================================
 
-type HandlerFunction = (request: NextRequest) => Promise<NextResponse>;
+type HandlerFunction = (
+  request: NextRequest,
+  context?: any
+) => Promise<NextResponse>;
 
 /**
  * 包裹所有 admin API handler，确保：
  * 1. 所有错误都被捕获并返回 JSON 响应
  * 2. 没有未处理的 promise rejection
  * 3. 函数绝不会 pending 或卡住
+ * 
+ * 支持动态路由的 context 参数（如 [id] 路由）
  */
 export function handlerWrapper(fn: HandlerFunction): HandlerFunction {
-  return async (request: NextRequest): Promise<NextResponse> => {
+  return async (request: NextRequest, context?: any): Promise<NextResponse> => {
     try {
-      const result = await fn(request);
+      const result = await fn(request, context);
       // 确保返回的是 NextResponse
       if (!result || !(result instanceof NextResponse)) {
         console.error('[HANDLER_WRAPPER] Function did not return NextResponse');
