@@ -191,9 +191,8 @@ export async function GET(req: NextRequest) {
             id,
             name,
             address,
-            logo_url,
-            description,
             merchant_id,
+            region_id,
             merchants(
               id,
               name
@@ -208,8 +207,6 @@ export async function GET(req: NextRequest) {
             id: defaultVenue.id,
             name: defaultVenue.name,
             address: defaultVenue.address,
-            logo_url: defaultVenue.logo_url,
-            description: defaultVenue.description,
             merchant: (() => {
               if (!defaultVenue.merchants) return null;
               const merchantData = Array.isArray(defaultVenue.merchants) ? defaultVenue.merchants[0] : defaultVenue.merchants;
@@ -288,7 +285,7 @@ export async function GET(req: NextRequest) {
       try {
         const { data: venuesData, error: queryError } = await adminClient
           .from('venues')
-          .select('id, name, address, logo_url, description, merchant_id, region_id')
+          .select('id, name, address, merchant_id, region_id')
           .eq('merchant_id', merchant_id)
           .eq('is_active', true)
           .order('name');
@@ -359,8 +356,6 @@ export async function GET(req: NextRequest) {
           id: v.id,
           name: v.name,
           address: v.address,
-          logo_url: v.logo_url,
-          description: v.description,
           region_id: v.region_id,
           region: region ? {
             id: region.id,
@@ -388,7 +383,7 @@ export async function GET(req: NextRequest) {
     try {
       const { data: venuesData, error: queryError } = await adminClient
         .from('venues')
-        .select('id, name, address, logo_url, description, merchant_id, region_id')
+        .select('id, name, address, merchant_id, region_id')
         .eq('is_active', true)
         .order('name');
       
@@ -483,8 +478,6 @@ export async function GET(req: NextRequest) {
           id: v.id,
           name: v.name,
           address: v.address,
-          logo_url: v.logo_url,
-          description: v.description,
           region_id: v.region_id,
           region: region ? {
             id: region.id,

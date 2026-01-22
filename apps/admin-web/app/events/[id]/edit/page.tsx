@@ -15,8 +15,6 @@ interface Venue {
   id: string;
   name: string;
   address: string | null;
-  logo_url: string | null;
-  description: string | null;
   region_id?: string | null;
   region?: {
     id: string;
@@ -152,8 +150,6 @@ export default function AdminEditEventPage({ params }: { params: Promise<{ id: s
             id: event.venue.id,
             name: event.venue.name,
             address: event.venue.address,
-            logo_url: null,
-            description: null,
             merchant: event.merchant || { id: '', name: '' },
           });
           setHasDefaultVenue(true);

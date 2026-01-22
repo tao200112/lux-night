@@ -147,16 +147,50 @@ export async function POST(
       );
     }
     
-    // 确定最终使用的venue_id
-    // 优先级：1. 传入的venue_id 2. merchant.default_venue_id
+    // 确定最终使用的venue_id和region_id
+    // 优先级：1. 传入的venue_id 2. merchant.default_venue_id 3. 该merchant的第一个active venue
     let finalVenueId = venue_id || merchant.default_venue_id || null;
+    let finalRegionId = merchant.region_id || null;
     
-    // Publish时：必须要有venue_id
-    if (!isDraft && !finalVenueId) {
-      return NextResponse.json(
-        { success: false, code: 'VALIDATION_ERROR', message: 'Venue is required for publishing. Merchant has no default venue. Please bind a venue to this merchant first.' },
-        { status: 400 }
-      );
+    // 如果还没有venue_id，尝试获取merchant的第一个active venue
+    if (!finalVenueId) {
+      const { data: firstVenue, error: firstVenueError } = await supabase
+        .from('venues')
+        .select('id, region_id')
+        .eq('merchant_id', merchantId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
+      
+      if (!firstVenueError && firstVenue) {
+        finalVenueId = firstVenue.id;
+        finalRegionId = firstVenue.region_id || merchant.region_id || null;
+      }
+    }
+    
+    // Publish时：必须要有venue_id和region_id
+    if (!isDraft) {
+      if (!finalVenueId) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            code: 'MERCHANT_VENUE_NOT_BOUND', 
+            message: 'Venue is required for publishing. This merchant has no venue bound. Please bind a venue to this merchant first.' 
+          },
+          { status: 400 }
+        );
+      }
+      if (!finalRegionId) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            code: 'MERCHANT_REGION_NOT_BOUND', 
+            message: 'Region is required for publishing. This merchant has no region bound. Please bind a region to this merchant first.' 
+          },
+          { status: 400 }
+        );
+      }
     }
     
     // 验证 venue（如果提供了venue_id）
@@ -176,11 +210,15 @@ export async function POST(
         );
       }
       venue = venueData;
+      // 使用venue的region_id（优先级更高）
+      if (venue.region_id) {
+        finalRegionId = venue.region_id;
+      }
     }
     
     // 构建event数据
     const eventData: any = {
-      region_id: venue?.region_id || merchant.region_id,
+      region_id: finalRegionId,
       merchant_id: merchantId,
       venue_id: finalVenueId,
       title: title?.trim() || null,

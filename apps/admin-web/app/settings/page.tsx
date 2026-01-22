@@ -41,6 +41,11 @@ export default function AdminSettingsPage() {
   const [apiWriteAccess, setApiWriteAccess] = useState(false);
   const [systemStatus, setSystemStatus] = useState<'active' | 'maintenance'>('active');
   const [lastAudit, setLastAudit] = useState<string | null>(null);
+  const [showAddRegionModal, setShowAddRegionModal] = useState(false);
+  const [newRegionName, setNewRegionName] = useState('');
+  const [newRegionState, setNewRegionState] = useState('');
+  const [newRegionCountry, setNewRegionCountry] = useState('US');
+  const [submittingRegion, setSubmittingRegion] = useState(false);
   
   useEffect(() => {
     fetchSettings();
@@ -281,7 +286,13 @@ export default function AdminSettingsPage() {
                 )}
                 
                 {/* Add Button - 完全按照 UI 文档 */}
-                <button className="flex items-center justify-center gap-2 p-3 w-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 text-primary-active text-sm font-semibold transition-colors">
+                <button 
+                  onClick={() => {
+                    console.log('[SETTINGS] Add region button clicked');
+                    setShowAddRegionModal(true);
+                  }}
+                  className="flex items-center justify-center gap-2 p-3 w-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 text-primary-active text-sm font-semibold transition-colors"
+                >
                   <span className="material-symbols-outlined text-[18px]">add</span>
                   Add New Region
                 </button>
@@ -445,6 +456,133 @@ export default function AdminSettingsPage() {
       
       {/* Bottom Navigation - 使用统一组件 */}
       <AdminBottomNav pendingCount={0} />
+      
+      {/* Add Region Modal */}
+      {showAddRegionModal && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowAddRegionModal(false)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto bg-white dark:bg-slate-800 rounded-t-xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New Region</h3>
+              <button
+                onClick={() => setShowAddRegionModal(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined text-slate-600 dark:text-slate-400">close</span>
+              </button>
+            </div>
+            
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!newRegionName.trim()) {
+                  alert('Region name is required');
+                  return;
+                }
+                
+                try {
+                  setSubmittingRegion(true);
+                  const res = await fetch('/api/admin/settings/regions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      name: newRegionName.trim(),
+                      state: newRegionState.trim() || null,
+                      country: newRegionCountry || 'US',
+                    }),
+                  });
+                  
+                  const data = await res.json();
+                  
+                  if (!res.ok || !data.success) {
+                    throw new Error(data.message || data.error?.message || 'Failed to create region');
+                  }
+                  
+                  // 成功：关闭弹窗，重置表单，刷新列表
+                  setShowAddRegionModal(false);
+                  setNewRegionName('');
+                  setNewRegionState('');
+                  setNewRegionCountry('US');
+                  await fetchSettings(); // 刷新列表
+                  
+                  // 显示成功提示（简单alert，可以后续改为toast）
+                  alert('Region created successfully!');
+                } catch (err: any) {
+                  console.error('[ADD REGION] Error:', err);
+                  alert(err.message || 'Failed to create region');
+                } finally {
+                  setSubmittingRegion(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Region Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newRegionName}
+                  onChange={(e) => setNewRegionName(e.target.value)}
+                  placeholder="e.g. North America"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                  disabled={submittingRegion}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  State (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newRegionState}
+                  onChange={(e) => setNewRegionState(e.target.value)}
+                  placeholder="e.g. California"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={submittingRegion}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={newRegionCountry}
+                  onChange={(e) => setNewRegionCountry(e.target.value)}
+                  placeholder="US"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={submittingRegion}
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddRegionModal(false)}
+                  disabled={submittingRegion}
+                  className="flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-medium hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingRegion || !newRegionName.trim()}
+                  className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingRegion ? 'Creating...' : 'Create Region'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
     </div>
   );
 }

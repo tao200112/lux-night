@@ -15,8 +15,6 @@ interface Venue {
   id: string;
   name: string;
   address: string | null;
-  logo_url: string | null;
-  description: string | null;
   region_id?: string | null;
   region?: {
     id: string;
@@ -180,8 +178,6 @@ function AdminCreateEventPageContent() {
             id: venue.id,
             name: venue.name,
             address: venue.address,
-            logo_url: venue.logo_url,
-            description: venue.description,
             region_id: venue.region_id || null,
             region: venue.region || null,
             merchant: {

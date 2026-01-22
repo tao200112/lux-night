@@ -127,7 +127,7 @@ export async function GET(
     if (merchant.default_venue_id) {
       const { data: venueData, error: venueError } = await adminClient
         .from('venues')
-        .select('id, name, address, logo_url, description, is_active, region_id')
+        .select('id, name, address, is_active, region_id')
         .eq('id', merchant.default_venue_id)
         .single();
       
@@ -153,8 +153,6 @@ export async function GET(
           id: venueData.id,
           name: venueData.name,
           address: venueData.address,
-          logo_url: venueData.logo_url,
-          description: venueData.description,
           region_id: venueData.region_id,
           region,
         };
@@ -172,7 +170,6 @@ export async function GET(
         id: string;
         name: string;
         address: string | null;
-        logo_url: string | null;
         description: string | null;
         region_id: string | null;
         region: {
