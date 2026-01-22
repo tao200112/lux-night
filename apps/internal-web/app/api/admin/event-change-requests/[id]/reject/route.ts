@@ -65,14 +65,26 @@ export async function POST(
 
     if (fetchError || !request) {
       return NextResponse.json(
-        { error: 'NOT_FOUND', message: 'Change request not found' },
+        {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Change request not found',
+          },
+        },
         { status: 404 }
       );
     }
 
     if (request.status !== 'pending') {
       return NextResponse.json(
-        { error: 'INVALID_STATUS', message: `Request is already ${request.status}` },
+        {
+          success: false,
+          error: {
+            code: 'INVALID_STATUS',
+            message: `Request is already ${request.status}`,
+          },
+        },
         { status: 400 }
       );
     }
@@ -84,14 +96,20 @@ export async function POST(
         status: 'rejected',
         approved_by: user.id,
         approved_at: new Date().toISOString(),
-        rejection_reason: rejection_reason || 'Rejected by admin',
+        rejected_reason: rejection_reason || 'Rejected by admin',
       })
       .eq('id', id);
 
     if (rejectError) {
       console.error('[ADMIN EVENT CHANGE REQUEST] Reject error:', rejectError);
       return NextResponse.json(
-        { error: 'REJECT_FAILED', message: 'Failed to reject request' },
+        {
+          success: false,
+          error: {
+            code: 'REJECT_FAILED',
+            message: 'Failed to reject request',
+          },
+        },
         { status: 500 }
       );
     }
@@ -106,20 +124,38 @@ export async function POST(
     
     if (error.message === 'UNAUTHORIZED') {
       return NextResponse.json(
-        { error: 'UNAUTHORIZED' },
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Unauthorized',
+          },
+        },
         { status: 401 }
       );
     }
 
     if (error.message === 'FORBIDDEN') {
       return NextResponse.json(
-        { error: 'FORBIDDEN', message: 'Admin access required' },
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Admin access required',
+          },
+        },
         { status: 403 }
       );
     }
 
     return NextResponse.json(
-      { error: 'SERVER_ERROR', message: error.message },
+      {
+        success: false,
+        error: {
+          code: 'SERVER_ERROR',
+          message: error.message || 'Internal server error',
+        },
+      },
       { status: 500 }
     );
   }

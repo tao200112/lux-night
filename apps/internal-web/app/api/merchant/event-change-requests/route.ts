@@ -13,21 +13,47 @@ export async function POST(req: NextRequest) {
     await requireInternalAuth();
     
     const body = await req.json();
-    const { event_id, payload_json } = body;
+    const { event_id, request_type, payload_json } = body;
 
-    if (!event_id || !payload_json) {
+    if (!event_id || !request_type || !payload_json) {
       return NextResponse.json(
-        { error: 'VALIDATION_ERROR', message: 'event_id and payload_json are required' },
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'event_id, request_type, and payload_json are required',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 验证 request_type
+    if (!['poster', 'price', 'inventory'].includes(request_type)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'request_type must be one of: poster, price, inventory',
+          },
+        },
         { status: 400 }
       );
     }
 
     // 获取当前workspace
     const workspace = await getActiveWorkspace();
-    if (!workspace) {
+    if (!workspace || !workspace.merchantId) {
       return NextResponse.json(
-        { error: 'NO_WORKSPACE', message: 'No active workspace' },
-        { status: 403 }
+        {
+          success: false,
+          error: {
+            code: 'NO_WORKSPACE',
+            message: 'No active workspace or merchant_id missing',
+          },
+        },
+        { status: 400 }
       );
     }
 
@@ -36,7 +62,13 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'UNAUTHORIZED', message: 'Must be logged in' },
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Must be logged in',
+          },
+        },
         { status: 401 }
       );
     }
@@ -51,44 +83,41 @@ export async function POST(req: NextRequest) {
 
     if (eventError || !event) {
       return NextResponse.json(
-        { error: 'NOT_FOUND', message: 'Event not found or does not belong to your merchant' },
+        {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Event not found or does not belong to your merchant',
+          },
+        },
         { status: 404 }
       );
     }
 
-    // 检查是否有待审批的请求
-    const { data: pendingRequest } = await supabase
-      .from('event_change_requests')
-      .select('id')
-      .eq('event_id', event_id)
-      .eq('merchant_id', workspace.merchantId)
-      .eq('status', 'pending')
-      .maybeSingle();
-
-    if (pendingRequest) {
-      return NextResponse.json(
-        { error: 'PENDING_REQUEST_EXISTS', message: 'You already have a pending change request for this event' },
-        { status: 400 }
-      );
-    }
-
-    // 创建修改请求
+    // 创建修改请求（允许同一活动有多个不同类型的 pending 请求）
     const { data: request, error: createError } = await supabase
       .from('event_change_requests')
       .insert({
         merchant_id: workspace.merchantId,
         event_id: event_id,
+        request_type: request_type,
         status: 'pending',
         payload_json: payload_json,
         submitted_by: user.id,
       })
-      .select('id, status, submitted_at')
+      .select('id, request_type, status, payload_json, submitted_at, approved_at, rejected_reason')
       .single();
 
     if (createError) {
       console.error('[EVENT CHANGE REQUEST] Create error:', createError);
       return NextResponse.json(
-        { error: 'CREATE_FAILED', message: 'Failed to create change request' },
+        {
+          success: false,
+          error: {
+            code: 'CREATE_FAILED',
+            message: 'Failed to create change request',
+          },
+        },
         { status: 500 }
       );
     }
@@ -97,8 +126,12 @@ export async function POST(req: NextRequest) {
       success: true,
       request: {
         id: request.id,
+        request_type: request.request_type,
         status: request.status,
+        payload_json: request.payload_json,
         submitted_at: request.submitted_at,
+        approved_at: request.approved_at,
+        rejected_reason: request.rejected_reason,
       },
     }, { status: 201 });
 
@@ -107,13 +140,25 @@ export async function POST(req: NextRequest) {
     
     if (error.message === 'UNAUTHORIZED') {
       return NextResponse.json(
-        { error: 'UNAUTHORIZED' },
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Unauthorized',
+          },
+        },
         { status: 401 }
       );
     }
 
     return NextResponse.json(
-      { error: 'SERVER_ERROR', message: error.message },
+      {
+        success: false,
+        error: {
+          code: 'SERVER_ERROR',
+          message: error.message || 'Internal server error',
+        },
+      },
       { status: 500 }
     );
   }
@@ -140,7 +185,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from('event_change_requests')
-      .select('id, event_id, status, submitted_at, approved_at, rejection_reason')
+      .select('id, event_id, request_type, status, payload_json, submitted_at, approved_at, rejected_reason')
       .eq('merchant_id', workspace.merchantId);
 
     if (eventId) {

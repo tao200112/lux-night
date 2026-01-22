@@ -36,6 +36,16 @@ interface EventDetail {
   }>;
 }
 
+interface ChangeRequest {
+  id: string;
+  request_type: 'poster' | 'price' | 'inventory';
+  status: 'pending' | 'approved' | 'rejected';
+  payload_json: any;
+  submitted_at: string;
+  approved_at?: string | null;
+  rejected_reason?: string | null;
+}
+
 export default function EventDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -45,10 +55,15 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
+  const [showAllRequests, setShowAllRequests] = useState(false);
+  const [uploadingPoster, setUploadingPoster] = useState(false);
+  const [posterFile, setPosterFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (eventId) {
       loadEventDetail();
+      loadChangeRequests();
     }
   }, [eventId]);
 
@@ -77,6 +92,125 @@ export default function EventDetailPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadChangeRequests = async () => {
+    try {
+      const res = await fetch(`/api/merchant/events/${eventId}/change-requests`, {
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setChangeRequests(data.requests || []);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading change requests:', err);
+    }
+  };
+
+  const handlePosterFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPosterFile(file);
+      handlePosterUpload(file);
+    }
+  };
+
+  const handlePosterUpload = async (file: File) => {
+    try {
+      setUploadingPoster(true);
+
+      // 先上传图片
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('event_id', eventId);
+
+      const uploadRes = await fetch('/api/merchant/upload-poster', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const uploadData = await uploadRes.json();
+
+      if (!uploadRes.ok || !uploadData.success) {
+        throw new Error(uploadData.error?.message || 'Failed to upload poster');
+      }
+
+      // 创建 poster change request
+      const requestRes = await fetch('/api/merchant/event-change-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          event_id: eventId,
+          request_type: 'poster',
+          payload_json: {
+            poster_url: uploadData.poster_url,
+          },
+        }),
+      });
+
+      const requestData = await requestRes.json();
+
+      if (!requestRes.ok || !requestData.success) {
+        throw new Error(requestData.error?.message || 'Failed to create change request');
+      }
+
+      // 添加到状态栏顶部
+      setChangeRequests((prev) => [requestData.request, ...prev]);
+
+      // 显示 toast
+      alert(`Submitted (Pending Approval)\nRequest ID: ${requestData.request.id}`);
+
+      // 重新加载事件详情（更新海报预览）
+      await loadEventDetail();
+    } catch (err: any) {
+      console.error('Error uploading poster:', err);
+      alert(`Failed to upload poster: ${err.message}`);
+    } finally {
+      setUploadingPoster(false);
+      setPosterFile(null);
+    }
+  };
+
+  const getRequestSummary = (request: ChangeRequest): string => {
+    const payload = request.payload_json;
+    if (request.request_type === 'price') {
+      const ticketTypeName = payload.ticket_type_name || 'Ticket';
+      const oldPrice = payload.old_price ? `$${(payload.old_price / 100).toFixed(2)}` : '';
+      const newPrice = payload.new_price ? `$${(payload.new_price / 100).toFixed(2)}` : '';
+      return `${ticketTypeName} ${oldPrice} → ${newPrice}`;
+    } else if (request.request_type === 'inventory') {
+      const ticketTypeName = payload.ticket_type_name || 'Ticket';
+      const oldCapacity = payload.old_capacity || '';
+      const newCapacity = payload.new_capacity || '';
+      return `${ticketTypeName} Capacity: ${oldCapacity} → ${newCapacity}`;
+    } else if (request.request_type === 'poster') {
+      return 'Poster image change';
+    }
+    return 'Change request';
+  };
+
+  const getRequestTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      poster: 'Poster',
+      price: 'Price',
+      inventory: 'Inventory',
+    };
+    return labels[type] || type;
+  };
+
+  const getStatusColor = (status: string): string => {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200',
+      approved: 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200',
+      rejected: 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200',
+    };
+    return colors[status] || 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200';
   };
 
   if (loading) {
@@ -145,12 +279,27 @@ export default function EventDetailPage() {
       <main className="max-w-md mx-auto pb-48">
         {/* Event Header */}
         <div className="p-4 flex gap-4 items-center">
-          <div className="w-20 h-20 rounded-xl bg-gray-300 dark:bg-gray-700 shrink-0 shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-center">
+          <div className="relative w-20 h-20 rounded-xl bg-gray-300 dark:bg-gray-700 shrink-0 shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-center group">
             {event.poster_url ? (
               <img alt={event.title} className="w-full h-full object-cover rounded-xl" src={event.poster_url} />
             ) : (
               <span className="material-symbols-outlined text-gray-400 text-4xl">event</span>
             )}
+            {/* Change Poster Button */}
+            <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-xl cursor-pointer transition-opacity">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePosterFileSelect}
+                className="hidden"
+                disabled={uploadingPoster}
+              />
+              {uploadingPoster ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+              ) : (
+                <span className="material-symbols-outlined text-white text-2xl">edit</span>
+              )}
+            </label>
           </div>
           <div className="flex flex-col">
             <h2 className="text-xl font-bold tracking-tight">{event.title}</h2>
@@ -220,6 +369,61 @@ export default function EventDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Change Requests Status Bar */}
+        {changeRequests.length > 0 && (
+          <section className="mb-6">
+            <div className="px-4 flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.1em]">Change Requests</h3>
+              {changeRequests.length > 3 && (
+                <button
+                  onClick={() => setShowAllRequests(!showAllRequests)}
+                  className="text-xs text-primary font-medium"
+                >
+                  {showAllRequests ? 'Show Less' : `View All (${changeRequests.length})`}
+                </button>
+              )}
+            </div>
+            <div className="mx-4 space-y-2">
+              {(showAllRequests ? changeRequests : changeRequests.slice(0, 3)).map((request) => (
+                <div
+                  key={request.id}
+                  className="bg-white dark:bg-gray-900 p-3 rounded-xl border border-gray-100 dark:border-gray-800"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusColor(request.status)}`}>
+                        {request.status.toUpperCase()}
+                      </span>
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {getRequestTypeLabel(request.request_type)}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                      {new Date(request.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-700 dark:text-gray-300 mb-1">
+                    {getRequestSummary(request)}
+                  </p>
+                  {request.approved_at && (
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                      Approved: {new Date(request.approved_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' })}
+                    </p>
+                  )}
+                  {request.rejected_reason && (
+                    <p className="text-[10px] text-red-600 dark:text-red-400">
+                      Rejected: {request.rejected_reason}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 font-mono">
+                    ID: {request.id.slice(0, 8)}...
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Ticket Types Section */}
         <section className="mb-6">
@@ -293,10 +497,13 @@ export default function EventDetailPage() {
               <span className="material-symbols-outlined text-lg">payments</span>
               Request Price Change
             </Link>
-            <button className="flex items-center justify-center gap-2 py-3 px-2 border border-primary/30 rounded-xl text-primary text-xs font-bold active:bg-primary/5">
+            <Link
+              href={`/requests/inventory-change?event_id=${eventId}`}
+              className="flex items-center justify-center gap-2 py-3 px-2 border border-primary/30 rounded-xl text-primary text-xs font-bold active:bg-primary/5"
+            >
               <span className="material-symbols-outlined text-lg">inventory_2</span>
               Request Inventory Change
-            </button>
+            </Link>
           </div>
         </section>
       </main>

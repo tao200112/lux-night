@@ -49,12 +49,14 @@ export default function StaffPage() {
         credentials: 'include',
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to load staff (${res.status})`);
+      const data = await res.json();
+
+      // 检查新的返回结构
+      if (!res.ok || !data.success) {
+        const errorMsg = data.error?.message || data.message || `Failed to load staff (${res.status})`;
+        throw new Error(errorMsg);
       }
 
-      const data = await res.json();
       setStaffMembers(data.staff || []);
 
       // DEBUG: 开发环境打印数据
