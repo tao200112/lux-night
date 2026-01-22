@@ -25,6 +25,8 @@ export default function WorkspacesPage() {
   const [workspaces, setWorkspaces] = useState<WorkspaceData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasMembership, setHasMembership] = useState<boolean>(false);
+  const [membershipError, setMembershipError] = useState<{ message: string; code?: string } | null>(null);
   const [selectedWorkspace, setSelectedWorkspace] = useState<{
     merchantId: string;
     venueId?: string;
@@ -36,15 +38,54 @@ export default function WorkspacesPage() {
 
   const loadWorkspaces = async () => {
     try {
+      setLoading(true);
+      setError(null);
+      setMembershipError(null);
+
       const res = await fetch('/api/me');
       const data = await res.json();
 
+      // DEBUG: 开发环境打印原始响应
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WORKSPACES PAGE] API /me response:', {
+          ok: res.ok,
+          status: res.status,
+          hasMembership: data.hasMembership,
+          membershipsCount: data.memberships?.length || 0,
+          membershipError: data.membershipError,
+          workspaces: data.memberships,
+        });
+      }
+
       if (!res.ok) {
-        setError(data.message || 'Failed to load workspaces');
+        const errorMsg = data.message || data.error || 'Failed to load workspaces';
+        setError(errorMsg);
+        setHasMembership(false);
         return;
       }
 
-      setWorkspaces(data.memberships || []);
+      // 检查是否有 membership（关键判断）
+      const hasMembershipValue = data.hasMembership === true;
+      setHasMembership(hasMembershipValue);
+
+      // 如果有 membership 错误，记录但不阻止显示
+      if (data.membershipError) {
+        setMembershipError({
+          message: data.membershipError.message || 'Failed to verify membership',
+          code: data.membershipError.code,
+        });
+        console.error('[WORKSPACES PAGE] Membership error:', data.membershipError);
+      }
+
+      // 设置 workspaces 数据
+      const workspacesData = data.memberships || [];
+      setWorkspaces(workspacesData);
+
+      // 检查是否有 merchant_id 为 null 的 membership
+      const invalidMemberships = workspacesData.filter((ws: any) => !ws.merchantId);
+      if (invalidMemberships.length > 0) {
+        console.warn('[WORKSPACES PAGE] Found memberships with null merchant_id:', invalidMemberships);
+      }
       
       // 如果有默认workspace，自动选择
       if (data.defaultWorkspace) {
@@ -52,16 +93,18 @@ export default function WorkspacesPage() {
           merchantId: data.defaultWorkspace.merchantId,
           venueId: data.defaultWorkspace.venueId,
         });
-      } else if (data.memberships?.length === 1) {
+      } else if (workspacesData.length === 1) {
         // 如果只有一个workspace，自动选择
-        const ws = data.memberships[0];
+        const ws = workspacesData[0];
         setSelectedWorkspace({
           merchantId: ws.merchantId,
-          venueId: ws.venues[0]?.venueId,
+          venueId: ws.venues?.[0]?.venueId,
         });
       }
     } catch (err: any) {
-      setError('Failed to load workspaces');
+      console.error('[WORKSPACES PAGE] Load workspaces error:', err);
+      setError(err.message || 'Failed to load workspaces');
+      setHasMembership(false);
     } finally {
       setLoading(false);
     }
@@ -108,6 +151,7 @@ export default function WorkspacesPage() {
     );
   }
 
+  // 错误状态：显示错误信息并提供重试按钮
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8">
@@ -122,7 +166,41 @@ export default function WorkspacesPage() {
     );
   }
 
-  if (workspaces.length === 0) {
+  // 关键修复：基于 hasMembership 判断，而不是 workspaces.length
+  // 如果 hasMembership=true 但 workspaces=[]，说明加载失败，不应提示输入邀请码
+  if (hasMembership && workspaces.length === 0) {
+    // 检查是否有 merchant_id 为 null 的情况
+    const hasInvalidMembership = membershipError?.code === 'PGRST' || membershipError?.message?.includes('null');
+    
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-8">
+        <p className="text-alert-red text-center mb-2">
+          {hasInvalidMembership 
+            ? 'Membership record invalid (merchant_id missing). Please contact administrator.'
+            : 'You have membership but failed to load workspace details.'}
+        </p>
+        {process.env.NODE_ENV === 'development' && membershipError && (
+          <p className="text-gray-500 text-sm text-center mb-4">
+            Error: {membershipError.message} {membershipError.code ? `(${membershipError.code})` : ''}
+          </p>
+        )}
+        <button
+          onClick={loadWorkspaces}
+          className="px-4 py-2 bg-primary text-white rounded-lg mb-2"
+        >
+          Retry / Refresh
+        </button>
+        {hasInvalidMembership && (
+          <p className="text-gray-400 text-sm text-center mt-4">
+            Do not enter invite code again. Please contact support.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // 如果没有 membership，才提示输入邀请码
+  if (!hasMembership && workspaces.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8">
         <p className="text-gray-400 text-center mb-4">

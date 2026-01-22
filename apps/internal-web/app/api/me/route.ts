@@ -67,14 +67,40 @@ export async function GET() {
       roles.is_admin = !!adminData;
     }
 
-    // 获取 merchant memberships
+    // 获取 merchant memberships（使用 admin client 绕过 RLS）
+    let memberships: any[] = [];
+    let membershipsError: any = null;
+    
     if (adminClient) {
-      const { data: memberships } = await adminClient
+      const { data: membershipsData, error: membershipsErr } = await adminClient
         .from('merchant_members')
         .select('merchant_id, role, is_active')
         .eq('user_id', user.id)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .not('merchant_id', 'is', null); // 过滤 merchant_id 为 null 的记录
       
+      memberships = membershipsData || [];
+      membershipsError = membershipsErr;
+
+      // DEBUG: 开发环境打印原始数据
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[API /me] Raw memberships query:', {
+          userId: user.id,
+          membershipsCount: memberships?.length || 0,
+          memberships: memberships,
+          error: membershipsError ? {
+            message: membershipsError.message,
+            code: membershipsError.code,
+            details: membershipsError.details,
+            hint: membershipsError.hint,
+          } : null,
+        });
+      }
+
+      if (membershipsError) {
+        console.error('[API /me] Memberships query error:', membershipsError);
+      }
+
       if (memberships && memberships.length > 0) {
         roles.merchant_memberships = memberships.map(m => ({
           merchant_id: m.merchant_id,
@@ -87,9 +113,100 @@ export async function GET() {
       }
     }
 
+    // 获取完整的 workspaces 数据（包括 merchantName 和 venues）
+    const workspaces: Array<{
+      merchantId: string;
+      merchantName: string;
+      role: string;
+      isActive: boolean;
+      venues: Array<{
+        venueId: string;
+        venueName: string;
+        isAssigned: boolean;
+      }>;
+    }> = [];
+
+    if (adminClient && memberships && memberships.length > 0) {
+      // 为每个 membership 获取 merchant 和 venues 信息
+      for (const membership of memberships) {
+        if (!membership.merchant_id) {
+          console.warn('[API /me] Membership with null merchant_id:', membership);
+          continue;
+        }
+
+        // 获取 merchant 信息
+        const { data: merchant, error: merchantError } = await adminClient
+          .from('merchants')
+          .select('id, name')
+          .eq('id', membership.merchant_id)
+          .maybeSingle();
+
+        if (merchantError) {
+          console.error('[API /me] Merchant query error:', {
+            merchant_id: membership.merchant_id,
+            error: {
+              message: merchantError.message,
+              code: merchantError.code,
+              details: merchantError.details,
+            },
+          });
+        }
+
+        if (!merchant) {
+          console.warn('[API /me] Merchant not found:', membership.merchant_id);
+          continue;
+        }
+
+        // 获取 venues 信息
+        const { data: venues, error: venuesError } = await adminClient
+          .from('venues')
+          .select('id, name, merchant_id')
+          .eq('merchant_id', membership.merchant_id);
+
+        if (venuesError) {
+          console.error('[API /me] Venues query error:', {
+            merchant_id: membership.merchant_id,
+            error: {
+              message: venuesError.message,
+              code: venuesError.code,
+              details: venuesError.details,
+            },
+          });
+        }
+
+        workspaces.push({
+          merchantId: membership.merchant_id,
+          merchantName: merchant.name,
+          role: membership.role,
+          isActive: membership.is_active,
+          venues: (venues || []).map((v: any) => ({
+            venueId: v.id,
+            venueName: v.name,
+            isAssigned: true, // TODO: 根据实际业务逻辑判断
+          })),
+        });
+      }
+    }
+
+    // DEBUG: 开发环境打印最终 workspaces 数据
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API /me] Final workspaces:', {
+        count: workspaces.length,
+        workspaces: workspaces,
+        hasMemberships: memberships && memberships.length > 0,
+        membershipsCount: memberships?.length || 0,
+      });
+    }
+
     return NextResponse.json({
       user,
       roles,
+      memberships: workspaces, // 返回完整的 workspaces 数据
+      hasMembership: memberships && memberships.length > 0, // 明确标识是否有 membership
+      membershipError: membershipsError ? {
+        message: membershipsError.message,
+        code: membershipsError.code,
+      } : null,
     });
   } catch (error: any) {
     console.error('[API /me] Unexpected error:', error);
