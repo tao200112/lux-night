@@ -147,8 +147,9 @@ export async function GET(request: NextRequest) {
     }
     
     // 执行查询（带超时）
+    // 注意：将 PostgrestFilterBuilder 转换为真正的 Promise
     const merchantsResult = await withTimeout(
-      merchantsQuery,
+      Promise.resolve(merchantsQuery),
       TIMEOUT_MS,
       'merchants query'
     ).catch((error: Error) => {
@@ -225,11 +226,13 @@ export async function GET(request: NextRequest) {
     // STEP 6: 获取地区列表
     // ============================================================
     const regionsResult = await withTimeout(
-      supabaseAdmin
-        .from('regions')
-        .select('id, name, state, country')
-        .eq('is_active', true)
-        .order('name'),
+      Promise.resolve(
+        supabaseAdmin
+          .from('regions')
+          .select('id, name, state, country')
+          .eq('is_active', true)
+          .order('name')
+      ),
       TIMEOUT_MS,
       'regions query'
     ).catch((error: Error) => ({

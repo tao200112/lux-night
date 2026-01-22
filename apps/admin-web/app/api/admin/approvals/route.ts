@@ -82,8 +82,9 @@ export async function GET(request: NextRequest) {
     }
     
     // 执行查询（带超时）
+    // 注意：将 PostgrestFilterBuilder 转换为真正的 Promise
     const requestsResult = await withTimeout(
-      requestQuery,
+      Promise.resolve(requestQuery),
       TIMEOUT_MS,
       'approvals query'
     ).catch((error: Error) => ({
