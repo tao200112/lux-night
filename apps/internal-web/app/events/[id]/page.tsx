@@ -15,6 +15,7 @@ interface EventDetail {
   title: string;
   description?: string;
   start_at: string;
+  end_at: string;
   venue: {
     id: string;
     name: string;
