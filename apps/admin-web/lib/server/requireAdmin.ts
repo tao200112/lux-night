@@ -1,0 +1,176 @@
+/**
+ * Server-side Admin Authorization Utility
+ * 
+ * 用于所有 /api/admin/* routes 的统一权限检查
+ * 避免 route-to-route fetch 导致的循环依赖和超时
+ */
+
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { NextResponse } from 'next/server';
+import type { User } from '@supabase/supabase-js';
+
+export interface AdminAuthResult {
+  user: User;
+  isAdmin: boolean;
+  adminProfile?: {
+    id: string;
+    email: string;
+    is_admin: boolean;
+  };
+}
+
+export interface AdminAuthError {
+  error: NextResponse;
+}
+
+/**
+ * 检查当前请求的用户是否为 admin
+ * 
+ * @throws 不抛出异常，而是返回 error response
+ * @returns { user, isAdmin, adminProfile } 或 { error: NextResponse }
+ */
+export async function requireAdmin(): Promise<AdminAuthResult | AdminAuthError> {
+  const startTime = Date.now();
+  
+  try {
+    // 1. 获取当前用户（使用 server client 读取 cookies）
+    console.log('[requireAdmin] STEP1: getting user from session');
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    const step1Time = Date.now() - startTime;
+    console.log('[requireAdmin] STEP1 done:', {
+      hasUser: !!user,
+      userId: user?.id,
+      duration: `${step1Time}ms`,
+      error: userError?.message || null,
+    });
+    
+    if (userError) {
+      console.error('[requireAdmin] User error:', userError);
+      return {
+        error: NextResponse.json(
+          { 
+            success: false, 
+            code: 'AUTH_ERROR', 
+            message: 'Authentication failed',
+            details: userError.message,
+          },
+          { status: 401 }
+        ),
+      };
+    }
+    
+    if (!user) {
+      console.warn('[requireAdmin] No user found');
+      return {
+        error: NextResponse.json(
+          { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
+          { status: 401 }
+        ),
+      };
+    }
+    
+    // 2. 检查 admin 权限（使用 admin client 绕过 RLS）
+    console.log('[requireAdmin] STEP2: checking admin status');
+    const supabaseAdmin = createAdminClient();
+    
+    const [profileResult, adminUsersResult] = await Promise.all([
+      supabaseAdmin
+        .from('profiles')
+        .select('id, email, is_admin')
+        .eq('id', user.id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('admin_users')
+        .select('user_id, is_active')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle(),
+    ]);
+    
+    const step2Time = Date.now() - startTime - step1Time;
+    console.log('[requireAdmin] STEP2 done:', {
+      hasProfile: !!profileResult.data,
+      profileIsAdmin: profileResult.data?.is_admin,
+      hasAdminUser: !!adminUsersResult.data,
+      duration: `${step2Time}ms`,
+      profileError: profileResult.error?.message || null,
+      adminUsersError: adminUsersResult.error?.message || null,
+    });
+    
+    // 判断是否为 admin
+    const isAdmin =
+      profileResult.data?.is_admin === true ||
+      adminUsersResult.data?.is_active === true;
+    
+    const totalTime = Date.now() - startTime;
+    console.log('[requireAdmin] COMPLETE:', {
+      userId: user.id,
+      isAdmin,
+      totalDuration: `${totalTime}ms`,
+    });
+    
+    if (!isAdmin) {
+      console.warn('[requireAdmin] User is not admin:', user.email);
+      return {
+        error: NextResponse.json(
+          { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
+          { status: 403 }
+        ),
+      };
+    }
+    
+    return {
+      user,
+      isAdmin: true,
+      adminProfile: profileResult.data || undefined,
+    };
+    
+  } catch (error: any) {
+    console.error('[requireAdmin] Unexpected error:', error);
+    return {
+      error: NextResponse.json(
+        { 
+          success: false, 
+          code: 'INTERNAL_ERROR', 
+          message: 'Failed to verify admin status',
+          details: error.message,
+        },
+        { status: 500 }
+      ),
+    };
+  }
+}
+
+/**
+ * 带超时保护的 Promise wrapper
+ * 
+ * @param promise - 要执行的 Promise
+ * @param timeoutMs - 超时时间（毫秒）
+ * @param label - 用于错误日志的标签
+ * @returns Promise 结果或抛出超时错误
+ */
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string
+): Promise<T> {
+  let timeoutHandle: NodeJS.Timeout;
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(`Timeout after ${timeoutMs}ms: ${label}`));
+    }, timeoutMs);
+  });
+  
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timeoutHandle!);
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutHandle!);
+    throw error;
+  }
+}

@@ -2,40 +2,64 @@
  * GET /api/admin/approvals
  * Admin Approvals List API
  * 返回审批列表（支持 status 筛选）
+ * 
+ * 修复版：使用 requireAdmin + 超时保护
  */
 
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin, withTimeout } from '@/lib/server/requireAdmin';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const TIMEOUT_MS = 8000;
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const requestPath = request.nextUrl.pathname;
+  
+  console.info('[ADMIN API]', { path: requestPath, step: 'ENTER', t: startTime });
+
   try {
-    const supabase = await createClient();
+    // 权限检查（带超时）
+    const authResult = await withTimeout(requireAdmin(), TIMEOUT_MS, 'requireAdmin');
+    if ('error' in authResult) {
+      return authResult.error;
+    }
     
-    // 检查 Admin 权限
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    console.info('[ADMIN API]', {
+      path: requestPath,
+      step: 'AUTH_OK',
+      t: Date.now(),
+      duration: `${Date.now() - startTime}ms`,
+    });
+    
+    // 环境变量检查
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json(
-        { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
-        { status: 401 }
+        { success: false, code: 'ENV_ERROR', message: 'Missing SUPABASE_SERVICE_ROLE_KEY' },
+        { status: 500 }
       );
     }
     
-    const { data: isAdmin } = await supabase.rpc('is_admin');
-    if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
-        { status: 403 }
-      );
-    }
-    
-    // 获取查询参数
+    // 获取查询参数（GET 不读取 body）
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || 'pending';
     const query = searchParams.get('query') || '';
     
-    // 构建查询（修复：分两步查询，避免 relationship 不存在的错误）
-    // Step 1: 查询 requests 和相关表
-    let requestQuery = supabase
+    console.info('[ADMIN API]', {
+      path: requestPath,
+      step: 'QUERY_START',
+      status,
+      query,
+      t: Date.now(),
+    });
+    
+    // 使用 service role 查询
+    const supabaseAdmin = createAdminClient();
+    
+    let requestQuery = supabaseAdmin
       .from('requests')
       .select(`
         id,
@@ -49,124 +73,88 @@ export async function GET(request: NextRequest) {
         decided_at,
         merchant_id,
         venue_id,
-        merchants!inner(
-          id,
-          name
-        ),
-        venues(
-          id,
-          name
-        )
+        event_id
       `)
       .order('created_at', { ascending: false });
     
-    // 状态筛选
-    if (status !== 'all') {
+    if (status && status !== 'all') {
       requestQuery = requestQuery.eq('status', status);
     }
     
-    // 搜索筛选（按商家名称）
-    if (query) {
-      requestQuery = requestQuery.ilike('merchants.name', `%${query}%`);
-    }
+    // 执行查询（带超时）
+    const requestsResult = await withTimeout(
+      requestQuery,
+      TIMEOUT_MS,
+      'approvals query'
+    ).catch((error: Error) => ({
+      data: null,
+      error: { message: error.message, code: 'TIMEOUT' },
+    }));
     
-    const { data: requests, error: requestsError } = await requestQuery;
-    
-    if (requestsError) {
-      console.error('[ADMIN APPROVALS API] Error:', requestsError);
+    if (requestsResult.error) {
+      console.error('[ADMIN API]', {
+        path: requestPath,
+        step: 'QUERY_ERROR',
+        error: requestsResult.error.message,
+        t: Date.now(),
+      });
+      
+      if (requestsResult.error.code === 'TIMEOUT') {
+        return NextResponse.json(
+          { success: false, code: 'TIMEOUT', message: 'Approvals query timeout', label: 'approvals query' },
+          { status: 504 }
+        );
+      }
+      
       return NextResponse.json(
-        { success: false, code: 'QUERY_ERROR', message: requestsError.message },
+        { success: false, code: 'QUERY_ERROR', message: requestsResult.error.message },
         { status: 500 }
       );
     }
     
-    // Step 2: 批量查询 profiles（通过 requested_by）
-    const userIds = [...new Set((requests || []).map((req: any) => req.requested_by).filter(Boolean))];
-    let profilesMap: Record<string, any> = {};
+    const requests = requestsResult.data || [];
     
-    if (userIds.length > 0) {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, display_name, avatar_url')
-        .in('id', userIds);
-      
-      if (!profilesError && profiles) {
-        profiles.forEach((profile: any) => {
-          profilesMap[profile.id] = profile;
-        });
-      }
-    }
-    
-    // 格式化响应
-    const formattedRequests = (requests || []).map((req: any) => {
-      const merchantData = (() => {
-        if (!req.merchants) return null;
-        const merchant = Array.isArray(req.merchants) ? req.merchants[0] : req.merchants;
-        return merchant ? {
-          id: merchant.id,
-          name: merchant.name,
-        } : null;
-      })();
-      
-      const venueData = (() => {
-        if (!req.venues) return null;
-        const venue = Array.isArray(req.venues) ? req.venues[0] : req.venues;
-        return venue ? {
-          id: venue.id,
-          name: venue.name,
-        } : null;
-      })();
-      
-      return {
-        id: req.id,
-        type: req.type,
-        status: req.status,
-        merchant: merchantData,
-        venue: venueData,
-        requestedBy: req.requested_by && profilesMap[req.requested_by] ? {
-          id: profilesMap[req.requested_by].id,
-          name: profilesMap[req.requested_by].display_name || 'Unknown',
-          avatar: profilesMap[req.requested_by].avatar_url,
-        } : null,
-        payloadBefore: req.payload_before,
-        payloadAfter: req.payload_after,
-        note: req.admin_note,
-        createdAt: req.created_at,
-        decidedAt: req.decided_at,
-      };
+    console.info('[ADMIN API]', {
+      path: requestPath,
+      step: 'RESPOND',
+      count: requests.length,
+      duration: `${Date.now() - startTime}ms`,
+      t: Date.now(),
     });
     
-    // 获取各状态数量
-    const { count: pendingCount } = await supabase
-      .from('requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
-    
-    const { count: approvedCount } = await supabase
-      .from('requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'approved');
-    
-    const { count: rejectedCount } = await supabase
-      .from('requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'rejected');
+    // 简化返回（避免复杂关联查询超时）
+    const approvals = requests.map((req: any) => ({
+      id: req.id,
+      type: req.type,
+      status: req.status,
+      requestedBy: req.requested_by,
+      createdAt: req.created_at,
+      decidedAt: req.decided_at,
+      note: req.admin_note,
+      merchantId: req.merchant_id,
+      venueId: req.venue_id,
+      eventId: req.event_id,
+      // TODO: 后续可以批量查询关联数据
+    }));
     
     return NextResponse.json({
       success: true,
       data: {
-        requests: formattedRequests,
-        counts: {
-          pending: pendingCount || 0,
-          approved: approvedCount || 0,
-          rejected: rejectedCount || 0,
-        },
+        approvals,
       },
     });
+    
   } catch (error: any) {
-    console.error('[ADMIN APPROVALS API] Error:', error);
+    console.error('[ADMIN API]', {
+      path: requestPath,
+      step: 'ERROR',
+      error: error.message,
+      stack: error.stack,
+      t: Date.now(),
+    });
+    
     return NextResponse.json(
-      { success: false, code: 'INTERNAL_ERROR', message: error.message },
+      { success: false, code: 'INTERNAL_ERROR', message: error.message || 'Unexpected error' },
       { status: 500 }
     );
   }
