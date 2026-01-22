@@ -170,12 +170,7 @@ export default function DashboardPage() {
             </div>
             {/* 图表占位符 - 需要从 API 获取真实数据后渲染 */}
             <div className="h-[140px] w-full relative flex items-center justify-center">
-              {data.stats?.revenueChart ? (
-                // TODO: 渲染真实图表数据
-                <p className="text-gray-400 text-sm">Chart data available</p>
-              ) : (
-                <p className="text-gray-400 text-sm">No chart data available</p>
-              )}
+              <p className="text-gray-400 text-sm">Chart visualization coming soon</p>
             </div>
             <div className="flex justify-between mt-2 px-1">
               <span className="text-[10px] font-bold text-gray-400 uppercase">Mon</span>
