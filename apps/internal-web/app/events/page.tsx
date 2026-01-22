@@ -216,14 +216,12 @@ export default function EventsPage() {
                   <div className="p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <h3 className="text-base font-bold text-gray-900 dark:text-white">{event.title}</h3>
-                      {event.venue && (
-                        <Link
-                          href={`/events/${event.id}`}
-                          className="text-xs font-medium text-primary hover:underline"
-                        >
-                          View
-                        </Link>
-                      )}
+                      <Link
+                        href={`/events/${event.id}`}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        View
+                      </Link>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                       <span className="material-symbols-outlined text-xs">calendar_today</span>
