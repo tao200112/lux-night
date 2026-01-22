@@ -245,7 +245,7 @@ export default function EventsPage() {
                           <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                             <div
                               className="h-full bg-primary rounded-full"
-                              style={{ width: `${totalCount > 0 ? ((event.checkins_count || 0) / totalCount) * 100 : 0}%` }}
+                              style={{ width: `${totalCount > 0 ? ((event.checkin_count || 0) / totalCount) * 100 : 0}%` }}
                             ></div>
                           </div>
                         </div>
