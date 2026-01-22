@@ -170,7 +170,6 @@ export async function GET(
         id: string;
         name: string;
         address: string | null;
-        description: string | null;
         region_id: string | null;
         region: {
           id: string;
