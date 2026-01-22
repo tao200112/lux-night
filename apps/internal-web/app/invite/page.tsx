@@ -1,18 +1,45 @@
 /**
  * Invite Gate Page
  * 邀请码门禁页面：无 merchant_members 的用户必须输入邀请码
+ * 
+ * 显示条件：
+ * - 用户已登录，但没有任何 merchant membership
+ * - 需要通过邀请码加入商户才能访问内部功能
  */
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function InviteGatePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 获取 reason 参数
+  const reason = mounted ? searchParams.get('reason') : null;
+
+  // 根据 reason 显示不同的提示
+  const getReasonMessage = () => {
+    switch (reason) {
+      case 'no_membership':
+        return 'You are not currently a member of any merchant. Please enter an invite code to join.';
+      case 'query_error':
+        return 'Unable to verify your membership status. Please enter an invite code.';
+      case 'error':
+        return 'An error occurred during login. Please enter an invite code to continue.';
+      default:
+        return 'Enter your invite code to access the internal workspace';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,8 +96,20 @@ export default function InviteGatePage() {
           Invite Code Required
         </h2>
         <p className="text-gray-500 dark:text-gray-400 text-base font-normal leading-normal pt-2 px-4 text-center">
-          Enter your invite code to access the internal workspace
+          {getReasonMessage()}
         </p>
+        
+        {/* Additional info for returning users */}
+        {reason === 'no_membership' && (
+          <div className="mt-4 px-4 max-w-md">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
+                <strong>Welcome back!</strong> Your account is active, but you need to join a merchant to access the workspace. 
+                Please contact your merchant owner to get an invite code.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Invite Code Form */}

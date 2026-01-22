@@ -116,21 +116,40 @@ export async function middleware(request: NextRequest) {
     // Invite Gate: 检查用户是否有 merchant_members
     const { data: memberships, error: membershipError } = await supabase
       .from('merchant_members')
-      .select('id')
+      .select('id, merchant_id, role, is_active')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .limit(1);
 
     // 如果查询出错，记录但不阻止访问
     if (membershipError) {
-      console.error('Membership query error:', membershipError);
+      console.error('[MIDDLEWARE] ❌ Membership query error:', membershipError);
       // 允许继续，可能是数据库连接问题
+    }
+
+    // DEBUG: 打印 membership 检查结果
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[MIDDLEWARE] Membership check:', {
+        userId: user.id,
+        hasMembership: memberships && memberships.length > 0,
+        membershipCount: memberships?.length || 0,
+        memberships: memberships || [],
+      });
     }
 
     // 如果没有 membership，只能访问 /invite 页面
     if (!memberships || memberships.length === 0) {
       if (pathname !== '/invite' && pathname !== '/login') {
-        return NextResponse.redirect(new URL('/invite', request.url));
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[MIDDLEWARE] ⚠️ No membership found, redirecting to /invite');
+        }
+        const inviteUrl = new URL('/invite', request.url);
+        inviteUrl.searchParams.set('reason', 'no_membership');
+        return NextResponse.redirect(inviteUrl);
+      }
+    } else {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[MIDDLEWARE] ✅ Membership found, allowing access');
       }
     }
 
