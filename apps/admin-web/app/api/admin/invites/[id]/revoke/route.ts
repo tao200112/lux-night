@@ -1,118 +1,229 @@
 /**
  * POST /api/admin/invites/[id]/revoke
  * Admin Revoke Invite API
- * 撤销邀请码
+ * 撤销邀请码（支持通过 UUID 或 token 字符串）
+ * 
+ * 修复：合并了原来的 [id] 和 [code] 两个冲突的动态路由
  */
 
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  handlerWrapper,
+  requireAdmin,
+  withTimeout,
+  type ApiResponse,
+} from '@/lib/admin/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const InviteIdSchema = z.string().uuid('inviteId must be a valid UUID');
+const TIMEOUT_MS = 10000;
 
-export async function POST(
+// UUID 格式验证
+const UUIDSchema = z.string().uuid();
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+export const POST = handlerWrapper(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context: RouteParams
+): Promise<NextResponse> => {
+  let step = 'init';
+
   try {
-    const { id: inviteIdParam } = await params;
-    
-    // 验证 inviteId 格式
-    const inviteIdValidation = InviteIdSchema.safeParse(inviteIdParam);
-    if (!inviteIdValidation.success) {
-      return NextResponse.json(
-        { success: false, code: 'VALIDATION_ERROR', message: `Invalid inviteId: ${inviteIdValidation.error.errors.map(e => e.message).join(', ')}` },
-        { status: 400 }
-      );
+    // STEP 1: 权限检查
+    step = 'auth_check';
+    const authResult = await withTimeout(
+      requireAdmin(request),
+      TIMEOUT_MS,
+      'requireAdmin'
+    );
+
+    if ('status' in authResult) {
+      return authResult.response;
     }
-    const inviteId = inviteIdValidation.data;
-    
-    const supabase = await createClient();
-    
-    // 检查 Admin 权限
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json(
-        { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
-        { status: 401 }
+
+    const { adminClient } = authResult;
+    step = 'auth_ok';
+
+    // STEP 2: 获取参数
+    step = 'get_params';
+    const { id: idParam } = await context.params;
+    step = 'params_ok';
+
+    // STEP 3: 判断是 UUID 还是 token 字符串
+    step = 'detect_type';
+    const isUUID = UUIDSchema.safeParse(idParam).success;
+    const isToken = !isUUID;
+    step = 'type_detected';
+
+    let invite: any = null;
+
+    if (isUUID) {
+      // 通过 UUID 查询
+      step = 'query_by_uuid';
+      const { data, error } = await withTimeout(
+        Promise.resolve(
+          adminClient
+            .from('invites')
+            .select('id, used_count, max_uses, revoked_at, disabled, is_active')
+            .eq('id', idParam)
+            .maybeSingle()
+        ),
+        TIMEOUT_MS,
+        'query invite by UUID'
       );
-    }
-    
-    const { data: isAdmin } = await supabase.rpc('is_admin');
-    if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
-        { status: 403 }
+
+      if (error) {
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Database Error',
+            code: 'QUERY_ERROR',
+            message: error.message,
+            step,
+          },
+          { status: 500 }
+        );
+      }
+
+      invite = data;
+    } else {
+      // 通过 token 查询
+      step = 'query_by_token';
+      const normalizedToken = idParam.toUpperCase().trim();
+
+      const { data, error } = await withTimeout(
+        Promise.resolve(
+          adminClient
+            .from('invites')
+            .select('id, used_count, max_uses, revoked_at, disabled, is_active, code')
+            .eq('code', normalizedToken)
+            .maybeSingle()
+        ),
+        TIMEOUT_MS,
+        'query invite by token'
       );
+
+      if (error) {
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Database Error',
+            code: 'QUERY_ERROR',
+            message: error.message,
+            step,
+          },
+          { status: 500 }
+        );
+      }
+
+      invite = data;
     }
-    
-    // 使用 admin client 查询（绕过 RLS）
-    const adminClient = createAdminClient();
-    
-    // 获取邀请码当前状态
-    const { data: invite, error: inviteError } = await adminClient
-      .from('invites')
-      .select('id, used_count, max_uses, revoked_at')
-      .eq('id', inviteId)
-      .single();
-    
-    if (inviteError || !invite) {
-      return NextResponse.json(
-        { success: false, code: 'NOT_FOUND', message: 'Invite not found' },
+
+    step = 'query_ok';
+
+    // STEP 4: 检查邀请码是否存在
+    if (!invite) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Not Found',
+          code: 'NOT_FOUND',
+          message: 'Invite not found',
+          step,
+        },
         { status: 404 }
       );
     }
-    
-    // 检查是否已使用
-    if (invite.used_count >= invite.max_uses) {
-      return NextResponse.json(
-        { success: false, code: 'CONFLICT', message: 'Cannot revoke an invite that has already been used' },
+
+    // STEP 5: 检查是否已撤销
+    step = 'check_revoked';
+    if (invite.revoked_at !== null || invite.disabled) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Conflict',
+          code: 'ALREADY_REVOKED',
+          message: 'Invite has already been revoked',
+          step,
+        },
         { status: 409 }
       );
     }
-    
-    // 检查是否已撤销
-    if (invite.revoked_at !== null) {
-      return NextResponse.json(
-        { success: false, code: 'CONFLICT', message: 'Invite has already been revoked' },
-        { status: 409 }
-      );
-    }
-    
-    // 撤销邀请码
-    const { data: updatedInvite, error: updateError } = await adminClient
-      .from('invites')
-      .update({
-        revoked_at: new Date().toISOString(),
-        disabled: true,
-        is_active: false,
-      })
-      .eq('id', inviteId)
-      .select()
-      .single();
-    
+
+    // STEP 6: 撤销邀请码
+    step = 'revoke_invite';
+    const { data: updatedInvite, error: updateError } = await withTimeout(
+      Promise.resolve(
+        adminClient
+          .from('invites')
+          .update({
+            revoked_at: new Date().toISOString(),
+            disabled: true,
+            is_active: false,
+          })
+          .eq('id', invite.id)
+          .select()
+          .single()
+      ),
+      TIMEOUT_MS,
+      'update invite'
+    );
+
     if (updateError || !updatedInvite) {
-      console.error('[ADMIN REVOKE INVITE API] Update error:', updateError);
-      return NextResponse.json(
-        { success: false, code: 'DB_ERROR', message: updateError?.message || 'Failed to revoke invite' },
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Database Error',
+          code: 'UPDATE_ERROR',
+          message: updateError?.message || 'Failed to revoke invite',
+          step,
+        },
         { status: 500 }
       );
     }
-    
-    return NextResponse.json({
-      success: true,
+
+    step = 'success';
+    return NextResponse.json<ApiResponse>({
+      ok: true,
       data: {
         id: updatedInvite.id,
         revokedAt: updatedInvite.revoked_at,
         message: 'Invite revoked successfully',
       },
+      step,
     });
+
   } catch (error: any) {
-    console.error('[ADMIN REVOKE INVITE API] Error:', error);
-    return NextResponse.json(
-      { success: false, code: 'INTERNAL_ERROR', message: error.message },
+    console.error('[ADMIN REVOKE INVITE] Error:', {
+      step,
+      error: error.message,
+      stack: error.stack,
+    });
+
+    if (error.message?.includes('[TIMEOUT]')) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Request Timeout',
+          code: 'TIMEOUT',
+          message: error.message,
+          step,
+        },
+        { status: 504 }
+      );
+    }
+
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error: 'Internal Server Error',
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Unexpected error',
+        step,
+      },
       { status: 500 }
     );
   }
-}
+});
