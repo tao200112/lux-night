@@ -875,9 +875,6 @@ function AdminCreateEventPageContent() {
                       {selectedVenue.address}
                     </p>
                   )}
-                  {selectedVenue.description && (
-                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-2">{selectedVenue.description}</p>
-                  )}
                 </div>
               </div>
               
