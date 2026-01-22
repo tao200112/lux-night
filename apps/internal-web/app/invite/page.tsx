@@ -53,33 +53,33 @@ function InviteGateContent() {
       setLoading(true);
       setError(null);
 
-      // 直接调用兑换 API
-      const res = await fetch('/api/invites/redeem', {
+      console.log('[INVITE] Submitting code:', token.trim());
+
+      // 调用新的邀请码兑换 API
+      const res = await fetch('/api/invite/consume', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token.trim().toUpperCase() }),
+        body: JSON.stringify({ code: token.trim() }),
       });
 
       const data = await res.json();
+      
+      console.log('[INVITE] API response:', { status: res.status, data });
 
-      if (!res.ok) {
-        // 跳转到 invalid 页面
-        router.push(`/onboarding/invite/invalid?code=${encodeURIComponent(token.trim().toUpperCase())}`);
+      if (!res.ok || !data.success) {
+        // 显示错误消息
+        setError(data.error || 'Failed to redeem invite code. Please try again.');
+        setLoading(false);
         return;
       }
 
-      if (!data.ok) {
-        // 跳转到 invalid 页面
-        router.push(`/onboarding/invite/invalid?code=${encodeURIComponent(token.trim().toUpperCase())}`);
-        return;
-      }
-
-      // 兑换成功，刷新页面让 middleware 重定向
-      window.location.href = '/';
+      // 兑换成功，跳转到工作台
+      console.log('[INVITE] ✅ Invite redeemed successfully, redirecting to:', data.data.next);
+      router.push(data.data.next || '/workspaces');
     } catch (err: any) {
-      console.error('Invite redeem error:', err);
-      // 跳转到 invalid 页面
-      router.push(`/onboarding/invite/invalid?code=${encodeURIComponent(token.trim().toUpperCase())}`);
+      console.error('[INVITE] ❌ Error redeeming invite:', err);
+      setError('Network error. Please check your connection and try again.');
+      setLoading(false);
     }
   };
 

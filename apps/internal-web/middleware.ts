@@ -113,7 +113,32 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    // Invite Gate: 检查用户是否有 merchant_members
+    // ============================================================
+    // Invite Gate: 检查用户权限
+    // 优先级：
+    // 1. 邮箱白名单（INTERNAL_BYPASS_EMAILS）- 管理员/测试账号
+    // 2. Merchant membership - 已加入的成员
+    // 3. 无权限 -> 重定向到 /invite
+    // ============================================================
+    
+    // 1. 检查邮箱白名单
+    // 注意：使用 NEXT_PUBLIC_ 前缀，因为需要在客户端和服务端保持一致
+    const bypassEmails = (process.env.NEXT_PUBLIC_INTERNAL_BYPASS_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
+    
+    const userEmail = user.email?.toLowerCase() || '';
+    const isBypassUser = bypassEmails.includes(userEmail);
+    
+    if (isBypassUser) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[MIDDLEWARE] ✅ User in bypass list, allowing access:', userEmail);
+      }
+      return response;
+    }
+    
+    // 2. 检查 merchant membership
     const { data: memberships, error: membershipError } = await supabase
       .from('merchant_members')
       .select('id, merchant_id, role, is_active')
@@ -131,26 +156,30 @@ export async function middleware(request: NextRequest) {
     if (process.env.NODE_ENV === 'development') {
       console.log('[MIDDLEWARE] Membership check:', {
         userId: user.id,
+        userEmail: userEmail,
+        isBypassUser,
         hasMembership: memberships && memberships.length > 0,
         membershipCount: memberships?.length || 0,
         memberships: memberships || [],
       });
     }
 
-    // 如果没有 membership，只能访问 /invite 页面
-    if (!memberships || memberships.length === 0) {
-      if (pathname !== '/invite' && pathname !== '/login') {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[MIDDLEWARE] ⚠️ No membership found, redirecting to /invite');
-        }
-        const inviteUrl = new URL('/invite', request.url);
-        inviteUrl.searchParams.set('reason', 'no_membership');
-        return NextResponse.redirect(inviteUrl);
-      }
-    } else {
+    // 3. 如果有 membership，允许访问
+    if (memberships && memberships.length > 0) {
       if (process.env.NODE_ENV === 'development') {
         console.log('[MIDDLEWARE] ✅ Membership found, allowing access');
       }
+      return response;
+    }
+
+    // 4. 无权限：只能访问 /invite 页面
+    if (pathname !== '/invite' && pathname !== '/login') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[MIDDLEWARE] ⚠️ No membership and not bypassed, redirecting to /invite');
+      }
+      const inviteUrl = new URL('/invite', request.url);
+      inviteUrl.searchParams.set('reason', 'no_membership');
+      return NextResponse.redirect(inviteUrl);
     }
 
     return response;

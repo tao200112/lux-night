@@ -35,9 +35,32 @@ export default function PostLoginPage() {
           return;
         }
 
-        console.log('[PostLogin] User authenticated:', user.id);
+        console.log('[PostLogin] User authenticated:', user.id, user.email);
 
-        // 2. 检查用户是否有 active merchant membership
+        // 2. 检查邮箱白名单（与 middleware 保持一致）
+        const bypassEmails = (process.env.NEXT_PUBLIC_INTERNAL_BYPASS_EMAILS || '')
+          .split(',')
+          .map((e: string) => e.trim().toLowerCase())
+          .filter(Boolean);
+        
+        const userEmail = user.email?.toLowerCase() || '';
+        const isBypassUser = bypassEmails.includes(userEmail);
+
+        console.log('[PostLogin] Bypass check:', {
+          userEmail,
+          isBypassUser,
+          bypassList: bypassEmails,
+        });
+
+        // 如果在白名单中，直接跳转到目标页面
+        if (isBypassUser) {
+          const targetPath = consumePostAuthRedirect(APP_NAME, DEFAULT_AFTER_LOGIN);
+          console.log('[PostLogin] ✅ User in bypass list, redirecting to:', targetPath);
+          router.replace(targetPath);
+          return;
+        }
+
+        // 3. 检查用户是否有 active merchant membership
         const { data: memberships, error: membershipError } = await supabase
           .from('merchant_members')
           .select('id, merchant_id, role')
@@ -46,7 +69,7 @@ export default function PostLoginPage() {
           .limit(1);
 
         if (membershipError) {
-          console.error('[PostLogin] Error checking membership:', membershipError);
+          console.error('[PostLogin] ❌ Error checking membership:', membershipError);
           // 如果查询出错，默认跳转到 invite（安全选择）
           router.replace('/invite?reason=query_error');
           return;
@@ -57,16 +80,16 @@ export default function PostLoginPage() {
           count: memberships?.length || 0,
         });
 
-        // 3. 根据 membership 决定跳转目标
+        // 4. 根据 membership 决定跳转目标
         if (memberships && memberships.length > 0) {
           // ✅ 有 membership - 跳转到工作台（或用户之前想去的地方）
           const targetPath = consumePostAuthRedirect(APP_NAME, DEFAULT_AFTER_LOGIN);
           
-          console.log('[PostLogin] Has membership, redirecting to:', targetPath);
+          console.log('[PostLogin] ✅ Has membership, redirecting to:', targetPath);
           router.replace(targetPath);
         } else {
-          // ❌ 无 membership - 跳转到邀请码页面
-          console.log('[PostLogin] No membership, redirecting to /invite');
+          // ❌ 无 membership 且不在白名单 - 跳转到邀请码页面
+          console.log('[PostLogin] ⚠️ No membership, redirecting to /invite');
           
           // 清除可能存储的目标路径（因为没有权限访问）
           consumePostAuthRedirect(APP_NAME, '/');
