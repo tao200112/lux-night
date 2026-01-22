@@ -1,98 +1,83 @@
 /**
  * GET /api/admin/me
  * Admin Me API
- * 检查当前用户是否为 admin
  * 
- * 修复版：使用共享 requireAdmin()
+ * 强制修复版：确保所有分支都返回响应，绝不 pending
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, withTimeout } from '@/lib/server/requireAdmin';
+import {
+  handlerWrapper,
+  requireAdmin,
+  withTimeout,
+  type ApiResponse,
+} from '@/lib/admin/api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 10000;
 
-export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  
-  console.info('[ADMIN API]', {
-    path: '/api/admin/me',
-    step: 'ENTER',
-    t: startTime,
-  });
+export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
+  let step = 'init';
 
   try {
-    // 使用共享 requireAdmin 函数（带超时）
+    // STEP 1: 权限检查
+    step = 'auth_check';
     const authResult = await withTimeout(
-      requireAdmin(),
+      requireAdmin(request),
       TIMEOUT_MS,
-      'requireAdmin in /me'
-    ).catch((error: Error) => {
-      console.error('[ADMIN API]', {
-        path: '/api/admin/me',
-        step: 'TIMEOUT',
-        error: error.message,
-        t: Date.now(),
-      });
-      
-      return {
-        error: NextResponse.json(
-          { success: false, code: 'TIMEOUT', message: 'Auth check timeout', label: 'requireAdmin' },
-          { status: 504 }
-        ),
-      };
-    });
-    
-    if ('error' in authResult) {
-      console.warn('[ADMIN API]', {
-        path: '/api/admin/me',
-        step: 'AUTH_FAILED',
-        t: Date.now(),
-      });
-      return authResult.error;
-    }
-    
-    const { user, isAdmin, adminProfile } = authResult;
-    
-    console.info('[ADMIN API]', {
-      path: '/api/admin/me',
-      step: 'SUCCESS',
-      userId: user.id,
-      isAdmin,
-      duration: `${Date.now() - startTime}ms`,
-      t: Date.now(),
-    });
+      'requireAdmin'
+    );
 
-    return NextResponse.json({
-      success: true,
+    if ('status' in authResult) {
+      return authResult.response;
+    }
+
+    const { user } = authResult;
+    step = 'auth_ok';
+
+    // STEP 2: 返回用户信息
+    step = 'success';
+    return NextResponse.json<ApiResponse>({
+      ok: true,
       data: {
         userId: user.id,
         email: user.email,
-        isAdmin,
-        profile: adminProfile,
+        isAdmin: true, // 已通过 requireAdmin 检查
       },
+      step,
     });
-    
+
   } catch (error: any) {
-    const duration = Date.now() - startTime;
-    console.error('[ADMIN API]', {
-      path: '/api/admin/me',
-      step: 'ERROR',
+    console.error('[ADMIN ME GET] Error:', {
+      step,
       error: error.message,
       stack: error.stack,
-      duration: `${duration}ms`,
-      t: Date.now(),
     });
-    
-    return NextResponse.json(
+
+    if (error.message?.includes('[TIMEOUT]')) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Request Timeout',
+          code: 'TIMEOUT',
+          message: error.message,
+          step,
+        },
+        { status: 504 }
+      );
+    }
+
+    return NextResponse.json<ApiResponse>(
       {
-        success: false,
+        ok: false,
+        error: 'Internal Server Error',
         code: 'INTERNAL_ERROR',
         message: error.message || 'Unexpected error',
+        step,
       },
       { status: 500 }
     );
   }
-}
+});

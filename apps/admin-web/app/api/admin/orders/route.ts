@@ -1,225 +1,164 @@
 /**
  * GET /api/admin/orders
  * Admin Orders List API
- * 返回订单列表（支持搜索、筛选）
+ * 
+ * 强制修复版：确保所有分支都返回响应，绝不 pending
  */
 
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  handlerWrapper,
+  requireAdmin,
+  withTimeout,
+  type ApiResponse,
+} from '@/lib/admin/api';
 
-export async function GET(request: NextRequest) {
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const TIMEOUT_MS = 10000;
+
+export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
+  let step = 'init';
+
   try {
-    const supabase = await createClient();
-    
-    // 检查 Admin 权限
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json(
-        { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
-        { status: 401 }
-      );
+    // STEP 1: 权限检查
+    step = 'auth_check';
+    const authResult = await withTimeout(
+      requireAdmin(request),
+      TIMEOUT_MS,
+      'requireAdmin'
+    );
+
+    if ('status' in authResult) {
+      return authResult.response;
     }
-    
-    const { data: isAdmin } = await supabase.rpc('is_admin');
-    if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
-        { status: 403 }
-      );
-    }
-    
-    // 获取查询参数
+
+    const { adminClient } = authResult;
+    step = 'auth_ok';
+
+    // STEP 2: 获取查询参数
+    step = 'parse_params';
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('query') || '';
     const status = searchParams.get('status') || '';
     const merchant = searchParams.get('merchant') || '';
-    const dateRange = searchParams.get('dateRange') || '7'; // 默认最近7天
-    
-    // 计算时间范围
+    const dateRange = searchParams.get('dateRange') || '7';
+    step = 'params_ok';
+
+    // STEP 3: 计算时间范围
+    step = 'calc_dates';
     const now = new Date();
     const daysAgo = parseInt(dateRange) || 7;
     const startDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-    
-    // 构建查询
-    // 注意：orders 通过 order_items -> events 关联
-    let ordersQuery = supabase
+    step = 'dates_ok';
+
+    // STEP 4: 查询 Orders
+    step = 'query_orders';
+    let ordersQuery = adminClient
       .from('orders')
       .select(`
         id,
         status,
         amount_cents,
-        currency,
+        total_cents,
+        customer_id,
+        payment_intent_id,
         created_at,
-        user_id
+        profiles!orders_customer_id_fkey(
+          id,
+          display_name,
+          email
+        )
       `)
       .gte('created_at', startDate.toISOString())
       .order('created_at', { ascending: false })
-      .limit(100);
-    
-    // 状态筛选
+      .limit(100); // 限制返回数量避免超时
+
     if (status && status !== 'all') {
-      // 映射状态值
-      const statusMap: Record<string, string> = {
-        'paid': 'paid',
-        'pending': 'created',
-        'refunded': 'refunded',
-        'failed': 'expired',
-      };
-      const mappedStatus = statusMap[status] || status;
-      ordersQuery = ordersQuery.eq('status', mappedStatus);
+      ordersQuery = ordersQuery.eq('status', status);
     }
-    
-    const { data: orders, error: ordersError } = await ordersQuery;
-    
+
+    const { data: orders, error: ordersError } = await withTimeout(
+      Promise.resolve(ordersQuery),
+      TIMEOUT_MS,
+      'orders query'
+    );
+
     if (ordersError) {
-      console.error('[ADMIN ORDERS API] Error:', ordersError);
-      return NextResponse.json(
-        { success: false, code: 'QUERY_ERROR', message: ordersError.message },
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Database Error',
+          code: 'QUERY_ERROR',
+          message: ordersError.message,
+          step,
+        },
         { status: 500 }
       );
     }
-    
-    // 获取用户信息（批量）
-    const userIds = [...new Set((orders || []).map((order: any) => order.user_id))];
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, display_name, avatar_url')
-      .in('id', userIds);
-    
-    const profileMap: Record<string, any> = {};
-    (profiles || []).forEach((profile: any) => {
-      profileMap[profile.id] = profile;
-    });
-    
-    // 获取 order_items 和 events 信息（批量）
-    const orderIds = (orders || []).map((o: any) => o.id);
-    
-    const { data: orderItems } = await supabase
-      .from('order_items')
-      .select('order_id, event_id')
-      .in('order_id', orderIds);
-    
-    const eventIds = [...new Set((orderItems || []).map((item: any) => item.event_id))];
-    
-    const { data: events } = await supabase
-      .from('events')
-      .select('id, title, merchant_id, merchants!inner(id, name)')
-      .in('id', eventIds);
-    
-    // 构建映射
-    const orderIdToEventIds: Record<string, string[]> = {};
-    (orderItems || []).forEach((item: any) => {
-      if (!orderIdToEventIds[item.order_id]) {
-        orderIdToEventIds[item.order_id] = [];
-      }
-      orderIdToEventIds[item.order_id].push(item.event_id);
-    });
-    
-    const eventIdToEvent: Record<string, any> = {};
-    (events || []).forEach((event: any) => {
-      eventIdToEvent[event.id] = event;
-    });
-    
-    // 处理订单数据（合并相同订单的不同 order_items）
-    const orderMap: Record<string, any> = {};
-    
-    (orders || []).forEach((order: any) => {
-      const orderId = order.id;
-      const eventIds = orderIdToEventIds[orderId] || [];
-      const relatedEvents = eventIds.map((eid: string) => eventIdToEvent[eid]).filter(Boolean);
-      const firstEvent = relatedEvents[0];
-      const merchant = firstEvent?.merchants;
-      
-      if (!orderMap[orderId]) {
-        orderMap[orderId] = {
-          id: order.id,
-          status: order.status,
-          amountCents: order.amount_cents,
-          currency: order.currency,
-          createdAt: order.created_at,
-          userId: order.user_id,
-          user: profileMap[order.user_id] || null,
-          events: relatedEvents.map((e: any) => ({ id: e.id, title: e.title })),
-          merchants: new Set<string>(),
-        };
-      }
-      
-      relatedEvents.forEach((event: any) => {
-        if (event.merchants) {
-          const merchants = Array.isArray(event.merchants) ? event.merchants : [event.merchants];
-          merchants.forEach((m: any) => {
-            if (m && m.id) {
-              orderMap[orderId].merchants.add(m.id);
-            }
-          });
-        }
-      });
-    });
-    
-    // 转换为数组并处理
-    const ordersWithDetails = Object.values(orderMap).map((order: any) => {
-      // 获取第一个商家（如果多个则取第一个）
-      const merchantIds = Array.from(order.merchants);
-      const firstEvent = order.events[0];
-      
-      // 商家筛选（通过 events）
-      if (merchant) {
-        if (!merchantIds.includes(merchant)) {
-          return null; // 过滤掉
-        }
-      }
-      
-      // 搜索筛选（按订单ID、用户名、事件标题）
-      if (query) {
-        const matchesId = order.id.toLowerCase().includes(query.toLowerCase());
-        const matchesUser = order.user?.display_name?.toLowerCase().includes(query.toLowerCase());
-        const matchesEvent = order.events.some((e: any) => e.title.toLowerCase().includes(query.toLowerCase()));
-        
-        if (!matchesId && !matchesUser && !matchesEvent) {
-          return null; // 过滤掉
-        }
-      }
-      
-      return {
-        id: order.id,
-        status: order.status,
-        amount: order.amountCents / 100,
-        amountFormatted: `$${(order.amountCents / 100).toFixed(2)}`,
-        currency: order.currency,
-        createdAt: order.created_at,
-        user: order.user ? {
-          id: order.user.id,
-          name: order.user.display_name || 'Unknown',
-          avatar: order.user.avatar_url,
-        } : null,
-        event: firstEvent ? {
-          id: firstEvent.id,
-          title: firstEvent.title,
-        } : null,
-        merchantId: merchantIds[0] || null,
-        eventCount: order.events.length,
-      };
-    }).filter((o): o is NonNullable<typeof o> => o !== null);
-    
-    // 获取所有商家列表（用于筛选）
-    const { data: merchants } = await supabase
-      .from('merchants')
-      .select('id, name')
-      .eq('status', 'active')
-      .order('name');
-    
-    return NextResponse.json({
-      success: true,
+
+    step = 'orders_ok';
+
+    // STEP 5: 格式化响应
+    step = 'format_response';
+    const formattedOrders = (orders || []).map((order: any) => ({
+      id: order.id,
+      status: order.status,
+      amount: order.amount_cents || 0,
+      total: order.total_cents || 0,
+      totalFormatted: `$${((order.total_cents || 0) / 100).toFixed(2)}`,
+      customerId: order.customer_id,
+      customerName: order.profiles?.display_name || 'Unknown',
+      customerEmail: order.profiles?.email || null,
+      paymentIntentId: order.payment_intent_id,
+      createdAt: order.created_at,
+    }));
+
+    step = 'success';
+    return NextResponse.json<ApiResponse>({
+      ok: true,
       data: {
-        orders: ordersWithDetails,
-        merchants: merchants || [],
+        orders: formattedOrders,
+        count: formattedOrders.length,
+        dateRange: {
+          start: startDate.toISOString(),
+          end: now.toISOString(),
+          days: daysAgo,
+        },
       },
+      step,
     });
+
   } catch (error: any) {
-    console.error('[ADMIN ORDERS API] Error:', error);
-    return NextResponse.json(
-      { success: false, code: 'INTERNAL_ERROR', message: error.message },
+    console.error('[ADMIN ORDERS GET] Error:', {
+      step,
+      error: error.message,
+      stack: error.stack,
+    });
+
+    if (error.message?.includes('[TIMEOUT]')) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Request Timeout',
+          code: 'TIMEOUT',
+          message: error.message,
+          step,
+        },
+        { status: 504 }
+      );
+    }
+
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error: 'Internal Server Error',
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Unexpected error',
+        step,
+      },
       { status: 500 }
     );
   }
-}
+});

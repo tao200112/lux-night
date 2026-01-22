@@ -1,109 +1,109 @@
 /**
  * GET /api/admin/settings
- * Admin Settings API（返回 regions 和 admin users）
+ * Admin Settings API
+ * 
+ * 强制修复版：确保所有分支都返回响应，绝不 pending
  */
 
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  handlerWrapper,
+  requireAdmin,
+  withTimeout,
+  type ApiResponse,
+} from '@/lib/admin/api';
 
-export async function GET(request: NextRequest) {
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const TIMEOUT_MS = 10000;
+
+export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
+  let step = 'init';
+
   try {
-    const supabase = await createClient();
-    
-    // 检查 Admin 权限
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json(
-        { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
-        { status: 401 }
-      );
+    // STEP 1: 权限检查
+    step = 'auth_check';
+    const authResult = await withTimeout(
+      requireAdmin(request),
+      TIMEOUT_MS,
+      'requireAdmin'
+    );
+
+    if ('status' in authResult) {
+      return authResult.response;
     }
-    
-    const { data: isAdmin } = await supabase.rpc('is_admin');
-    if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
-        { status: 403 }
-      );
-    }
-    
-    // 获取所有地区
-    const { data: regions, error: regionsError } = await supabase
-      .from('regions')
-      .select('*')
-      .order('name');
-    
-    // 获取所有 Admin Users
-    const { data: adminUsers, error: adminUsersError } = await supabase
-      .from('admin_users')
-      .select('user_id, is_active, created_at')
-      .order('created_at', { ascending: false });
-    
-    // 获取用户 profiles（批量）
-    const userIds = (adminUsers || []).map((au: any) => au.user_id);
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, display_name, avatar_url')
-      .in('id', userIds);
-    
-    const profileMap: Record<string, any> = {};
-    (profiles || []).forEach((profile: any) => {
-      profileMap[profile.id] = profile;
-    });
-    
-    if (regionsError || adminUsersError) {
-      console.error('[ADMIN SETTINGS API] Error:', regionsError || adminUsersError);
-      return NextResponse.json(
-        { success: false, code: 'QUERY_ERROR', message: (regionsError || adminUsersError)?.message },
+
+    const { adminClient } = authResult;
+    step = 'auth_ok';
+
+    // STEP 2: 查询 Regions (设置中的地区列表)
+    step = 'query_regions';
+    const { data: regions, error: regionsError } = await withTimeout(
+      Promise.resolve(
+        adminClient
+          .from('regions')
+          .select('*')
+          .order('name')
+      ),
+      TIMEOUT_MS,
+      'regions query'
+    );
+
+    if (regionsError) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Database Error',
+          code: 'QUERY_ERROR',
+          message: regionsError.message,
+          step,
+        },
         { status: 500 }
       );
     }
-    
-    // 获取最后一条 audit log 的时间
-    const { data: lastAuditLog } = await supabase
-      .from('audit_logs')
-      .select('created_at')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-    
-    return NextResponse.json({
-      success: true,
+
+    step = 'regions_ok';
+
+    // STEP 3: 返回设置数据
+    step = 'success';
+    return NextResponse.json<ApiResponse>({
+      ok: true,
       data: {
-        regions: (regions || []).map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          state: r.state,
-          country: r.country,
-          status: r.status || 'Operational',
-          isActive: r.is_active,
-          createdAt: r.created_at,
-        })),
-        adminUsers: (adminUsers || []).map((au: any) => {
-          const profile = profileMap[au.user_id];
-          return {
-            id: au.user_id,
-            displayName: profile?.display_name || 'Unknown',
-            email: null, // profiles 表没有 email
-            avatar: profile?.avatar_url || null,
-            role: 'Full Access', // TODO: 从 admin_users 表获取实际角色
-            isActive: au.is_active,
-            createdAt: au.created_at,
-          };
-        }),
-        settings: {
-          force2FA: true, // TODO: 从配置表获取
-          apiWriteAccess: false, // TODO: 从配置表获取
-          systemStatus: 'active', // TODO: 从配置表获取
-        },
-        lastAudit: lastAuditLog?.created_at || null,
+        regions: regions || [],
       },
+      step,
     });
+
   } catch (error: any) {
-    console.error('[ADMIN SETTINGS API] Error:', error);
-    return NextResponse.json(
-      { success: false, code: 'INTERNAL_ERROR', message: error.message },
+    console.error('[ADMIN SETTINGS GET] Error:', {
+      step,
+      error: error.message,
+      stack: error.stack,
+    });
+
+    if (error.message?.includes('[TIMEOUT]')) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Request Timeout',
+          code: 'TIMEOUT',
+          message: error.message,
+          step,
+        },
+        { status: 504 }
+      );
+    }
+
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error: 'Internal Server Error',
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Unexpected error',
+        step,
+      },
       { status: 500 }
     );
   }
-}
+});

@@ -1,65 +1,52 @@
 /**
  * GET /api/admin/approvals
  * Admin Approvals List API
- * 返回审批列表（支持 status 筛选）
  * 
- * 修复版：使用 requireAdmin + 超时保护
+ * 强制修复版：确保所有分支都返回响应，绝不 pending
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, withTimeout } from '@/lib/server/requireAdmin';
-import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  handlerWrapper,
+  requireAdmin,
+  withTimeout,
+  type ApiResponse,
+} from '@/lib/admin/api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 10000;
 
-export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  const requestPath = request.nextUrl.pathname;
-  
-  console.info('[ADMIN API]', { path: requestPath, step: 'ENTER', t: startTime });
+export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
+  let step = 'init';
 
   try {
-    // 权限检查（带超时）
-    const authResult = await withTimeout(requireAdmin(), TIMEOUT_MS, 'requireAdmin');
-    if ('error' in authResult) {
-      return authResult.error;
+    // STEP 1: 权限检查
+    step = 'auth_check';
+    const authResult = await withTimeout(
+      requireAdmin(request),
+      TIMEOUT_MS,
+      'requireAdmin'
+    );
+
+    if ('status' in authResult) {
+      return authResult.response;
     }
-    
-    console.info('[ADMIN API]', {
-      path: requestPath,
-      step: 'AUTH_OK',
-      t: Date.now(),
-      duration: `${Date.now() - startTime}ms`,
-    });
-    
-    // 环境变量检查
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { success: false, code: 'ENV_ERROR', message: 'Missing SUPABASE_SERVICE_ROLE_KEY' },
-        { status: 500 }
-      );
-    }
-    
-    // 获取查询参数（GET 不读取 body）
+
+    const { adminClient } = authResult;
+    step = 'auth_ok';
+
+    // STEP 2: 获取查询参数
+    step = 'parse_params';
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || 'pending';
     const query = searchParams.get('query') || '';
-    
-    console.info('[ADMIN API]', {
-      path: requestPath,
-      step: 'QUERY_START',
-      status,
-      query,
-      t: Date.now(),
-    });
-    
-    // 使用 service role 查询
-    const supabaseAdmin = createAdminClient();
-    
-    let requestQuery = supabaseAdmin
+    step = 'params_ok';
+
+    // STEP 3: 查询 Requests
+    step = 'query_requests';
+    let requestQuery = adminClient
       .from('requests')
       .select(`
         id,
@@ -76,55 +63,35 @@ export async function GET(request: NextRequest) {
         event_id
       `)
       .order('created_at', { ascending: false });
-    
+
     if (status && status !== 'all') {
       requestQuery = requestQuery.eq('status', status);
     }
-    
-    // 执行查询（带超时）
-    // 注意：将 PostgrestFilterBuilder 转换为真正的 Promise
-    const requestsResult = await withTimeout(
+
+    const { data: requests, error: requestsError } = await withTimeout(
       Promise.resolve(requestQuery),
       TIMEOUT_MS,
-      'approvals query'
-    ).catch((error: Error) => ({
-      data: null,
-      error: { message: error.message, code: 'TIMEOUT' },
-    }));
-    
-    if (requestsResult.error) {
-      console.error('[ADMIN API]', {
-        path: requestPath,
-        step: 'QUERY_ERROR',
-        error: requestsResult.error.message,
-        t: Date.now(),
-      });
-      
-      if (requestsResult.error.code === 'TIMEOUT') {
-        return NextResponse.json(
-          { success: false, code: 'TIMEOUT', message: 'Approvals query timeout', label: 'approvals query' },
-          { status: 504 }
-        );
-      }
-      
-      return NextResponse.json(
-        { success: false, code: 'QUERY_ERROR', message: requestsResult.error.message },
+      'requests query'
+    );
+
+    if (requestsError) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Database Error',
+          code: 'QUERY_ERROR',
+          message: requestsError.message,
+          step,
+        },
         { status: 500 }
       );
     }
-    
-    const requests = requestsResult.data || [];
-    
-    console.info('[ADMIN API]', {
-      path: requestPath,
-      step: 'RESPOND',
-      count: requests.length,
-      duration: `${Date.now() - startTime}ms`,
-      t: Date.now(),
-    });
-    
-    // 简化返回（避免复杂关联查询超时）
-    const approvals = requests.map((req: any) => ({
+
+    step = 'requests_ok';
+
+    // STEP 4: 格式化响应
+    step = 'format_response';
+    const approvals = (requests || []).map((req: any) => ({
       id: req.id,
       type: req.type,
       status: req.status,
@@ -135,28 +102,48 @@ export async function GET(request: NextRequest) {
       merchantId: req.merchant_id,
       venueId: req.venue_id,
       eventId: req.event_id,
-      // TODO: 后续可以批量查询关联数据
+      payloadBefore: req.payload_before,
+      payloadAfter: req.payload_after,
     }));
-    
-    return NextResponse.json({
-      success: true,
+
+    step = 'success';
+    return NextResponse.json<ApiResponse>({
+      ok: true,
       data: {
         approvals,
       },
+      step,
     });
-    
+
   } catch (error: any) {
-    console.error('[ADMIN API]', {
-      path: requestPath,
-      step: 'ERROR',
+    console.error('[ADMIN APPROVALS GET] Error:', {
+      step,
       error: error.message,
       stack: error.stack,
-      t: Date.now(),
     });
-    
-    return NextResponse.json(
-      { success: false, code: 'INTERNAL_ERROR', message: error.message || 'Unexpected error' },
+
+    if (error.message?.includes('[TIMEOUT]')) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Request Timeout',
+          code: 'TIMEOUT',
+          message: error.message,
+          step,
+        },
+        { status: 504 }
+      );
+    }
+
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error: 'Internal Server Error',
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Unexpected error',
+        step,
+      },
       { status: 500 }
     );
   }
-}
+});
