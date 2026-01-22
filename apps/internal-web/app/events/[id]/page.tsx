@@ -56,11 +56,15 @@ export default function EventDetailPage() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch(`/api/events/${eventId}`, {
+      // 使用统一的 merchant events API
+      const res = await fetch(`/api/merchant/events/${eventId}`, {
         credentials: 'include',
       });
 
       if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error('Event not found or you do not have access');
+        }
         throw new Error('Failed to load event');
       }
 
@@ -96,7 +100,11 @@ export default function EventDetailPage() {
     );
   }
 
-  const isLive = event.status === 'live' || event.status === 'published';
+  // 根据时间判断是否 live
+  const now = new Date();
+  const startAt = new Date(event.start_at);
+  const endAt = new Date(event.end_at);
+  const isLive = startAt <= now && endAt >= now;
   const checkInRate = event.tickets_sold ? (event.checkins_count || 0) / event.tickets_sold : 0;
 
   return (
@@ -150,7 +158,7 @@ export default function EventDetailPage() {
             </p>
             <div className="flex items-center gap-1 mt-1 text-xs text-primary font-medium">
               <span className="material-symbols-outlined text-xs">location_on</span>
-              <span>{event.venue.name}</span>
+              <span>{event.venue?.name || 'Unknown Venue'}</span>
             </div>
           </div>
         </div>

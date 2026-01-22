@@ -198,7 +198,11 @@ export default function DashboardPage() {
           <div className="space-y-3">
             {stats?.tonightEvents && stats.tonightEvents.length > 0 ? (
               stats.tonightEvents.map((event) => (
-                <div key={event.id} className="bg-card-light dark:bg-card-dark rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm flex">
+                <Link
+                  key={event.id}
+                  href={`/events/${event.id}`}
+                  className="bg-card-light dark:bg-card-dark rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm flex hover:border-primary/50 transition-colors cursor-pointer"
+                >
                   <div className="w-24 h-auto relative shrink-0 bg-gray-200 dark:bg-gray-700">
                     {event.image ? (
                       <img alt={event.title} className="w-full h-full object-cover" src={event.image} />
@@ -228,7 +232,7 @@ export default function DashboardPage() {
                       <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-primary rounded-full" 
-                          style={{ width: `${(event.sold / event.total) * 100}%` }}
+                          style={{ width: `${event.total > 0 ? (event.sold / event.total) * 100 : 0}%` }}
                         ></div>
                       </div>
                       <div className="flex flex-col items-end">
@@ -237,7 +241,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))
             ) : (
               <div className="bg-card-light dark:bg-card-dark rounded-xl p-8 border border-gray-100 dark:border-gray-800 text-center">

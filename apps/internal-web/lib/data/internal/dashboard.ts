@@ -150,6 +150,7 @@ export async function getDashboardStats(
     const refunds = refundsData?.length || 0;
 
     // 获取今晚的活动（今天开始的活动）
+    // 使用与 Events 页面相同的数据源逻辑，确保一致性
     const tonightStart = new Date(now);
     tonightStart.setHours(0, 0, 0, 0);
     const tonightEnd = new Date(now);
@@ -169,7 +170,6 @@ export async function getDashboardStats(
       .eq('merchant_id', merchantId)
       .gte('start_at', tonightStart.toISOString())
       .lte('start_at', tonightEnd.toISOString())
-      .eq('status', 'published')
       .order('start_at', { ascending: true })
       .limit(5);
 

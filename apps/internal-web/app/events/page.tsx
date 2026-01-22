@@ -19,15 +19,13 @@ interface Event {
   start_at: string;
   end_at: string;
   status: string;
+  actual_status?: string; // 根据时间计算的状态
   poster_url?: string;
-  venue?: {
-    id: string;
-    name: string;
-  };
-  tickets_sold?: number;
-  tickets_total?: number;
-  checkins_count?: number;
-  total_revenue?: number;
+  venue_id?: string;
+  venue_name?: string;
+  sold_count?: number;
+  total_count?: number;
+  checkin_count?: number;
 }
 
 export default function EventsPage() {
@@ -46,17 +44,18 @@ export default function EventsPage() {
       setLoading(true);
       setError(null);
 
-      // 根据 filterTab 确定 status
-      let status: string | undefined;
+      // 根据 filterTab 确定 scope（使用时间判断，而不是 status 字段）
+      let scope: string;
       if (filterTab === 'Live') {
-        status = 'live';
+        scope = 'live';
       } else if (filterTab === 'Past') {
-        status = 'past';
+        scope = 'past';
       } else {
-        status = 'upcoming';
+        scope = 'upcoming';
       }
 
-      const res = await fetch(`/api/events?status=${status}`, {
+      // 使用统一的 merchant events API
+      const res = await fetch(`/api/merchant/events?scope=${scope}`, {
         credentials: 'include',
       });
 
@@ -66,6 +65,16 @@ export default function EventsPage() {
       }
 
       const data = await res.json();
+      
+      // DEBUG: 开发环境打印数据
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[EVENTS PAGE] Loaded events:', {
+          scope,
+          count: data.events?.length || 0,
+          events: data.events,
+        });
+      }
+
       setEvents(data.events || []);
     } catch (err: any) {
       console.error('[EVENTS PAGE] Load events error:', err);
@@ -159,12 +168,12 @@ export default function EventsPage() {
           </div>
         ) : (
           events.map((event) => {
-            const isLive = event.status === 'live';
+            // 使用 actual_status 或根据时间判断
+            const isLive = event.actual_status === 'live' || (new Date(event.start_at) <= new Date() && new Date(event.end_at) >= new Date());
             const startDate = new Date(event.start_at);
-            const soldCount = event.tickets_sold || 0;
-            const totalCount = event.tickets_total || 0;
+            const soldCount = event.sold_count || 0;
+            const totalCount = event.total_count || 0;
             const soldRate = totalCount > 0 ? (soldCount / totalCount) * 100 : 0;
-            const revenue = event.total_revenue ? (event.total_revenue / 100).toFixed(2) : '0.00';
 
             return (
               <div
@@ -221,10 +230,10 @@ export default function EventsPage() {
                       <span>
                         {startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </span>
-                      {event.venue && (
+                      {event.venue_name && (
                         <>
                           <span>•</span>
-                          <span>{event.venue.name}</span>
+                          <span>{event.venue_name}</span>
                         </>
                       )}
                     </div>
@@ -233,7 +242,7 @@ export default function EventsPage() {
                         <div className="flex flex-col gap-1.5">
                           <div className="flex justify-between text-xs font-medium uppercase tracking-tight text-gray-500">
                             <span>Check-in Attendance</span>
-                            <span className="text-primary">{event.checkins_count || 0} / {totalCount}</span>
+                            <span className="text-primary">{event.checkin_count || 0} / {totalCount}</span>
                           </div>
                           <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                             <div
@@ -246,10 +255,6 @@ export default function EventsPage() {
                           <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
                             <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Tickets Sold</p>
                             <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{soldCount}</p>
-                          </div>
-                          <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
-                            <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Revenue</p>
-                            <p className="text-lg font-bold text-gray-800 dark:text-gray-100">${revenue}</p>
                           </div>
                         </div>
                         <div className="flex gap-2 mt-2">
