@@ -53,7 +53,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const startDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
     step = 'dates_ok';
 
-    // STEP 4: 查询 Orders
+    // STEP 4: 查询 Orders (no join - will fetch profiles separately)
     step = 'query_orders';
     let ordersQuery = adminClient
       .from('orders')
@@ -61,15 +61,9 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         id,
         status,
         amount_cents,
-        total_cents,
-        customer_id,
-        payment_intent_id,
-        created_at,
-        profiles!orders_customer_id_fkey(
-          id,
-          display_name,
-          email
-        )
+        user_id,
+        stripe_payment_intent_id,
+        created_at
       `)
       .gte('created_at', startDate.toISOString())
       .order('created_at', { ascending: false })
@@ -92,6 +86,8 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
           error: 'Database Error',
           code: 'QUERY_ERROR',
           message: ordersError.message,
+          hint: 'Check if orders table schema matches query',
+          route: '/api/admin/orders',
           step,
         },
         { status: 500 }
@@ -100,20 +96,49 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
 
     step = 'orders_ok';
 
-    // STEP 5: 格式化响应
+    // STEP 5: Fetch user profiles separately (no FK dependency)
+    step = 'fetch_profiles';
+    const userIds = [...new Set((orders || []).map((o: any) => o.user_id).filter(Boolean))];
+    let profilesMap: Record<string, any> = {};
+
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await withTimeout(
+        Promise.resolve(
+          adminClient
+            .from('profiles')
+            .select('id, display_name, email')
+            .in('id', userIds)
+        ),
+        TIMEOUT_MS,
+        'profiles query'
+      );
+
+      if (!profilesError && profiles) {
+        profilesMap = profiles.reduce((acc: any, p: any) => {
+          acc[p.id] = p;
+          return acc;
+        }, {});
+      }
+    }
+
+    step = 'profiles_ok';
+
+    // STEP 6: 格式化响应
     step = 'format_response';
-    const formattedOrders = (orders || []).map((order: any) => ({
-      id: order.id,
-      status: order.status,
-      amount: order.amount_cents || 0,
-      total: order.total_cents || 0,
-      totalFormatted: `$${((order.total_cents || 0) / 100).toFixed(2)}`,
-      customerId: order.customer_id,
-      customerName: order.profiles?.display_name || 'Unknown',
-      customerEmail: order.profiles?.email || null,
-      paymentIntentId: order.payment_intent_id,
-      createdAt: order.created_at,
-    }));
+    const formattedOrders = (orders || []).map((order: any) => {
+      const profile = profilesMap[order.user_id];
+      return {
+        id: order.id,
+        status: order.status,
+        amount: order.amount_cents || 0,
+        amountFormatted: `$${((order.amount_cents || 0) / 100).toFixed(2)}`,
+        userId: order.user_id,
+        customerName: profile?.display_name || 'Unknown',
+        customerEmail: profile?.email || null,
+        paymentIntentId: order.stripe_payment_intent_id,
+        createdAt: order.created_at,
+      };
+    });
 
     step = 'success';
     return NextResponse.json<ApiResponse>({

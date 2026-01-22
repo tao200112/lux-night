@@ -295,6 +295,8 @@ export interface ApiErrorResponse {
   code: string;
   message: string;
   details?: any;
+  hint?: string; // 提示信息
+  route?: string; // API 路由路径
   step?: string; // 用于调试：标记失败在哪一步
 }
 

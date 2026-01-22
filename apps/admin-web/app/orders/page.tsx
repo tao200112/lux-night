@@ -18,19 +18,24 @@ interface Order {
   status: string;
   amount: number;
   amountFormatted: string;
-  currency: string;
+  userId?: string;
+  customerName?: string;
+  customerEmail?: string | null;
+  paymentIntentId?: string | null;
   createdAt: string;
-  user: {
+  // Legacy fields (may not exist in new API response)
+  currency?: string;
+  user?: {
     id: string;
     name: string;
     avatar: string | null;
   } | null;
-  event: {
+  event?: {
     id: string;
     title: string;
   } | null;
-  merchantId: string | null;
-  eventCount: number;
+  merchantId?: string | null;
+  eventCount?: number;
 }
 
 export default function AdminOrdersPage() {
@@ -61,11 +66,11 @@ export default function AdminOrdersPage() {
       const response = await fetch(`/api/admin/orders?${params.toString()}`);
       const result = await response.json();
       
-      if (!result.success) {
+      if (!result.ok && !result.success) {
         throw new Error(result.message || 'Failed to fetch orders');
       }
       
-      setOrders(result.data.orders || []);
+      setOrders(result.data?.orders || []);
     } catch (err: any) {
       console.error('[ADMIN ORDERS] Error:', err);
       setError(err.message);
@@ -265,15 +270,22 @@ export default function AdminOrdersPage() {
             <div className="flex justify-between items-start">
               <div className="flex flex-col">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
-                  {order.user?.name || 'Unknown User'}
+                  {order.customerName || order.user?.name || 'Unknown User'}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="font-mono text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded-[2px]">
                     {formatOrderId(order.id)}
                   </span>
-                  <span className="text-xs text-gray-600 dark:text-gray-300 truncate max-w-[140px]">
-                    {order.event?.title || 'Multiple Events'}
-                  </span>
+                  {order.customerEmail && (
+                    <span className="text-xs text-gray-600 dark:text-gray-300 truncate max-w-[140px]">
+                      {order.customerEmail}
+                    </span>
+                  )}
+                  {!order.customerEmail && order.event?.title && (
+                    <span className="text-xs text-gray-600 dark:text-gray-300 truncate max-w-[140px]">
+                      {order.event.title}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex flex-col items-end">

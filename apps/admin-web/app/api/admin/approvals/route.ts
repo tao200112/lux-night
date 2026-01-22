@@ -52,15 +52,14 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         id,
         type,
         status,
-        payload_before,
-        payload_after,
+        payload,
         admin_note,
         requested_by,
+        decided_by,
         created_at,
         decided_at,
         merchant_id,
-        venue_id,
-        event_id
+        venue_id
       `)
       .order('created_at', { ascending: false });
 
@@ -96,14 +95,14 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       type: req.type,
       status: req.status,
       requestedBy: req.requested_by,
+      decidedBy: req.decided_by,
       createdAt: req.created_at,
       decidedAt: req.decided_at,
       note: req.admin_note,
       merchantId: req.merchant_id,
       venueId: req.venue_id,
-      eventId: req.event_id,
-      payloadBefore: req.payload_before,
-      payloadAfter: req.payload_after,
+      // payload contains both before/after data depending on request type
+      payload: req.payload,
     }));
 
     step = 'success';

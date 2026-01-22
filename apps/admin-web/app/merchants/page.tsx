@@ -73,12 +73,12 @@ export default function AdminMerchantsPage() {
       const response = await fetch(`/api/admin/merchants?${params.toString()}`);
       const result = await response.json();
       
-      if (!result.success) {
+      if (!result.ok && !result.success) {
         throw new Error(result.message || 'Failed to fetch merchants');
       }
       
-      setMerchants(result.data.merchants || []);
-      setRegions(result.data.regions || []);
+      setMerchants(result.data?.merchants || []);
+      setRegions(result.data?.regions || []);
     } catch (err: any) {
       console.error('[ADMIN MERCHANTS] Error:', err);
       setError(err.message);

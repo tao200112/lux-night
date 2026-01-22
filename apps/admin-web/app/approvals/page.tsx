@@ -21,23 +21,22 @@ interface Approval {
   id: string;
   type: string;
   status: string;
-  merchant: {
+  merchantId?: string;
+  venueId?: string | null;
+  merchant?: {
     id: string;
     name: string;
   };
-  venue: {
+  venue?: {
     id: string;
     name: string;
   } | null;
-  requestedBy: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  } | null;
+  requestedBy?: string;
+  decidedBy?: string | null;
   createdAt: string;
   decidedAt: string | null;
-  payloadBefore: any;
-  payloadAfter: any;
+  note?: string | null;
+  payload?: any; // Contains request details (before/after changes, etc.)
 }
 
 interface ApprovalCounts {
@@ -71,12 +70,12 @@ export default function AdminApprovalsPage() {
       const response = await fetch(`/api/admin/approvals?${params.toString()}`);
       const result = await response.json();
       
-      if (!result.success) {
+      if (!result.ok && !result.success) {
         throw new Error(result.message || 'Failed to fetch approvals');
       }
       
-      setApprovals(result.data.requests || []);
-      setCounts(result.data.counts || { pending: 0, approved: 0, rejected: 0 });
+      setApprovals(result.data?.approvals || result.data?.requests || []);
+      setCounts(result.data?.counts || { pending: 0, approved: 0, rejected: 0 });
     } catch (err: any) {
       console.error('[ADMIN APPROVALS] Error:', err);
       setError(err.message);
@@ -226,8 +225,8 @@ export default function AdminApprovalsPage() {
     const label = getTypeLabel(approval.type);
     
     // 从 payload 中提取事件/商家名称（如果可用）
-    const eventName = approval.payloadAfter?.title || approval.payloadAfter?.name || 'Unknown Event';
-    const merchantName = approval.merchant?.name || 'Unknown Merchant';
+    const eventName = approval.payload?.title || approval.payload?.name || 'Unknown Event';
+    const merchantName = approval.payload?.merchant_name || 'Unknown Merchant';
     
     return (
       <div
@@ -266,7 +265,9 @@ export default function AdminApprovalsPage() {
           <div className="flex flex-col">
             <span className="text-xs text-gray-400">Submitted by</span>
             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              {approval.requestedBy?.name || 'Unknown'}
+              {approval.requestedBy 
+                ? `User ${approval.requestedBy.slice(0, 8)}...` 
+                : 'Unknown'}
             </span>
           </div>
           <div className="flex flex-col items-end">
