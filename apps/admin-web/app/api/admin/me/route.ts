@@ -7,7 +7,16 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
+  console.log('[ADMIN_API_ENTER]', {
+    path: '/api/admin/me',
+    method: 'GET',
+    timestamp: new Date().toISOString(),
+  });
+
   try {
     // 1. 使用标准 server client 获取用户
     const supabase = await createClient();
@@ -53,6 +62,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    console.log('[ADMIN_ME] SUCCESS:', {
+      userId: user.id,
+      isAdmin,
+    });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -62,9 +76,15 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('[ADMIN ME API] Error:', error);
+    console.error('[ADMIN_API_ERROR]', {
+      path: '/api/admin/me',
+      method: 'GET',
+      error: error.message,
+      stack: error.stack,
+    });
+    
     return NextResponse.json(
-      { success: false, code: 'INTERNAL_ERROR', message: error.message },
+      { success: false, code: 'INTERNAL_ERROR', message: error.message || 'Unexpected error' },
       { status: 500 }
     );
   }
