@@ -123,9 +123,12 @@ export default function EventDetailPage() {
                 <span className="text-xs font-medium text-success">Live</span>
               </>
             )}
-            <button className="ml-2 text-[#0c1d1d] dark:text-white">
-              <span className="material-symbols-outlined">more_vert</span>
-            </button>
+            <Link
+              href={`/events/${eventId}/edit`}
+              className="ml-2 text-[#0c1d1d] dark:text-white hover:text-primary transition"
+            >
+              <span className="material-symbols-outlined">edit</span>
+            </Link>
           </div>
         </div>
       </header>

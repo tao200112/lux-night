@@ -1,19 +1,80 @@
 /**
  * Events List Page
  * 完全按照 uimerchant/merchant__event_list/code.html 设计
+ * 使用真实数据，不允许假数据
  */
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 type FilterTab = 'Upcoming' | 'Live' | 'Past';
 
+interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  start_at: string;
+  end_at: string;
+  status: string;
+  poster_url?: string;
+  venue?: {
+    id: string;
+    name: string;
+  };
+  tickets_sold?: number;
+  tickets_total?: number;
+  checkins_count?: number;
+  total_revenue?: number;
+}
+
 export default function EventsPage() {
   const router = useRouter();
   const [filterTab, setFilterTab] = useState<FilterTab>('Upcoming');
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadEvents();
+  }, [filterTab]);
+
+  const loadEvents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 根据 filterTab 确定 status
+      let status: string | undefined;
+      if (filterTab === 'Live') {
+        status = 'live';
+      } else if (filterTab === 'Past') {
+        status = 'past';
+      } else {
+        status = 'upcoming';
+      }
+
+      const res = await fetch(`/api/events?status=${status}`, {
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to load events (${res.status})`);
+      }
+
+      const data = await res.json();
+      setEvents(data.events || []);
+    } catch (err: any) {
+      console.error('[EVENTS PAGE] Load events error:', err);
+      setError(err.message || 'Failed to load events');
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="relative flex h-screen w-full max-w-[430px] mx-auto flex-col overflow-hidden bg-background-light dark:bg-background-dark">
@@ -76,134 +137,182 @@ export default function EventsPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
-        {/* LIVE EVENT (Highlighted) - Only show if Live tab */}
-        {filterTab === 'Live' && (
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-teal-400 rounded-xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-            <div className="relative flex flex-col items-stretch justify-start rounded-xl border border-primary/20 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-              <div className="p-4 flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-bold uppercase tracking-widest">
-                      <span className="size-1.5 rounded-full bg-red-600 animate-pulse"></span>
-                      Live Now
-                    </span>
-                    <h3 className="text-lg font-bold mt-1 text-gray-900 dark:text-white">Midnight Mirage: Techno Solo</h3>
-                  </div>
-                  <button className="p-2 text-gray-400">
-                    <span className="material-symbols-outlined">more_vert</span>
-                  </button>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <span className="material-symbols-outlined text-sm">schedule</span>
-                  <span>Starts 10:00 PM • Main Stage</span>
-                </div>
-                <div className="mt-2 space-y-3">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between text-xs font-medium uppercase tracking-tight text-gray-500">
-                      <span>Check-in Attendance</span>
-                      <span className="text-primary">842 / 1,200</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                      <div className="h-full bg-primary rounded-full" style={{ width: '70%' }}></div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
-                      <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Tickets Sold</p>
-                      <p className="text-lg font-bold text-gray-800 dark:text-gray-100">1,150</p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
-                      <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Revenue</p>
-                      <p className="text-lg font-bold text-gray-800 dark:text-gray-100">$28.4k</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <Link 
-                    href="/scan"
-                    className="flex-1 h-10 rounded-lg bg-primary text-white text-sm font-semibold flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-sm">qr_code_scanner</span>
-                    Scan Tickets
-                  </Link>
-                  <button className="w-12 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-base">analytics</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
-        )}
-
-        {/* UPCOMING EVENT 1 */}
-        <div className="flex flex-col items-stretch justify-start rounded-xl bg-white dark:bg-gray-900 shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="relative h-32 w-full bg-center bg-cover bg-gray-300 dark:bg-gray-700">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <div className="absolute bottom-3 left-4">
-              <span className="inline-flex px-2 py-0.5 rounded bg-primary text-white text-[10px] font-bold uppercase tracking-widest">Published</span>
-            </div>
-          </div>
-          <div className="p-4 space-y-3">
-            <div className="flex justify-between items-start">
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">Velvet Lounge: Jazz & Gin</h3>
-              <p className="text-xs font-medium text-primary">$45.00</p>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <span className="material-symbols-outlined text-xs">calendar_today</span>
-              <span>Sat, Nov 04 • 08:00 PM</span>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                <span>Sales Progress</span>
-                <span className="text-gray-700 dark:text-gray-200">210/300</span>
-              </div>
-              <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800">
-                <div className="h-full bg-primary/40 rounded-full" style={{ width: '70%' }}></div>
-              </div>
-            </div>
-            <div className="flex justify-between items-center pt-1">
-              <div className="flex -space-x-2">
-                <div className="size-6 rounded-full border-2 border-white dark:border-gray-900 bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-[8px] font-bold">JD</div>
-                <div className="size-6 rounded-full border-2 border-white dark:border-gray-900 bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-[8px] font-bold">MK</div>
-                <div className="size-6 rounded-full border-2 border-white dark:border-gray-900 bg-primary/20 text-primary flex items-center justify-center text-[8px] font-bold">+5</div>
-              </div>
-              <button className="px-4 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Manage</button>
-            </div>
-          </div>
-        </div>
-
-        {/* DRAFT EVENT */}
-        <div className="flex flex-col items-stretch justify-start rounded-xl bg-gray-50/50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-800 p-4">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <span className="inline-flex px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">Draft</span>
-              <h3 className="text-base font-bold text-gray-600 dark:text-gray-400 italic">Neon Nights: Underground</h3>
-            </div>
-            <span className="material-symbols-outlined text-gray-400">edit_note</span>
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-xs text-gray-400">Last edited 2 hours ago</p>
-            <button className="text-xs font-bold text-primary flex items-center gap-1">
-              Resume Editing
-              <span className="material-symbols-outlined text-xs">arrow_forward</span>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <p className="text-alert-red text-center mb-4">{error}</p>
+            <button
+              onClick={loadEvents}
+              className="px-4 py-2 bg-primary text-white rounded-lg"
+            >
+              Retry
             </button>
           </div>
-        </div>
+        ) : events.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <span className="material-symbols-outlined text-gray-400 text-6xl mb-4">event_busy</span>
+            <p className="text-gray-500 dark:text-gray-400 text-center mb-2">No events found</p>
+            <p className="text-gray-400 dark:text-gray-500 text-sm text-center">There are no {filterTab.toLowerCase()} events at this time.</p>
+          </div>
+        ) : (
+          events.map((event) => {
+            const isLive = event.status === 'live';
+            const startDate = new Date(event.start_at);
+            const soldCount = event.tickets_sold || 0;
+            const totalCount = event.tickets_total || 0;
+            const soldRate = totalCount > 0 ? (soldCount / totalCount) * 100 : 0;
+            const revenue = event.total_revenue ? (event.total_revenue / 100).toFixed(2) : '0.00';
+
+            return (
+              <div
+                key={event.id}
+                className={`flex flex-col items-stretch justify-start rounded-xl bg-white dark:bg-gray-900 shadow-sm border overflow-hidden ${
+                  isLive ? 'border-primary/20 relative group' : 'border-gray-100 dark:border-gray-800'
+                }`}
+              >
+                {isLive && (
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-teal-400 rounded-xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
+                )}
+                <div className={`relative ${isLive ? '' : ''}`}>
+                  <div className="relative h-32 w-full bg-center bg-cover bg-gray-300 dark:bg-gray-700">
+                    {event.poster_url ? (
+                      <img
+                        src={event.poster_url}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : null}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    <div className="absolute bottom-3 left-4 flex items-center gap-2">
+                      {isLive && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-bold uppercase tracking-widest">
+                          <span className="size-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                          Live Now
+                        </span>
+                      )}
+                      <span className={`inline-flex px-2 py-0.5 rounded text-white text-[10px] font-bold uppercase tracking-widest ${
+                        event.status === 'published' ? 'bg-primary' :
+                        event.status === 'draft' ? 'bg-gray-500' :
+                        'bg-gray-400'
+                      }`}>
+                        {event.status === 'published' ? 'Published' :
+                         event.status === 'draft' ? 'Draft' :
+                         event.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-base font-bold text-gray-900 dark:text-white">{event.title}</h3>
+                      {event.venue && (
+                        <Link
+                          href={`/events/${event.id}`}
+                          className="text-xs font-medium text-primary hover:underline"
+                        >
+                          View
+                        </Link>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span className="material-symbols-outlined text-xs">calendar_today</span>
+                      <span>
+                        {startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </span>
+                      {event.venue && (
+                        <>
+                          <span>•</span>
+                          <span>{event.venue.name}</span>
+                        </>
+                      )}
+                    </div>
+                    {isLive && (
+                      <div className="mt-2 space-y-3">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex justify-between text-xs font-medium uppercase tracking-tight text-gray-500">
+                            <span>Check-in Attendance</span>
+                            <span className="text-primary">{event.checkins_count || 0} / {totalCount}</span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full"
+                              style={{ width: `${totalCount > 0 ? ((event.checkins_count || 0) / totalCount) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                            <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Tickets Sold</p>
+                            <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{soldCount}</p>
+                          </div>
+                          <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                            <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Revenue</p>
+                            <p className="text-lg font-bold text-gray-800 dark:text-gray-100">${revenue}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <Link
+                            href="/scan"
+                            className="flex-1 h-10 rounded-lg bg-primary text-white text-sm font-semibold flex items-center justify-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-sm">qr_code_scanner</span>
+                            Scan Tickets
+                          </Link>
+                          <Link
+                            href={`/events/${event.id}`}
+                            className="w-12 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center"
+                          >
+                            <span className="material-symbols-outlined text-base">analytics</span>
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                    {!isLive && (
+                      <>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                            <span>Sales Progress</span>
+                            <span className="text-gray-700 dark:text-gray-200">{soldCount}/{totalCount}</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800">
+                            <div
+                              className="h-full bg-primary/40 rounded-full"
+                              style={{ width: `${soldRate}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-1">
+                          <Link
+                            href={`/events/${event.id}`}
+                            className="px-4 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center"
+                          >
+                            {event.status === 'draft' ? 'Edit' : 'Manage'}
+                          </Link>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </main>
 
-      {/* Fixed Bottom Action Bar */}
-      <div className="absolute bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-white dark:from-background-dark via-white/90 dark:via-background-dark/90 to-transparent pointer-events-none">
+      {/* Fixed Bottom Action Bar - 创建功能已禁用 */}
+      {/* <div className="absolute bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-white dark:from-background-dark via-white/90 dark:via-background-dark/90 to-transparent pointer-events-none">
         <div className="flex justify-center pointer-events-auto">
-          <Link 
-            href="/events/new"
-            className="flex items-center gap-2 bg-primary text-white px-6 h-14 rounded-full shadow-lg shadow-primary/25 font-bold transition-transform active:scale-95"
+          <button
+            disabled
+            className="flex items-center gap-2 bg-gray-400 text-white px-6 h-14 rounded-full font-bold opacity-50 cursor-not-allowed"
           >
             <span className="material-symbols-outlined">add</span>
-            Create New Event
-          </Link>
+            Create New Event (Disabled)
+          </button>
         </div>
-      </div>
+      </div> */}
 
       {/* Bottom Navigation Bar - 移动端固定宽度 */}
       <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-6 py-3 flex items-center justify-between z-50">

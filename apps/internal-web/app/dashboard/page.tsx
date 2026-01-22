@@ -50,14 +50,14 @@ export default function DashboardPage() {
 
       const data = await res.json();
       
-      // Transform data to match uimerchant design
+      // Transform data to match uimerchant design - 使用真实数据，不允许假数据
       const statsData: DashboardStats = {
-        sales: data.stats?.revenue?.thisWeek * 100 || 0,
+        sales: data.stats?.revenue?.thisWeek ? (data.stats.revenue.thisWeek * 100) : 0,
         orders: data.stats?.totalTickets || 0,
         checkins: data.stats?.checkedInToday || 0,
-        refunds: 0, // TODO: Get from API
+        refunds: data.stats?.refunds || 0, // 从 API 获取真实数据
         revenueWeek: data.stats?.revenue?.thisWeek || 0,
-        tonightEvents: [], // TODO: Get tonight events from API
+        tonightEvents: data.stats?.tonightEvents || [], // 从 API 获取真实数据
       };
       
       setStats(statsData);
@@ -92,7 +92,7 @@ export default function DashboardPage() {
     );
   }
 
-  const merchantName = workspace?.merchantName || 'Club Neon';
+  const merchantName = workspace?.merchantName || 'Merchant';
 
   return (
     <div className="relative w-full max-w-[430px] mx-auto min-h-screen bg-background-light dark:bg-background-dark font-display text-[#0c1d1d] dark:text-gray-100 antialiased">
@@ -168,17 +168,14 @@ export default function DashboardPage() {
               </div>
               <span className="material-symbols-outlined text-primary text-xl">insights</span>
             </div>
-            <div className="h-[140px] w-full relative">
-              <svg className="w-full h-full" fill="none" preserveAspectRatio="none" viewBox="0 0 478 150" xmlns="http://www.w3.org/2000/svg">
-                <path d="M0 109C18 109 18 21 36 21C54 21 54 41 72 41C90 41 90 93 108 93C127 93 127 33 145 33C163 33 163 101 181 101C199 101 199 61 217 61C236 61 236 45 254 45C272 45 272 121 290 121C308 121 308 149 326 149C344 149 344 1 363 1C381 1 381 81 399 81C417 81 417 129 435 129C453 129 453 25 472 25V149H0V109Z" fill="url(#chartGradient)"></path>
-                <path d="M0 109C18 109 18 21 36 21C54 21 54 41 72 41C90 41 90 93 108 93C127 93 127 33 145 33C163 33 163 101 181 101C199 101 199 61 217 61C236 61 236 45 254 45C272 45 272 121 290 121C308 121 308 149 326 149C344 149 344 1 363 1C381 1 381 81 399 81C417 81 417 129 435 129C453 129 453 25 472 25" stroke="#006666" strokeLinecap="round" strokeWidth="3"></path>
-                <defs>
-                  <linearGradient gradientUnits="userSpaceOnUse" id="chartGradient" x1="236" x2="236" y1="1" y2="149">
-                    <stop stopColor="#006666" stopOpacity="0.2"></stop>
-                    <stop offset="1" stopColor="#006666" stopOpacity="0"></stop>
-                  </linearGradient>
-                </defs>
-              </svg>
+            {/* 图表占位符 - 需要从 API 获取真实数据后渲染 */}
+            <div className="h-[140px] w-full relative flex items-center justify-center">
+              {data.stats?.revenueChart ? (
+                // TODO: 渲染真实图表数据
+                <p className="text-gray-400 text-sm">Chart data available</p>
+              ) : (
+                <p className="text-gray-400 text-sm">No chart data available</p>
+              )}
             </div>
             <div className="flex justify-between mt-2 px-1">
               <span className="text-[10px] font-bold text-gray-400 uppercase">Mon</span>
