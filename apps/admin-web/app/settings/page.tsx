@@ -52,21 +52,35 @@ export default function AdminSettingsPage() {
       setError(null);
       
       const response = await fetch('/api/admin/settings');
-      const result = await response.json();
       
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to fetch settings');
+      // Parse JSON with error handling
+      const result = await response.json().catch(() => null);
+      
+      // Check HTTP status first
+      if (!response.ok) {
+        const errorMsg = result?.message || result?.error || `HTTP ${response.status}`;
+        console.error('[ADMIN SETTINGS] HTTP Error:', { status: response.status, result });
+        throw new Error(errorMsg);
       }
       
-      setRegions(result.data.regions || []);
-      setAdminUsers(result.data.adminUsers || []);
-      setForce2FA(result.data.settings?.force2FA || false);
-      setApiWriteAccess(result.data.settings?.apiWriteAccess || false);
-      setSystemStatus(result.data.settings?.systemStatus || 'active');
-      setLastAudit(result.data.lastAudit || null);
+      // Check response shape (support both 'ok' and 'success')
+      if (result?.ok !== true && result?.success !== true) {
+        const errorMsg = result?.message || result?.error || 'Invalid response format';
+        console.error('[ADMIN SETTINGS] Bad response shape:', result);
+        throw new Error(errorMsg);
+      }
+      
+      // Extract data with fallbacks
+      setRegions(result.data?.regions || []);
+      setAdminUsers(result.data?.adminUsers || []);
+      setForce2FA(result.data?.settings?.force2FA || false);
+      setApiWriteAccess(result.data?.settings?.apiWriteAccess || false);
+      setSystemStatus(result.data?.settings?.systemStatus || 'active');
+      setLastAudit(result.data?.lastAudit || null);
     } catch (err: any) {
       console.error('[ADMIN SETTINGS] Error:', err);
-      setError(err.message);
+      // Set user-friendly error message
+      setError(err.message || 'Failed to fetch settings');
     } finally {
       setLoading(false);
     }

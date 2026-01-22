@@ -169,15 +169,28 @@ export default function AdminMerchantsPage() {
         }),
       });
       
-      const result = await response.json();
+      // Parse JSON with error handling
+      const result = await response.json().catch(() => null);
       
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to create merchant invite');
+      // Check HTTP status first
+      if (!response.ok) {
+        const errorMsg = result?.message || result?.error || `HTTP ${response.status}`;
+        console.error('[ADMIN MERCHANTS] HTTP Error:', { status: response.status, result });
+        throw new Error(errorMsg);
       }
       
-      alert(`Merchant invite code created: ${result.data.token}`);
+      // Check response shape (support both 'ok' and 'success')
+      if (result?.ok !== true && result?.success !== true) {
+        const errorMsg = result?.message || result?.error || 'Invalid response format';
+        console.error('[ADMIN MERCHANTS] Bad response shape:', result);
+        throw new Error(errorMsg);
+      }
+      
+      const inviteCode = result.data?.code || result.data?.token;
+      alert(`Merchant invite code created: ${inviteCode}`);
       setShowCreateInviteModal(false);
       setInviteForm({ merchantId: '', regionId: '', role: 'owner', expiresDays: 30 });
+      fetchMerchants(); // Refresh list
     } catch (err: any) {
       console.error('[ADMIN MERCHANTS] Create invite error:', err);
       alert(err.message);

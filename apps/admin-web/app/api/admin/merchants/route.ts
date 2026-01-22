@@ -206,6 +206,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       return authResult.response;
     }
 
+    const { user, adminClient } = authResult;
     step = 'auth_ok';
 
     // STEP 2: 读取请求体
@@ -228,24 +229,123 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
 
     step = 'validated';
 
-    // TODO: 实现邀请码创建逻辑
-    step = 'not_implemented';
-    return NextResponse.json<ApiResponse>(
-      {
-        ok: false,
-        error: 'Not Implemented',
-        code: 'NOT_IMPLEMENTED',
-        message: 'Merchant invite creation not yet implemented',
-        step,
-      },
-      { status: 501 }
+    // STEP 3: 生成邀请码
+    step = 'generate_code';
+    const generateInviteCode = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 避免易混淆字符
+      let code = '';
+      for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    };
+
+    let inviteCode = generateInviteCode();
+    
+    // 确保 code 唯一（最多尝试 3 次）
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data: existing } = await adminClient
+        .from('invites')
+        .select('id')
+        .eq('token', inviteCode)
+        .single();
+      
+      if (!existing) break; // Code is unique
+      inviteCode = generateInviteCode(); // Try again
+    }
+
+    step = 'code_generated';
+
+    // STEP 4: 计算过期时间
+    step = 'calc_expiry';
+    const daysToExpire = expiresDays || 30;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + daysToExpire);
+
+    step = 'expiry_calculated';
+
+    // STEP 5: 创建邀请记录
+    step = 'insert_invite';
+    const inviteData: any = {
+      token: inviteCode,
+      merchant_id: merchantId || null,
+      region_id: regionId || null,
+      intended_role: role || 'owner',
+      issued_by_type: 'admin',
+      max_uses: 1,
+      used_count: 0,
+      expires_at: expiresAt.toISOString(),
+      disabled: false,
+      is_active: true,
+      created_by: user?.id || null,
+      note: merchantId
+        ? `Admin-created invite for merchant ${merchantId}`
+        : `Admin-created invite for new merchant in region ${regionId}`,
+    };
+
+    const { data: invite, error: insertError } = await withTimeout(
+      Promise.resolve(
+        adminClient
+          .from('invites')
+          .insert(inviteData)
+          .select()
+          .single()
+      ),
+      TIMEOUT_MS,
+      'insert invite'
     );
+
+    if (insertError) {
+      console.error('[ADMIN MERCHANTS POST] Insert error:', insertError);
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Database Error',
+          code: 'INSERT_ERROR',
+          message: insertError.message,
+          hint: 'Check if invites table supports region_id when merchant_id is NULL',
+          step,
+        },
+        { status: 500 }
+      );
+    }
+
+    step = 'success';
+    return NextResponse.json<ApiResponse>({
+      ok: true,
+      data: {
+        invite: {
+          id: invite.id,
+          code: invite.token,
+          token: invite.token, // Backward compatibility
+          merchantId: invite.merchant_id,
+          regionId: invite.region_id,
+          role: invite.intended_role,
+          expiresAt: invite.expires_at,
+        },
+      },
+      step,
+    });
 
   } catch (error: any) {
     console.error('[ADMIN MERCHANTS POST] Error:', {
       step,
       error: error.message,
+      stack: error.stack,
     });
+
+    if (error.message?.includes('[TIMEOUT]')) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Request Timeout',
+          code: 'TIMEOUT',
+          message: error.message,
+          step,
+        },
+        { status: 504 }
+      );
+    }
 
     return NextResponse.json<ApiResponse>(
       {
