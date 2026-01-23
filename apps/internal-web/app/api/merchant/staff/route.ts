@@ -175,8 +175,11 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      // 使用降级数据（没有 profiles 信息）
-      members = fallbackMembers || [];
+      // 使用降级数据（没有 profiles 信息），添加空的 profiles 字段以保持类型一致
+      members = (fallbackMembers || []).map((m: any) => ({
+        ...m,
+        profiles: null,
+      })) as any;
     }
 
     // 格式化返回数据
