@@ -26,7 +26,12 @@ interface Approval {
   merchant?: {
     id: string;
     name: string;
-  };
+  } | null;
+  event?: {
+    id: string;
+    title: string;
+    start_at?: string;
+  } | null;
   venue?: {
     id: string;
     name: string;
@@ -237,9 +242,9 @@ export default function AdminApprovalsPage() {
     const icon = getTypeIcon(approval.type);
     const label = getTypeLabel(approval.type);
     
-    // 从 payload 中提取事件/商家名称（如果可用）
-    const eventName = approval.payload?.title || approval.payload?.name || 'Unknown Event';
-    const merchantName = approval.payload?.merchant_name || 'Unknown Merchant';
+    // 优先使用 API 返回的 merchant 和 event 信息
+    const eventName = approval.event?.title || approval.payload?.title || approval.payload?.name || 'Unknown Event';
+    const merchantName = approval.merchant?.name || approval.payload?.merchant_name || approval.merchantId || 'Unknown Merchant';
     
     return (
       <div

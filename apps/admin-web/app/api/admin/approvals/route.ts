@@ -75,7 +75,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       } : null,
     });
 
-    // 查询带 status 过滤的记录
+    // 查询带 status 过滤的记录，并 join merchant 和 event
     let requestQuery = adminClient
       .from('event_change_requests')
       .select(`
@@ -89,7 +89,16 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         submitted_at,
         approved_by,
         approved_at,
-        rejection_reason
+        rejection_reason,
+        merchants:merchant_id (
+          id,
+          name
+        ),
+        events:event_id (
+          id,
+          title,
+          start_at
+        )
       `)
       .order('submitted_at', { ascending: false })
       .limit(50);
@@ -161,6 +170,15 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       decidedAt: req.approved_at,
       note: req.rejection_reason,
       merchantId: req.merchant_id,
+      merchant: req.merchants ? {
+        id: req.merchants.id,
+        name: req.merchants.name,
+      } : null,
+      event: req.events ? {
+        id: req.events.id,
+        title: req.events.title,
+        start_at: req.events.start_at,
+      } : null,
       venueId: null, // event_change_requests 表没有 venue_id
       // payload_json contains the change request details
       payload: req.payload_json || {},
