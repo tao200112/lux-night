@@ -33,7 +33,7 @@ export async function GET(
       );
     }
     
-    // 获取事件详情
+    // 获取事件详情（包含所有字段）
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
@@ -51,7 +51,8 @@ export async function GET(
         venues(
           id,
           name,
-          address
+          address,
+          region_id
         )
       `)
       .eq('id', eventId)
@@ -64,12 +65,12 @@ export async function GET(
       );
     }
     
-    // 获取票务类型
+    // 获取票务类型（包含所有字段和已售出数量）
     const { data: ticketTypes, error: ticketTypesError } = await supabase
       .from('ticket_types')
       .select('*')
       .eq('event_id', eventId)
-      .order('price_cents', { ascending: false });
+      .order('sort_order', { ascending: true });
     
     // 获取订单统计
     const { count: totalOrders } = await supabase
@@ -104,6 +105,8 @@ export async function GET(
         posterUrl: event.poster_url,
         agePolicy: event.age_policy,
         refundPolicy: event.refund_policy,
+        redeemStartAt: event.redeem_start_at,
+        redeemEndAt: event.redeem_end_at,
         merchant: (() => {
           if (!event.merchants) return null;
           const merchantData = Array.isArray(event.merchants) ? event.merchants[0] : event.merchants;
@@ -129,21 +132,30 @@ export async function GET(
             id: venueData.id,
             name: venueData.name,
             address: venueData.address,
+            region_id: venueData.region_id,
           } : null;
         })(),
         ticketTypes: (ticketTypes || []).map((tt: any) => ({
           id: tt.id,
           name: tt.name,
-          description: tt.description,
+          description: tt.description || '',
           category: tt.category,
           priceCents: tt.price_cents,
           price: tt.price_cents / 100,
           priceFormatted: `$${(tt.price_cents / 100).toFixed(2)}`,
           inventoryLimit: tt.inventory_limit,
           inventory: tt.inventory_limit,
-          soldCount: tt.sold_count,
-          remaining: (tt.inventory_limit || 0) - tt.sold_count,
+          soldCount: tt.sold_count || 0,
+          remaining: (tt.inventory_limit || 0) - (tt.sold_count || 0),
           status: tt.status || (tt.is_active ? 'ACTIVE' : 'INACTIVE'),
+          maxPerOrder: tt.max_per_order || 10,
+          ageRequirement: tt.age_requirement || 'NONE',
+          salesStartAt: tt.sales_start_at,
+          salesEndAt: tt.sales_end_at,
+          sortOrder: tt.sort_order || 0,
+          redeemLimit: tt.redeem_limit || 1,
+          redeemStartAtOverride: tt.redeem_start_at_override,
+          redeemEndAtOverride: tt.redeem_end_at_override,
         })),
         stats: {
           totalOrders: totalOrders || 0,
@@ -176,7 +188,7 @@ const UpdateEventSchema = z.object({
   redeem_start_at: z.string().datetime().nullable().optional(),
   redeem_end_at: z.string().datetime().nullable().optional(),
   refund_policy: z.string().optional(),
-  published_status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
+  published_status: z.enum(['DRAFT', 'PUBLISHED', 'PAUSED', 'CANCELLED']).optional(),
   ticket_types: z.array(z.object({
     id: z.string().uuid().optional(),
     name: z.string(),
@@ -285,6 +297,9 @@ export async function PUT(
       }
     }
     
+    // Pause时：不需要严格校验，只是暂停销售
+    // 允许暂停已发布的活动
+    
     // 使用admin client更新事件
     const adminClient = createAdminClient();
     
@@ -301,7 +316,19 @@ export async function PUT(
     if (data.redeem_end_at !== undefined) updateData.redeem_end_at = data.redeem_end_at;
     if (data.refund_policy !== undefined) updateData.refund_policy = data.refund_policy;
     if (data.published_status !== undefined) {
-      updateData.status = data.published_status === 'PUBLISHED' ? 'published' : 'draft';
+      // Map published_status to status
+      if (data.published_status === 'PUBLISHED') {
+        updateData.status = 'published';
+      } else if (data.published_status === 'PAUSED') {
+        updateData.status = 'paused';
+      } else if (data.published_status === 'CANCELLED') {
+        updateData.status = 'cancelled';
+      } else {
+        updateData.status = 'draft';
+      }
+    } else {
+      // 如果没有指定published_status，保持当前状态不变
+      // 但允许其他字段更新
     }
     
     // 更新事件
@@ -320,41 +347,76 @@ export async function PUT(
       );
     }
     
-    // 更新票种（如果提供了）
+    // 更新票种（如果提供了）- 使用增删改策略
     if (data.ticket_types && Array.isArray(data.ticket_types)) {
-      // 删除现有票种（简化处理：删除所有后重新插入）
-      await adminClient
+      // 获取现有票种（检查已售出数量）
+      const { data: existingTicketTypes } = await adminClient
         .from('ticket_types')
-        .delete()
+        .select('id, sold_count')
         .eq('event_id', eventId);
       
-      // 插入新票种
-      if (data.ticket_types.length > 0) {
-        const ticketTypesToInsert = data.ticket_types.map((tt: any) => ({
+      const existingIds = new Set((existingTicketTypes || []).map((tt: any) => tt.id));
+      const existingSoldCounts = new Map((existingTicketTypes || []).map((tt: any) => [tt.id, tt.sold_count || 0]));
+      const newTicketTypes = data.ticket_types;
+      const newIds = new Set(newTicketTypes.filter((tt: any) => tt.id).map((tt: any) => tt.id));
+      
+      // 找出需要删除的票种（只删除未售出的）
+      const toDelete = Array.from(existingIds).filter(id => !newIds.has(id));
+      for (const id of toDelete) {
+        const soldCount = existingSoldCounts.get(id) || 0;
+        if (soldCount > 0) {
+          // 已售出，不能删除，改为停用
+          await adminClient
+            .from('ticket_types')
+            .update({ status: 'HIDDEN', is_active: false })
+            .eq('id', id);
+        } else {
+          // 未售出，可以删除
+          await adminClient
+            .from('ticket_types')
+            .delete()
+            .eq('id', id);
+        }
+      }
+      
+      // 更新或插入票种
+      for (const tt of newTicketTypes) {
+        const ticketData: any = {
           event_id: eventId,
           name: tt.name,
           description: tt.description || null,
           category: tt.category,
-          price_cents: tt.price_cents,
-          inventory_limit: tt.inventory_limit || null,
+          price_cents: Math.round(tt.price_cents * 100), // 前端传美元，转换为分
+          inventory_limit: tt.quantity_total || null,
           max_per_order: tt.max_per_order || 10,
           age_requirement: tt.age_requirement || 'NONE',
           sales_start_at: tt.sales_start_at || null,
           sales_end_at: tt.sales_end_at || null,
           status: tt.status || 'DRAFT',
-          sort_order: tt.sort_order || 0,
+          sort_order: tt.sort_order !== undefined ? tt.sort_order : 0,
           redeem_limit: tt.redeem_limit || 1,
           redeem_start_at_override: tt.redeem_start_at_override || null,
           redeem_end_at_override: tt.redeem_end_at_override || null,
-        }));
+        };
         
-        const { error: ticketTypesError } = await adminClient
-          .from('ticket_types')
-          .insert(ticketTypesToInsert);
-        
-        if (ticketTypesError) {
-          console.error('[ADMIN EVENT UPDATE API] Ticket types error:', ticketTypesError);
-          // 不阻断，继续返回事件更新结果
+        if (tt.id && existingIds.has(tt.id)) {
+          // 更新现有票种
+          // 如果已售出，价格修改只影响新订单（通过版本化或只更新新订单逻辑）
+          // 这里简化处理：直接更新，但记录警告
+          const soldCount = existingSoldCounts.get(tt.id) || 0;
+          if (soldCount > 0) {
+            console.warn(`[ADMIN EVENT UPDATE] Ticket type ${tt.id} has ${soldCount} sold tickets. Price change will only affect new orders.`);
+          }
+          
+          await adminClient
+            .from('ticket_types')
+            .update(ticketData)
+            .eq('id', tt.id);
+        } else {
+          // 插入新票种
+          await adminClient
+            .from('ticket_types')
+            .insert(ticketData);
         }
       }
     }
