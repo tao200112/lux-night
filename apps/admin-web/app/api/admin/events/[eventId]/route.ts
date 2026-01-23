@@ -195,7 +195,8 @@ const UpdateEventSchema = z.object({
     description: z.string().nullable().optional(),
     category: z.enum(['ENTRY', 'DRINK', 'VIP', 'SKIP_LINE']),
     price_cents: z.number().int().min(0),
-    inventory_limit: z.number().int().min(0).nullable().optional(),
+    quantity_total: z.number().int().min(0).nullable().optional(), // 前端使用 quantity_total
+    inventory_limit: z.number().int().min(0).nullable().optional(), // 兼容字段
     max_per_order: z.number().int().min(1).optional(),
     age_requirement: z.enum(['NONE', '18_PLUS', '21_PLUS']).optional(),
     sales_start_at: z.string().datetime().nullable().optional(),
@@ -387,7 +388,7 @@ export async function PUT(
           description: tt.description || null,
           category: tt.category,
           price_cents: Math.round(tt.price_cents * 100), // 前端传美元，转换为分
-          inventory_limit: tt.quantity_total || null,
+          inventory_limit: tt.quantity_total ?? tt.inventory_limit ?? null, // 支持 quantity_total 和 inventory_limit
           max_per_order: tt.max_per_order || 10,
           age_requirement: tt.age_requirement || 'NONE',
           sales_start_at: tt.sales_start_at || null,
