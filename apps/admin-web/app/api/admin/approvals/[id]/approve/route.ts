@@ -100,9 +100,45 @@ export const POST = handlerWrapper(async (
       payload_keys: changeRequest.payload_json ? Object.keys(changeRequest.payload_json) : [],
     });
 
-    // STEP 4: 检查状态
+    // STEP 4: 检查状态（幂等处理）
     step = 'check_status';
+    if (changeRequest.status === 'approved') {
+      // 已批准：返回 200（幂等）
+      console.log('[ADMIN APPROVE] Request already approved:', requestId);
+      return NextResponse.json<ApiResponse>({
+        ok: true,
+        data: {
+          message: 'Request was already approved',
+          already: true,
+        },
+        step,
+        debug: {
+          requestId,
+          currentStatus: changeRequest.status,
+        },
+      });
+    }
+    
+    if (changeRequest.status === 'rejected') {
+      // 已拒绝：返回 409
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Conflict',
+          code: 'INVALID_STATUS',
+          message: `Request is already ${changeRequest.status}`,
+          step,
+          debug: {
+            requestId,
+            currentStatus: changeRequest.status,
+          },
+        },
+        { status: 409 }
+      );
+    }
+    
     if (changeRequest.status !== 'pending') {
+      // 其他未知状态：返回 409
       return NextResponse.json<ApiResponse>(
         {
           ok: false,

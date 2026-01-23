@@ -31,6 +31,7 @@ interface Approval {
     id: string;
     title: string;
     start_at?: string;
+    venue_id?: string | null;
   } | null;
   venue?: {
     id: string;
@@ -84,10 +85,11 @@ export default function AdminApprovalsPage() {
       const approvalsArray = Array.isArray(approvalsData) ? approvalsData : [];
       
       setApprovals(approvalsArray);
+      // 使用接口返回的 counts，不使用本地计算（避免不一致）
       setCounts(result.data?.counts || { 
-        pending: approvalsArray.filter((a: Approval) => a.status === 'pending').length,
-        approved: approvalsArray.filter((a: Approval) => a.status === 'approved').length,
-        rejected: approvalsArray.filter((a: Approval) => a.status === 'rejected').length,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
       });
       
       // Debug 日志
@@ -114,15 +116,28 @@ export default function AdminApprovalsPage() {
       
       const result = await response.json();
       
-      if (result.success) {
-        router.refresh();
-        fetchApprovals();
+      if (result.ok) {
+        // 成功或已批准（幂等）：立即刷新列表
+        await fetchApprovals();
+        if (result.data?.already) {
+          // 已批准的情况，显示提示但不报错
+          console.log('[ADMIN APPROVALS] Request was already approved');
+        }
       } else {
-        alert(result.message || 'Failed to approve request');
+        // 失败：显示错误并刷新列表（因为可能是 UI 过期）
+        const errorMsg = result.message || result.error || 'Failed to approve request';
+        alert(errorMsg);
+        // 如果是 409 INVALID_STATUS，说明 UI 过期，立即刷新
+        if (result.code === 'INVALID_STATUS' || response.status === 409) {
+          console.log('[ADMIN APPROVALS] Status conflict, refreshing list...');
+          await fetchApprovals();
+        }
       }
     } catch (err: any) {
       console.error('[ADMIN APPROVALS] Approve error:', err);
       alert('Failed to approve request');
+      // 出错时也刷新列表
+      await fetchApprovals();
     }
   };
   
@@ -139,15 +154,24 @@ export default function AdminApprovalsPage() {
       
       const result = await response.json();
       
-      if (result.success) {
-        router.refresh();
-        fetchApprovals();
+      if (result.ok) {
+        // 成功：立即刷新列表
+        await fetchApprovals();
       } else {
-        alert(result.message || 'Failed to reject request');
+        // 失败：显示错误并刷新列表（因为可能是 UI 过期）
+        const errorMsg = result.message || result.error || 'Failed to reject request';
+        alert(errorMsg);
+        // 如果是 409，说明 UI 过期，立即刷新
+        if (result.code === 'INVALID_STATUS' || result.code === 'ALREADY_PROCESSED' || response.status === 409) {
+          console.log('[ADMIN APPROVALS] Status conflict, refreshing list...');
+          await fetchApprovals();
+        }
       }
     } catch (err: any) {
       console.error('[ADMIN APPROVALS] Reject error:', err);
       alert('Failed to reject request');
+      // 出错时也刷新列表
+      await fetchApprovals();
     }
   };
   
@@ -242,9 +266,10 @@ export default function AdminApprovalsPage() {
     const icon = getTypeIcon(approval.type);
     const label = getTypeLabel(approval.type);
     
-    // 优先使用 API 返回的 merchant 和 event 信息
+    // 优先使用 API 返回的 merchant、event 和 venue 信息
     const eventName = approval.event?.title || approval.payload?.title || approval.payload?.name || 'Unknown Event';
-    const merchantName = approval.merchant?.name || approval.payload?.merchant_name || approval.merchantId || 'Unknown Merchant';
+    const merchantName = approval.merchant?.name || approval.payload?.merchant_name || (approval.merchantId ? `Merchant ${approval.merchantId.substring(0, 8)}...` : 'Unknown Merchant');
+    const venueName = approval.venue?.name || (approval.venueId ? `Venue ${approval.venueId.substring(0, 8)}...` : null);
     
     return (
       <div
@@ -272,9 +297,17 @@ export default function AdminApprovalsPage() {
           <h3 className="text-base font-bold text-gray-900 dark:text-white leading-tight mb-1">
             {eventName}
           </h3>
-          <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
-            <span className="material-symbols-outlined text-[16px]">storefront</span>
-            <span>{merchantName}</span>
+          <div className="flex flex-col gap-1 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px]">storefront</span>
+              <span>{merchantName}</span>
+            </div>
+            {venueName && (
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">location_on</span>
+                <span>{venueName}</span>
+              </div>
+            )}
           </div>
         </div>
         

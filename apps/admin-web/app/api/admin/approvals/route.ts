@@ -37,10 +37,26 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const { adminClient } = authResult;
     step = 'auth_ok';
 
-    // STEP 2: 获取查询参数
+    // STEP 2: 获取查询参数并严格校验
     step = 'parse_params';
     const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get('status') || 'pending';
+    let status = searchParams.get('status') || 'pending';
+    
+    // 严格校验 status
+    const validStatuses = ['pending', 'approved', 'rejected', 'all'];
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Bad Request',
+          code: 'INVALID_STATUS',
+          message: `Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`,
+          step,
+        },
+        { status: 400 }
+      );
+    }
+    
     const query = searchParams.get('query') || '';
     step = 'params_ok';
 
@@ -75,7 +91,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       } : null,
     });
 
-    // 查询带 status 过滤的记录，并 join merchant 和 event
+    // 查询带 status 过滤的记录，并 join merchant、event 和 venue
     let requestQuery = adminClient
       .from('event_change_requests')
       .select(`
@@ -97,12 +113,18 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         events:event_id (
           id,
           title,
-          start_at
+          start_at,
+          venue_id,
+          venues:venue_id (
+            id,
+            name
+          )
         )
       `)
       .order('submitted_at', { ascending: false })
       .limit(50);
 
+    // 严格过滤：必须使用 .eq('status', status)，禁止用 neq/in
     if (status && status !== 'all') {
       requestQuery = requestQuery.eq('status', status);
     }
@@ -158,7 +180,24 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
 
     step = 'requests_ok';
 
-    // STEP 4: 格式化响应
+    // STEP 4: 查询所有状态的计数（用于 tab 显示）
+    step = 'count_all_statuses';
+    const { count: pendingCount } = await adminClient
+      .from('event_change_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    
+    const { count: approvedCount } = await adminClient
+      .from('event_change_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'approved');
+    
+    const { count: rejectedCount } = await adminClient
+      .from('event_change_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'rejected');
+
+    // STEP 5: 格式化响应
     step = 'format_response';
     const approvals = (requests || []).map((req: any) => ({
       id: req.id,
@@ -178,8 +217,13 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         id: req.events.id,
         title: req.events.title,
         start_at: req.events.start_at,
+        venue_id: req.events.venue_id,
       } : null,
-      venueId: null, // event_change_requests 表没有 venue_id
+      venue: req.events?.venues ? {
+        id: req.events.venues.id,
+        name: req.events.venues.name,
+      } : null,
+      venueId: req.events?.venue_id || null,
       // payload_json contains the change request details
       payload: req.payload_json || {},
     }));
@@ -187,11 +231,11 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     // Debug 信息（包含详细日志）
     const firstId = requests && requests.length > 0 ? requests[0].id : null;
     const debug = {
-      count: requests?.length || 0,
+      statusFilterApplied: status,
+      rowCount: requests?.length || 0,
       firstId,
       usedServiceRole: true,
       table: 'event_change_requests',
-      status,
       supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
       hasServiceRoleKey,
       totalTableCount: totalCount,
@@ -204,9 +248,9 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       data: {
         approvals,
         counts: {
-          pending: approvals.filter((a: any) => a.status === 'pending').length,
-          approved: approvals.filter((a: any) => a.status === 'approved').length,
-          rejected: approvals.filter((a: any) => a.status === 'rejected').length,
+          pending: pendingCount || 0,
+          approved: approvedCount || 0,
+          rejected: rejectedCount || 0,
         },
       },
       step,
