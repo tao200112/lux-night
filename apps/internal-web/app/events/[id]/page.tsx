@@ -38,7 +38,7 @@ interface EventDetail {
 
 interface ChangeRequest {
   id: string;
-  request_type: 'poster' | 'price' | 'inventory';
+  request_type: 'poster' | 'price' | 'inventory' | 'poster_change' | 'price_change' | 'inventory_change' | 'event_edit' | 'general';
   status: 'pending' | 'approved' | 'rejected';
   payload_json: any;
   submitted_at: string;
@@ -96,6 +96,7 @@ export default function EventDetailPage() {
 
   const loadChangeRequests = async () => {
     try {
+      // 获取所有状态的请求，但优先显示 pending
       const res = await fetch(`/api/merchant/event-change-requests?event_id=${eventId}`, {
         credentials: 'include',
       });
@@ -103,7 +104,14 @@ export default function EventDetailPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setChangeRequests(data.requests || []);
+          const requests = data.requests || [];
+          // 按状态排序：pending 在前，然后按时间倒序
+          const sortedRequests = requests.sort((a: ChangeRequest, b: ChangeRequest) => {
+            if (a.status === 'pending' && b.status !== 'pending') return -1;
+            if (a.status !== 'pending' && b.status === 'pending') return 1;
+            return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
+          });
+          setChangeRequests(sortedRequests);
         }
       }
     } catch (err) {
@@ -179,18 +187,28 @@ export default function EventDetailPage() {
 
   const getRequestSummary = (request: ChangeRequest): string => {
     const payload = request.payload_json;
-    if (request.request_type === 'price') {
+    const type = request.request_type;
+    
+    // 兼容旧值和新值
+    if (type === 'price' || type === 'price_change') {
       const ticketTypeName = payload.ticket_type_name || 'Ticket';
       const oldPrice = payload.old_price ? `$${(payload.old_price / 100).toFixed(2)}` : '';
       const newPrice = payload.new_price ? `$${(payload.new_price / 100).toFixed(2)}` : '';
       return `${ticketTypeName} ${oldPrice} → ${newPrice}`;
-    } else if (request.request_type === 'inventory') {
+    } else if (type === 'inventory' || type === 'inventory_change') {
       const ticketTypeName = payload.ticket_type_name || 'Ticket';
       const oldCapacity = payload.old_capacity || '';
-      const newCapacity = payload.new_capacity || '';
+      const newCapacity = payload.new_capacity || payload.new_inventory || '';
       return `${ticketTypeName} Capacity: ${oldCapacity} → ${newCapacity}`;
-    } else if (request.request_type === 'poster') {
+    } else if (type === 'poster' || type === 'poster_change') {
       return 'Poster image change';
+    } else if (type === 'event_edit' || type === 'general') {
+      // 显示主要变更字段
+      const changes: string[] = [];
+      if (payload.title) changes.push(`Title: ${payload.title}`);
+      if (payload.start_at) changes.push(`Start: ${new Date(payload.start_at).toLocaleDateString()}`);
+      if (payload.end_at) changes.push(`End: ${new Date(payload.end_at).toLocaleDateString()}`);
+      return changes.length > 0 ? changes.join(', ') : 'Event details change';
     }
     return 'Change request';
   };
@@ -200,6 +218,11 @@ export default function EventDetailPage() {
       poster: 'Poster',
       price: 'Price',
       inventory: 'Inventory',
+      poster_change: 'Poster',
+      price_change: 'Price',
+      inventory_change: 'Inventory',
+      event_edit: 'Event Edit',
+      general: 'General',
     };
     return labels[type] || type;
   };

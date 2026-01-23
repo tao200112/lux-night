@@ -107,8 +107,8 @@ function InventoryChangeRequestPageContent() {
         credentials: 'include',
         body: JSON.stringify({
           event_id: selectedEventId,
-          request_type: 'inventory',
-          payload_json: {
+          request_type: 'inventory_change',
+          payload: {
             ticket_type_id: selectedTicketTypeId,
             ticket_type_name: selectedTicketType.name,
             old_capacity: currentCapacity,

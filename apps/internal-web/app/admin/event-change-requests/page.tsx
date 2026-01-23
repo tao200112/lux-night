@@ -13,6 +13,7 @@ interface ChangeRequest {
   id: string;
   event_id: string;
   merchant_id: string;
+  request_type?: string;
   status: string;
   payload_json: any;
   submitted_at: string;
@@ -243,10 +244,20 @@ export default function AdminEventChangeRequestsPage() {
                   </span>
                 </div>
 
+                {/* Request Type Badge */}
+                {request.request_type && (
+                  <div className="mb-2">
+                    <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                      {request.request_type.replace('_', ' ')}
+                    </span>
+                  </div>
+                )}
+
                 {/* Changes Preview */}
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
                   <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Changes:</p>
                   <div className="space-y-1 text-sm">
+                    {/* Event Edit / General */}
                     {request.payload_json.title && (
                       <p><span className="font-semibold">Title:</span> {request.payload_json.title}</p>
                     )}
@@ -261,6 +272,38 @@ export default function AdminEventChangeRequestsPage() {
                     )}
                     {request.payload_json.refund_policy && (
                       <p><span className="font-semibold">Refund Policy:</span> {request.payload_json.refund_policy}</p>
+                    )}
+                    {/* Poster Change */}
+                    {request.payload_json.poster_url && (
+                      <p><span className="font-semibold">Poster URL:</span> <a href={request.payload_json.poster_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">View</a></p>
+                    )}
+                    {/* Price Change */}
+                    {request.payload_json.ticket_type_id && request.payload_json.new_price !== undefined && (
+                      <p>
+                        <span className="font-semibold">Ticket:</span> {request.payload_json.ticket_type_name || request.payload_json.ticket_type_id}
+                        {request.payload_json.old_price !== undefined && (
+                          <span className="ml-2">
+                            ${(request.payload_json.old_price / 100).toFixed(2)} → ${(request.payload_json.new_price / 100).toFixed(2)}
+                          </span>
+                        )}
+                        {request.payload_json.old_price === undefined && (
+                          <span className="ml-2">→ ${(request.payload_json.new_price / 100).toFixed(2)}</span>
+                        )}
+                      </p>
+                    )}
+                    {/* Inventory Change */}
+                    {request.payload_json.ticket_type_id && (request.payload_json.new_capacity !== undefined || request.payload_json.new_inventory !== undefined) && (
+                      <p>
+                        <span className="font-semibold">Ticket:</span> {request.payload_json.ticket_type_name || request.payload_json.ticket_type_id}
+                        {request.payload_json.old_capacity !== undefined && (
+                          <span className="ml-2">
+                            Capacity: {request.payload_json.old_capacity} → {request.payload_json.new_capacity || request.payload_json.new_inventory}
+                          </span>
+                        )}
+                        {request.payload_json.old_capacity === undefined && (
+                          <span className="ml-2">→ {request.payload_json.new_capacity || request.payload_json.new_inventory}</span>
+                        )}
+                      </p>
                     )}
                   </div>
                 </div>

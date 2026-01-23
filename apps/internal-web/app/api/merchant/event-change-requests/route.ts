@@ -547,7 +547,13 @@ export async function GET(req: NextRequest) {
       query = query.eq('status', status);
     }
 
-    query = query.order('submitted_at', { ascending: false });
+    // 如果没有指定 status，优先返回 pending，然后按时间倒序
+    if (!status) {
+      query = query.order('status', { ascending: true }) // pending 在前
+                   .order('submitted_at', { ascending: false });
+    } else {
+      query = query.order('submitted_at', { ascending: false });
+    }
 
     let { data: requests, error: fetchError } = await query;
     let usedServiceRole = false;
@@ -592,7 +598,13 @@ export async function GET(req: NextRequest) {
         adminQuery = adminQuery.eq('status', status);
       }
 
-      adminQuery = adminQuery.order('submitted_at', { ascending: false });
+      // 如果没有指定 status，优先返回 pending，然后按时间倒序
+      if (!status) {
+        adminQuery = adminQuery.order('status', { ascending: true }) // pending 在前
+                             .order('submitted_at', { ascending: false });
+      } else {
+        adminQuery = adminQuery.order('submitted_at', { ascending: false });
+      }
 
       const { data: adminRequests, error: adminError } = await adminQuery;
 

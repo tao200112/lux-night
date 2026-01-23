@@ -87,10 +87,15 @@ export async function POST(
     }
 
     const payload = request.payload_json as any;
-    const requestType = request.request_type;
+    let requestType = request.request_type;
+
+    // 兼容旧值：映射到新值
+    if (requestType === 'poster') requestType = 'poster_change';
+    if (requestType === 'price') requestType = 'price_change';
+    if (requestType === 'inventory') requestType = 'inventory_change';
 
     // 根据 request_type 应用不同的更新逻辑
-    if (requestType === 'poster') {
+    if (requestType === 'poster_change' || requestType === 'poster') {
       // 更新 events.poster_url
       const { error: updateError } = await adminClient
         .from('events')
@@ -114,101 +119,188 @@ export async function POST(
           { status: 500 }
         );
       }
-    } else if (requestType === 'price') {
+    } else if (requestType === 'price_change' || requestType === 'price') {
       // 更新 ticket_types.price_cents
-      if (!payload.ticket_type_id || payload.new_price === undefined) {
+      // 兼容 payload 格式：new_price (cents) 或 prices 数组
+      let priceUpdates: Array<{ ticket_type_id: string; new_price: number }> = [];
+
+      if (payload.ticket_type_id && payload.new_price !== undefined) {
+        // 单个票种价格变更
+        priceUpdates.push({
+          ticket_type_id: payload.ticket_type_id,
+          new_price: typeof payload.new_price === 'number' ? payload.new_price : Math.round(parseFloat(payload.new_price) * 100),
+        });
+      } else if (Array.isArray(payload.prices)) {
+        // 多个票种价格变更
+        priceUpdates = payload.prices.map((p: any) => ({
+          ticket_type_id: p.ticket_type_id,
+          new_price: typeof p.new_price === 'number' ? p.new_price : Math.round(parseFloat(p.new_price) * 100),
+        }));
+      } else {
         return NextResponse.json(
           {
             success: false,
             error: {
               code: 'VALIDATION_ERROR',
-              message: 'ticket_type_id and new_price are required for price change',
+              message: 'ticket_type_id and new_price (or prices array) are required for price change',
             },
           },
           { status: 400 }
         );
       }
 
-      const { error: updateError } = await adminClient
-        .from('ticket_types')
-        .update({
-          price_cents: payload.new_price,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', payload.ticket_type_id)
-        .eq('event_id', request.event_id);
+      // 批量更新票种价格
+      for (const priceUpdate of priceUpdates) {
+        const { error: updateError } = await adminClient
+          .from('ticket_types')
+          .update({
+            price_cents: priceUpdate.new_price,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', priceUpdate.ticket_type_id)
+          .eq('event_id', request.event_id);
 
-      if (updateError) {
-        console.error('[ADMIN EVENT CHANGE REQUEST] Update price error:', updateError);
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'UPDATE_FAILED',
-              message: 'Failed to update ticket price',
+        if (updateError) {
+          console.error('[ADMIN EVENT CHANGE REQUEST] Update price error:', updateError);
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: 'UPDATE_FAILED',
+                message: `Failed to update ticket price for ${priceUpdate.ticket_type_id}`,
+              },
             },
-          },
-          { status: 500 }
-        );
+            { status: 500 }
+          );
+        }
       }
-    } else if (requestType === 'inventory') {
+    } else if (requestType === 'inventory_change' || requestType === 'inventory') {
       // 更新 ticket_types.quantity_available
-      if (!payload.ticket_type_id || payload.new_capacity === undefined) {
+      // 兼容 payload 格式：new_capacity 或 new_inventory 或 quantities 数组
+      let inventoryUpdates: Array<{ ticket_type_id: string; new_capacity: number }> = [];
+
+      if (payload.ticket_type_id && (payload.new_capacity !== undefined || payload.new_inventory !== undefined)) {
+        // 单个票种库存变更
+        inventoryUpdates.push({
+          ticket_type_id: payload.ticket_type_id,
+          new_capacity: payload.new_capacity !== undefined ? payload.new_capacity : payload.new_inventory,
+        });
+      } else if (Array.isArray(payload.quantities)) {
+        // 多个票种库存变更
+        inventoryUpdates = payload.quantities.map((q: any) => ({
+          ticket_type_id: q.ticket_type_id,
+          new_capacity: q.new_capacity !== undefined ? q.new_capacity : q.new_inventory,
+        }));
+      } else {
         return NextResponse.json(
           {
             success: false,
             error: {
               code: 'VALIDATION_ERROR',
-              message: 'ticket_type_id and new_capacity are required for inventory change',
+              message: 'ticket_type_id and new_capacity (or quantities array) are required for inventory change',
             },
           },
           { status: 400 }
         );
       }
 
-      // 计算新的 quantity_available
-      // 需要先获取当前的 quantity_sold
-      const { data: ticketType, error: fetchTicketError } = await adminClient
-        .from('ticket_types')
-        .select('quantity_sold, quantity_available')
-        .eq('id', payload.ticket_type_id)
-        .eq('event_id', request.event_id)
-        .single();
+      // 批量更新票种库存
+      for (const invUpdate of inventoryUpdates) {
+        // 计算新的 quantity_available
+        // 需要先获取当前的 quantity_sold
+        const { data: ticketType, error: fetchTicketError } = await adminClient
+          .from('ticket_types')
+          .select('quantity_sold, quantity_available')
+          .eq('id', invUpdate.ticket_type_id)
+          .eq('event_id', request.event_id)
+          .single();
 
-      if (fetchTicketError || !ticketType) {
-        console.error('[ADMIN EVENT CHANGE REQUEST] Fetch ticket type error:', fetchTicketError);
+        if (fetchTicketError || !ticketType) {
+          console.error('[ADMIN EVENT CHANGE REQUEST] Fetch ticket type error:', fetchTicketError);
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: 'NOT_FOUND',
+                message: `Ticket type not found: ${invUpdate.ticket_type_id}`,
+              },
+            },
+            { status: 404 }
+          );
+        }
+
+        // 新的 quantity_available = new_capacity - quantity_sold
+        const newQuantityAvailable = Math.max(0, invUpdate.new_capacity - (ticketType.quantity_sold || 0));
+
+        const { error: updateError } = await adminClient
+          .from('ticket_types')
+          .update({
+            quantity_available: newQuantityAvailable,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', invUpdate.ticket_type_id)
+          .eq('event_id', request.event_id);
+
+        if (updateError) {
+          console.error('[ADMIN EVENT CHANGE REQUEST] Update inventory error:', updateError);
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: 'UPDATE_FAILED',
+                message: `Failed to update ticket inventory for ${invUpdate.ticket_type_id}`,
+              },
+            },
+            { status: 500 }
+          );
+        }
+      }
+    } else if (requestType === 'event_edit' || requestType === 'general') {
+      // 通用事件编辑：将 payload_json 的字段 patch 到 events 表
+      const allowedFields = [
+        'title', 'description', 'start_at', 'end_at', 'poster_url',
+        'age_policy', 'refund_policy', 'status'
+      ];
+      
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      // 只更新 payload 中允许的字段
+      for (const field of allowedFields) {
+        if (payload[field] !== undefined) {
+          updateData[field] = payload[field];
+        }
+      }
+
+      // 如果没有可更新的字段，返回错误
+      if (Object.keys(updateData).length === 1) {
         return NextResponse.json(
           {
             success: false,
             error: {
-              code: 'NOT_FOUND',
-              message: 'Ticket type not found',
+              code: 'VALIDATION_ERROR',
+              message: 'No valid fields to update in payload',
             },
           },
-          { status: 404 }
+          { status: 400 }
         );
       }
 
-      // 新的 quantity_available = new_capacity - quantity_sold
-      const newQuantityAvailable = Math.max(0, payload.new_capacity - (ticketType.quantity_sold || 0));
-
       const { error: updateError } = await adminClient
-        .from('ticket_types')
-        .update({
-          quantity_available: newQuantityAvailable,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', payload.ticket_type_id)
-        .eq('event_id', request.event_id);
+        .from('events')
+        .update(updateData)
+        .eq('id', request.event_id)
+        .eq('merchant_id', request.merchant_id);
 
       if (updateError) {
-        console.error('[ADMIN EVENT CHANGE REQUEST] Update inventory error:', updateError);
+        console.error('[ADMIN EVENT CHANGE REQUEST] Update event error:', updateError);
         return NextResponse.json(
           {
             success: false,
             error: {
               code: 'UPDATE_FAILED',
-              message: 'Failed to update ticket inventory',
+              message: 'Failed to update event',
             },
           },
           { status: 500 }

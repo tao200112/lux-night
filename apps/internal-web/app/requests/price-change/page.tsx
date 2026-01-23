@@ -107,8 +107,8 @@ function PriceChangeRequestPageContent() {
         credentials: 'include',
         body: JSON.stringify({
           event_id: selectedEventId,
-          request_type: 'price',
-          payload_json: {
+          request_type: 'price_change',
+          payload: {
             ticket_type_id: selectedTicketTypeId,
             ticket_type_name: selectedTicketType.name,
             old_price: currentPrice,
