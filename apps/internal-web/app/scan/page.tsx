@@ -5,13 +5,32 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function ScanPage() {
   const router = useRouter();
   const [scanning, setScanning] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadUserRole();
+  }, []);
+
+  const loadUserRole = async () => {
+    try {
+      const res = await fetch('/api/me');
+      if (res.ok) {
+        const data = await res.json();
+        // 获取第一个 membership 的 role
+        const role = data.memberships?.[0]?.role || data.roles?.merchant_memberships?.[0]?.role || null;
+        setUserRole(role?.toLowerCase() || null);
+      }
+    } catch (err) {
+      console.error('Failed to load user role:', err);
+    }
+  };
 
   return (
     <div className="relative flex h-screen w-full max-w-[430px] mx-auto flex-col overflow-hidden bg-background-dark text-white">
@@ -34,12 +53,15 @@ export default function ScanPage() {
           <div className="bg-primary px-3 py-1 rounded-full shadow-lg shadow-primary/20">
             <span className="text-[10px] font-black tracking-[0.1em] uppercase">Staff</span>
           </div>
-          <Link 
-            href="/settings"
-            className="size-10 flex items-center justify-center rounded-full bg-black/60 border border-white/10 text-white"
-          >
-            <span className="material-symbols-outlined">settings</span>
-          </Link>
+          {/* 只有 owner/manager/admin 可以访问设置 */}
+          {userRole && userRole !== 'staff' && (
+            <Link 
+              href="/settings"
+              className="size-10 flex items-center justify-center rounded-full bg-black/60 border border-white/10 text-white"
+            >
+              <span className="material-symbols-outlined">settings</span>
+            </Link>
+          )}
         </div>
       </div>
 

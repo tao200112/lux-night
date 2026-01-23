@@ -2,10 +2,30 @@
  * Internal Web Middleware
  * 刷新 Supabase session，确保 Cookie 中的 session 保持最新
  * 实现 Invite Gate：无 merchant_members 永远进不了内部功能
+ * 实现 Role-Based 路由权限控制：staff 不能访问商家管理路由
  */
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+
+// 商家管理路由列表（只有 owner/manager 可以访问）
+const merchantAdminRoutes = [
+  '/settings',
+  '/events',
+  '/dashboard',
+  '/staff',
+  '/invites/create',
+  '/requests',
+  '/admin',
+];
+
+// 检查路径是否匹配商家管理路由
+function isMerchantAdminRoute(pathname: string): boolean {
+  return merchantAdminRoutes.some(route => {
+    // 精确匹配或路径前缀匹配
+    return pathname === route || pathname.startsWith(route + '/');
+  });
+}
 
 export async function middleware(request: NextRequest) {
   try {
@@ -173,8 +193,32 @@ export async function middleware(request: NextRequest) {
       });
     }
 
-    // 3. 如果有 membership，允许访问（直接进入 dashboard/workspaces，不再跳转 /invite）
+    // 3. 如果有 membership，检查 role-based 路由权限
     if (memberships && memberships.length > 0) {
+      const membership = memberships[0];
+      const userRole = membership.role?.toLowerCase() || 'staff';
+      
+      // DEBUG: 打印 role 检查结果
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[MIDDLEWARE] Role check:', {
+          userId: user.id,
+          userRole,
+          pathname,
+          isMerchantAdminRoute: isMerchantAdminRoute(pathname),
+        });
+      }
+      
+      // Role-Based 路由权限控制
+      // 如果用户是 staff，且尝试访问商家管理路由，重定向到 /scan 或 /workspaces
+      if (userRole === 'staff' && isMerchantAdminRoute(pathname)) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[MIDDLEWARE] ⚠️ Staff user trying to access admin route, redirecting to /scan');
+        }
+        // Staff 用户访问商家管理路由时，重定向到 /scan
+        return NextResponse.redirect(new URL('/scan', request.url));
+      }
+      
+      // owner/manager/admin 可以访问所有路由
       if (process.env.NODE_ENV === 'development') {
         console.log('[MIDDLEWARE] ✅ Membership found, allowing access');
       }

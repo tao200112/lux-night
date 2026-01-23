@@ -34,10 +34,26 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [workspace, setWorkspace] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboard();
+    loadUserRole();
   }, []);
+
+  const loadUserRole = async () => {
+    try {
+      const res = await fetch('/api/me');
+      if (res.ok) {
+        const data = await res.json();
+        // 获取第一个 membership 的 role
+        const role = data.memberships?.[0]?.role || data.roles?.merchant_memberships?.[0]?.role || null;
+        setUserRole(role?.toLowerCase() || null);
+      }
+    } catch (err) {
+      console.error('Failed to load user role:', err);
+    }
+  };
 
   const loadDashboard = async () => {
     try {
@@ -274,10 +290,13 @@ export default function DashboardPage() {
           <span className="material-symbols-outlined">group</span>
           <span className="text-[10px] font-bold">Staff</span>
         </Link>
-        <Link href="/settings" className="flex flex-col items-center gap-1 text-gray-400">
-          <span className="material-symbols-outlined">settings</span>
-          <span className="text-[10px] font-bold">Settings</span>
-        </Link>
+        {/* 只有 owner/manager/admin 可以访问设置 */}
+        {userRole && userRole !== 'staff' && (
+          <Link href="/settings" className="flex flex-col items-center gap-1 text-gray-400">
+            <span className="material-symbols-outlined">settings</span>
+            <span className="text-[10px] font-bold">Settings</span>
+          </Link>
+        )}
       </nav>
     </div>
   );
