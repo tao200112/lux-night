@@ -74,8 +74,21 @@ export default function AdminApprovalsPage() {
         throw new Error(result.message || 'Failed to fetch approvals');
       }
       
-      setApprovals(result.data?.approvals || result.data?.requests || []);
-      setCounts(result.data?.counts || { pending: 0, approved: 0, rejected: 0 });
+      // 确保 approvals 是数组
+      const approvalsData = result.data?.approvals || result.data?.requests || [];
+      const approvalsArray = Array.isArray(approvalsData) ? approvalsData : [];
+      
+      setApprovals(approvalsArray);
+      setCounts(result.data?.counts || { 
+        pending: approvalsArray.filter((a: Approval) => a.status === 'pending').length,
+        approved: approvalsArray.filter((a: Approval) => a.status === 'approved').length,
+        rejected: approvalsArray.filter((a: Approval) => a.status === 'rejected').length,
+      });
+      
+      // Debug 日志
+      if (result.debug) {
+        console.log('[ADMIN APPROVALS] Debug:', result.debug);
+      }
     } catch (err: any) {
       console.error('[ADMIN APPROVALS] Error:', err);
       setError(err.message);
@@ -364,8 +377,8 @@ export default function AdminApprovalsPage() {
           <ErrorState message={error} onRetry={fetchApprovals} />
         )}
         
-        {/* Empty State */}
-        {!loading && !error && approvals.length === 0 && (
+        {/* Empty State - 只在 data.length === 0 时显示 */}
+        {!loading && !error && Array.isArray(approvals) && approvals.length === 0 && (
           <EmptyState
             icon="assignment_turned_in"
             title="No Approvals Found"
