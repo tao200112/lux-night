@@ -287,6 +287,7 @@ export interface ApiSuccessResponse<T = any> {
   ok: true;
   data: T;
   step?: string; // 用于调试：标记执行到哪一步
+  debug?: any; // 调试信息（用于排查问题）
 }
 
 export interface ApiErrorResponse {
@@ -298,6 +299,7 @@ export interface ApiErrorResponse {
   hint?: string; // 提示信息
   route?: string; // API 路由路径
   step?: string; // 用于调试：标记失败在哪一步
+  debug?: any; // 调试信息（用于排查问题）
 }
 
 export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse;
