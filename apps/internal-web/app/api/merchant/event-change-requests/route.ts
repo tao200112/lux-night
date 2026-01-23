@@ -232,7 +232,7 @@ export async function POST(req: NextRequest) {
     let { data: request, error: createError } = await supabase
       .from('event_change_requests')
       .insert(insertData)
-      .select('id, request_type, status, payload_json, submitted_at, approved_at, rejected_reason')
+      .select('id, request_type, status, payload_json, submitted_at, approved_at, rejection_reason')
       .single();
 
     let usedServiceRole = false;
@@ -269,7 +269,7 @@ export async function POST(req: NextRequest) {
       const { data: adminRequest, error: adminError } = await adminClient
         .from('event_change_requests')
         .insert(insertData)
-        .select('id, request_type, status, payload_json, submitted_at, approved_at, rejected_reason')
+        .select('id, request_type, status, payload_json, submitted_at, approved_at, rejection_reason')
         .single();
 
       if (adminError) {
@@ -356,7 +356,7 @@ export async function POST(req: NextRequest) {
         payload_json: request.payload_json,
         submitted_at: request.submitted_at,
         approved_at: request.approved_at,
-        rejected_reason: request.rejected_reason,
+        rejected_reason: (request as any).rejection_reason, // 映射：DB 字段 rejection_reason → API 响应 rejected_reason
       },
       debug: {
         usedServiceRole,
@@ -536,7 +536,7 @@ export async function GET(req: NextRequest) {
     // 健康检查通过，继续查询
     let query = supabase
       .from('event_change_requests')
-      .select('id, event_id, request_type, status, payload_json, submitted_at, approved_at, rejected_reason')
+      .select('id, event_id, request_type, status, payload_json, submitted_at, approved_at, rejection_reason')
       .eq('merchant_id', workspace.merchantId);
 
     if (eventId) {
@@ -581,7 +581,7 @@ export async function GET(req: NextRequest) {
       usedServiceRole = true;
       let adminQuery = adminClient
         .from('event_change_requests')
-        .select('id, event_id, request_type, status, payload_json, submitted_at, approved_at, rejected_reason')
+        .select('id, event_id, request_type, status, payload_json, submitted_at, approved_at, rejection_reason')
         .eq('merchant_id', workspace.merchantId);
 
       if (eventId) {
@@ -659,10 +659,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // 映射字段：DB 的 rejection_reason → API 响应的 rejected_reason（兼容前端）
+    const mappedRequests = (requests || []).map((req: any) => ({
+      ...req,
+      rejected_reason: req.rejection_reason, // 添加兼容字段
+    }));
+
     return NextResponse.json({
       success: true,
-      requests: requests || [],
-      count: requests?.length || 0,
+      requests: mappedRequests,
+      count: mappedRequests.length,
       debug: {
         usedServiceRole,
       },

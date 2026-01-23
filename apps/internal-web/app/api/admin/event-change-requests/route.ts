@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
         submitted_at,
         approved_by,
         approved_at,
-        rejected_reason,
+        rejection_reason,
         events:event_id (
           id,
           title,

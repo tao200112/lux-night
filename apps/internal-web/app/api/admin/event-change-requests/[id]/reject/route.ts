@@ -96,7 +96,7 @@ export async function POST(
         status: 'rejected',
         approved_by: user.id,
         approved_at: new Date().toISOString(),
-        rejected_reason: rejection_reason || 'Rejected by admin',
+        rejection_reason: rejection_reason || 'Rejected by admin', // 使用正确的字段名
       })
       .eq('id', id);
 
