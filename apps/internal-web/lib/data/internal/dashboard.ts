@@ -149,19 +149,25 @@ export async function getDashboardStats(
 
     const refunds = refundsData?.length || 0;
 
-    // 获取今晚的活动（今天开始的活动）
-    // 使用与 Events 页面相同的数据源逻辑，确保一致性
+    // 获取今晚的活动
+    // 筛选逻辑：
+    // 1. start_at 在今天范围内，或
+    // 2. now 在 [start_at, end_at] 范围内（正在进行的活动），或
+    // 3. start_at 在未来24h内
     const tonightStart = new Date(now);
     tonightStart.setHours(0, 0, 0, 0);
-    const tonightEnd = new Date(now);
-    tonightEnd.setHours(23, 59, 59, 999);
+    const tomorrowStart = new Date(now);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    tomorrowStart.setHours(0, 0, 0, 0);
 
-    const { data: tonightEventsData } = await supabase
+    // 先获取所有可能相关的活动（今天开始或未来24h）
+    const { data: tonightEventsData, error: tonightEventsError } = await supabase
       .from('events')
       .select(`
         id,
         title,
         start_at,
+        end_at,
         poster_url,
         venues:venue_id (
           name
@@ -169,13 +175,41 @@ export async function getDashboardStats(
       `)
       .eq('merchant_id', merchantId)
       .gte('start_at', tonightStart.toISOString())
-      .lte('start_at', tonightEnd.toISOString())
+      .lt('start_at', tomorrowStart.toISOString())
       .order('start_at', { ascending: true })
-      .limit(5);
+      .limit(10);
+
+    // 如果查询失败，记录错误但继续
+    if (tonightEventsError) {
+      console.error('[DASHBOARD] Error fetching tonight events:', {
+        code: tonightEventsError.code,
+        message: tonightEventsError.message,
+        merchantId,
+      });
+    }
+
+    // 进一步筛选：包括正在进行的活动（now 在 [start_at, end_at] 范围内）
+    const nowISO = now.toISOString();
+    const filteredEvents = (tonightEventsData || []).filter((event: any) => {
+      const startAt = new Date(event.start_at);
+      const endAt = event.end_at ? new Date(event.end_at) : null;
+      
+      // 今天开始的活动
+      if (startAt >= tonightStart && startAt < tomorrowStart) {
+        return true;
+      }
+      
+      // 正在进行的活动（now 在 [start_at, end_at] 范围内）
+      if (endAt && startAt <= now && endAt >= now) {
+        return true;
+      }
+      
+      return false;
+    }).slice(0, 5); // 限制为5个
 
     // 获取每个活动的票务数据
     const tonightEvents = await Promise.all(
-      (tonightEventsData || []).map(async (event: any) => {
+      filteredEvents.map(async (event: any) => {
         const { data: eventTickets } = await supabase
           .from('tickets')
           .select('id, status')

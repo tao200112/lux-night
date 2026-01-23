@@ -43,8 +43,25 @@ export async function GET(req: NextRequest) {
 
     const actualVenueId = venueId || workspace.venueId;
 
+    // DEBUG: 开发环境打印 merchant_id 和 venue_id
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DASHBOARD API] Workspace:', {
+        merchantId: workspace.merchantId,
+        venueId: actualVenueId || 'NULL',
+        hasWorkspace: !!workspace,
+      });
+    }
+
     // 获取统计信息
     const stats = await getDashboardStats(workspace.merchantId, actualVenueId || undefined);
+
+    // DEBUG: 开发环境打印 tonightEvents 数量
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DASHBOARD API] Stats:', {
+        tonightEventsCount: stats.tonightEvents?.length || 0,
+        hasStats: !!stats,
+      });
+    }
 
     return NextResponse.json({
       stats,
