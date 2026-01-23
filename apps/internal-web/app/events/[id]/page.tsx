@@ -96,7 +96,7 @@ export default function EventDetailPage() {
 
   const loadChangeRequests = async () => {
     try {
-      const res = await fetch(`/api/merchant/events/${eventId}/change-requests`, {
+      const res = await fetch(`/api/merchant/event-change-requests?event_id=${eventId}`, {
         credentials: 'include',
       });
 

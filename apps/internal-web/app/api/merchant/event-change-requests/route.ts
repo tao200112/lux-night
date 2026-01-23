@@ -29,11 +29,16 @@ const getAdminClient = () => {
   );
 };
 
-// Zod 校验 Schema
+// Zod 校验 Schema - 支持新旧格式
 const PostRequestSchema = z.object({
   event_id: z.string().uuid('event_id must be a valid UUID'),
-  request_type: z.enum(['price_change', 'inventory_change', 'event_edit', 'poster_change', 'poster', 'price', 'inventory'], {
-    errorMap: () => ({ message: 'request_type must be one of: price_change, inventory_change, event_edit, poster_change, poster, price, inventory' })
+  request_type: z.enum([
+    'price_change', 'inventory_change', 'event_edit', 'poster_change', // 新格式
+    'price', 'inventory', 'poster' // 旧格式兼容
+  ], {
+    errorMap: () => ({ 
+      message: 'request_type must be one of: price_change, inventory_change, event_edit, poster_change, price, inventory, poster' 
+    })
   }),
   payload: z.object({}).passthrough().optional(),
   payload_json: z.object({}).passthrough().optional(),
@@ -44,6 +49,20 @@ const PostRequestSchema = z.object({
     path: ['payload'],
   }
 );
+
+// 标准化 request_type
+function normalizeRequestType(requestType: string): string {
+  const mapping: Record<string, string> = {
+    'price_change': 'price',
+    'inventory_change': 'inventory',
+    'poster_change': 'poster',
+    'event_edit': 'general',
+    'price': 'price',
+    'inventory': 'inventory',
+    'poster': 'poster',
+  };
+  return mapping[requestType] || requestType;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,6 +76,14 @@ export async function POST(req: NextRequest) {
     const normalizedBody = {
       ...body,
       payload: body.payload || body.payload_json,
+    };
+
+    // 构造 parsedBody（用于调试，移除敏感信息）
+    const parsedBody = {
+      event_id: normalizedBody.event_id,
+      request_type: normalizedBody.request_type,
+      payload_keys: normalizedBody.payload ? Object.keys(normalizedBody.payload) : null,
+      payload_json_keys: normalizedBody.payload_json ? Object.keys(normalizedBody.payload_json) : null,
     };
 
     // Zod 校验
@@ -76,6 +103,7 @@ export async function POST(req: NextRequest) {
           },
           debug: {
             receivedKeys: Object.keys(body),
+            parsedBody,
           },
         },
         { status: 400 }
@@ -84,23 +112,51 @@ export async function POST(req: NextRequest) {
 
     const { event_id, request_type, payload } = validationResult.data;
 
-    // 标准化 request_type（兼容新旧格式）
-    const normalizedRequestType = request_type === 'price_change' ? 'price' :
-                                  request_type === 'inventory_change' ? 'inventory' :
-                                  request_type === 'poster_change' ? 'poster' :
-                                  request_type === 'event_edit' ? 'general' :
-                                  request_type;
+    // 标准化 request_type
+    const normalizedRequestType = normalizeRequestType(request_type);
+
+    // 获取用户信息
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Must be logged in',
+          },
+          debug: {
+            receivedKeys: Object.keys(body),
+            parsedBody,
+            userError: userError ? {
+              code: userError.code,
+              message: userError.message,
+            } : null,
+          },
+        },
+        { status: 401 }
+      );
+    }
 
     // 获取当前workspace
     const workspace = await getActiveWorkspace();
     
-    console.log('[event-change-requests][POST] Workspace:', {
-      merchantId: workspace?.merchantId || 'NULL',
-      venueId: workspace?.venueId || 'NULL',
+    // 构造 merchant_id 推导信息
+    const merchantIdDebug = {
+      userId: user.id,
+      source: 'getActiveWorkspace() -> profiles.default_merchant_id',
+      workspace: workspace ? {
+        merchantId: workspace.merchantId,
+        venueId: workspace.venueId,
+        merchantName: workspace.merchantName,
+      } : null,
       hasWorkspace: !!workspace,
-      source: 'getActiveWorkspace()',
-    });
+    };
 
+    console.log('[event-change-requests][POST] Merchant ID derivation:', merchantIdDebug);
+    
     if (!workspace || !workspace.merchantId) {
       return NextResponse.json(
         {
@@ -111,28 +167,11 @@ export async function POST(req: NextRequest) {
           },
           debug: {
             receivedKeys: Object.keys(body),
+            parsedBody,
+            merchantId: merchantIdDebug,
           },
         },
         { status: 400 }
-      );
-    }
-
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Must be logged in',
-          },
-          debug: {
-            receivedKeys: Object.keys(body),
-          },
-        },
-        { status: 401 }
       );
     }
 
@@ -164,6 +203,13 @@ export async function POST(req: NextRequest) {
           },
           debug: {
             receivedKeys: Object.keys(body),
+            parsedBody,
+            merchantId: merchantIdDebug,
+            eventError: eventError ? {
+              code: eventError.code,
+              message: eventError.message,
+              details: eventError.details,
+            } : null,
           },
         },
         { status: 403 }
@@ -175,7 +221,7 @@ export async function POST(req: NextRequest) {
       event_id,
       merchant_id: workspace.merchantId,
       request_type: normalizedRequestType,
-      payload_json: payload,
+      payload_json: payload, // 统一使用 payload_json 字段
       status: 'pending' as const,
       submitted_by: user.id,
     };
@@ -188,6 +234,8 @@ export async function POST(req: NextRequest) {
       .insert(insertData)
       .select('id, request_type, status, payload_json, submitted_at, approved_at, rejected_reason')
       .single();
+
+    let usedServiceRole = false;
 
     // 如果是 RLS/permission denied 错误，使用 service role client
     if (createError && (createError.code === '42501' || createError.message?.includes('permission denied') || createError.message?.includes('RLS'))) {
@@ -209,12 +257,15 @@ export async function POST(req: NextRequest) {
             },
             debug: {
               receivedKeys: Object.keys(body),
+              parsedBody,
+              merchantId: merchantIdDebug,
             },
           },
           { status: 500 }
         );
       }
 
+      usedServiceRole = true;
       const { data: adminRequest, error: adminError } = await adminClient
         .from('event_change_requests')
         .insert(insertData)
@@ -239,6 +290,9 @@ export async function POST(req: NextRequest) {
             },
             debug: {
               receivedKeys: Object.keys(body),
+              parsedBody,
+              merchantId: merchantIdDebug,
+              usedServiceRole: true,
             },
           },
           { status: 500 }
@@ -265,6 +319,9 @@ export async function POST(req: NextRequest) {
           },
           debug: {
             receivedKeys: Object.keys(body),
+            parsedBody,
+            merchantId: merchantIdDebug,
+            usedServiceRole: false,
           },
         },
         { status: 500 }
@@ -281,6 +338,9 @@ export async function POST(req: NextRequest) {
           },
           debug: {
             receivedKeys: Object.keys(body),
+            parsedBody,
+            merchantId: merchantIdDebug,
+            usedServiceRole,
           },
         },
         { status: 500 }
@@ -297,6 +357,9 @@ export async function POST(req: NextRequest) {
         submitted_at: request.submitted_at,
         approved_at: request.approved_at,
         rejected_reason: request.rejected_reason,
+      },
+      debug: {
+        usedServiceRole,
       },
     }, { status: 201 });
 
@@ -342,15 +405,45 @@ export async function GET(req: NextRequest) {
       status: status || 'NULL',
     });
 
+    // 获取用户信息
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Must be logged in',
+          },
+          debug: {
+            userError: userError ? {
+              code: userError.code,
+              message: userError.message,
+            } : null,
+          },
+        },
+        { status: 401 }
+      );
+    }
+
     // 获取当前workspace
     const workspace = await getActiveWorkspace();
     
-    console.log('[event-change-requests][GET] Workspace:', {
-      merchantId: workspace?.merchantId || 'NULL',
-      venueId: workspace?.venueId || 'NULL',
+    // 构造 merchant_id 推导信息
+    const merchantIdDebug = {
+      userId: user.id,
+      source: 'getActiveWorkspace() -> profiles.default_merchant_id',
+      workspace: workspace ? {
+        merchantId: workspace.merchantId,
+        venueId: workspace.venueId,
+        merchantName: workspace.merchantName,
+      } : null,
       hasWorkspace: !!workspace,
-      source: 'getActiveWorkspace()',
-    });
+    };
+
+    console.log('[event-change-requests][GET] Merchant ID derivation:', merchantIdDebug);
     
     if (!workspace || !workspace.merchantId) {
       return NextResponse.json(
@@ -360,14 +453,87 @@ export async function GET(req: NextRequest) {
             code: 'NO_MERCHANT',
             message: 'No selected merchant/workspace',
           },
+          debug: {
+            merchantId: merchantIdDebug,
+          },
         },
         { status: 400 }
       );
     }
 
-    // 先尝试使用普通 client
-    const supabase = await createClient();
+    // 健康检查：先测试表是否存在
+    const { data: healthCheck, error: healthError } = await supabase
+      .from('event_change_requests')
+      .select('id')
+      .limit(1);
 
+    if (healthError) {
+      // 检查是否是表不存在
+      if (healthError.code === '42P01' || healthError.message?.includes('does not exist')) {
+        console.error('[event-change-requests][GET] Table does not exist:', {
+          code: healthError.code,
+          message: healthError.message,
+          details: healthError.details,
+          hint: healthError.hint,
+          tableName: 'event_change_requests',
+          schema: 'public',
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'TABLE_NOT_FOUND',
+              message: 'event_change_requests table does not exist',
+              details: {
+                tableName: 'event_change_requests',
+                schema: 'public',
+                supabaseError: {
+                  code: healthError.code,
+                  message: healthError.message,
+                  details: healthError.details,
+                  hint: healthError.hint,
+                },
+              },
+            },
+            debug: {
+              merchantId: merchantIdDebug,
+            },
+          },
+          { status: 500 }
+        );
+      }
+
+      // 其他健康检查错误
+      console.error('[event-change-requests][GET] Health check failed:', {
+        code: healthError.code,
+        message: healthError.message,
+        details: healthError.details,
+        hint: healthError.hint,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'HEALTH_CHECK_FAILED',
+            message: 'Failed to access event_change_requests table',
+            details: {
+              supabaseError: {
+                code: healthError.code,
+                message: healthError.message,
+                details: healthError.details,
+                hint: healthError.hint,
+              },
+            },
+          },
+          debug: {
+            merchantId: merchantIdDebug,
+          },
+        },
+        { status: 500 }
+      );
+    }
+
+    // 健康检查通过，继续查询
     let query = supabase
       .from('event_change_requests')
       .select('id, event_id, request_type, status, payload_json, submitted_at, approved_at, rejected_reason')
@@ -384,6 +550,7 @@ export async function GET(req: NextRequest) {
     query = query.order('submitted_at', { ascending: false });
 
     let { data: requests, error: fetchError } = await query;
+    let usedServiceRole = false;
 
     // 如果是 RLS/permission denied 错误，使用 service role client
     if (fetchError && (fetchError.code === '42501' || fetchError.message?.includes('permission denied') || fetchError.message?.includes('RLS'))) {
@@ -403,11 +570,15 @@ export async function GET(req: NextRequest) {
               code: 'SERVER_CONFIG_ERROR',
               message: 'Service role key not configured',
             },
+            debug: {
+              merchantId: merchantIdDebug,
+            },
           },
           { status: 500 }
         );
       }
 
+      usedServiceRole = true;
       let adminQuery = adminClient
         .from('event_change_requests')
         .select('id, event_id, request_type, status, payload_json, submitted_at, approved_at, rejected_reason')
@@ -438,8 +609,18 @@ export async function GET(req: NextRequest) {
             error: {
               code: 'FETCH_FAILED',
               message: adminError.message || 'Failed to fetch change requests',
-              details: adminError.details,
-              hint: adminError.hint,
+              details: {
+                supabaseError: {
+                  code: adminError.code,
+                  message: adminError.message,
+                  details: adminError.details,
+                  hint: adminError.hint,
+                },
+              },
+            },
+            debug: {
+              merchantId: merchantIdDebug,
+              usedServiceRole: true,
             },
           },
           { status: 500 }
@@ -448,21 +629,6 @@ export async function GET(req: NextRequest) {
 
       requests = adminRequests;
     } else if (fetchError) {
-      // 检查是否是表不存在
-      if (fetchError.code === '42P01' || fetchError.message?.includes('does not exist')) {
-        console.error('[event-change-requests][GET] Table does not exist:', fetchError);
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: 'TABLE_NOT_FOUND',
-              message: 'event_change_requests table does not exist. Please run migration: supabase/migrations/024_add_request_type_to_event_change_requests.sql',
-            },
-          },
-          { status: 501 }
-        );
-      }
-
       console.error('[event-change-requests][GET] Fetch error:', {
         code: fetchError.code,
         message: fetchError.message,
@@ -475,8 +641,18 @@ export async function GET(req: NextRequest) {
           error: {
             code: 'FETCH_FAILED',
             message: fetchError.message || 'Failed to fetch change requests',
-            details: fetchError.details,
-            hint: fetchError.hint,
+            details: {
+              supabaseError: {
+                code: fetchError.code,
+                message: fetchError.message,
+                details: fetchError.details,
+                hint: fetchError.hint,
+              },
+            },
+          },
+          debug: {
+            merchantId: merchantIdDebug,
+            usedServiceRole: false,
           },
         },
         { status: 500 }
@@ -487,6 +663,9 @@ export async function GET(req: NextRequest) {
       success: true,
       requests: requests || [],
       count: requests?.length || 0,
+      debug: {
+        usedServiceRole,
+      },
     });
 
   } catch (error: any) {
