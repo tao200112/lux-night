@@ -25,6 +25,26 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 
+/**
+ * 验证 UUID 格式（v1 或 v4）
+ * @param v 待验证的值
+ * @returns 是否为有效的 UUID
+ */
+function isValidUuid(v: any): boolean {
+  if (!v || typeof v !== 'string') {
+    return false;
+  }
+  
+  // 检查是否为字符串 "null"
+  if (v === 'null' || v === 'NULL') {
+    return false;
+  }
+  
+  // UUID v1/v4 格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(v);
+}
+
 interface ConsumeInviteRequest {
   code: string;
 }
@@ -45,6 +65,19 @@ export async function POST(request: NextRequest) {
   // 生成 debugId 用于追踪本次请求
   const debugId = randomUUID().substring(0, 8);
   
+  // 环境自检（只打印布尔值）
+  const envCheck = {
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+  
+  console.log('[INVITE CONSUME]', {
+    debugId,
+    step: 'env.check',
+    ...envCheck,
+  });
+  
   try {
     // ============================================================
     // 1. 检查用户登录状态
@@ -53,9 +86,10 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     // 结构化日志：auth.getUser() 结果
-    console.error('[INVITE CONSUME]', {
+    console.log('[INVITE CONSUME]', {
       debugId,
       step: 'auth.getUser',
+      ok: !!user && !authError,
       hasUser: !!user,
       userId: user?.id || null,
       userEmail: user?.email || null,
@@ -71,6 +105,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Unauthorized. Please login first.',
           debugId,
+          step: 'auth.getUser',
           details: {
             authError: authError?.message || 'No user found',
           },
@@ -86,9 +121,10 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (e) {
-      console.error('[INVITE CONSUME]', {
+      console.log('[INVITE CONSUME]', {
         debugId,
-        step: 'parse_request_body',
+        step: 'invite.readBody',
+        ok: false,
         error: e instanceof Error ? e.message : String(e),
       });
       return NextResponse.json<ConsumeInviteResponse>(
@@ -96,6 +132,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Invalid request body',
           debugId,
+          step: 'invite.readBody',
           details: {
             parseError: e instanceof Error ? e.message : String(e),
           },
@@ -106,12 +143,28 @@ export async function POST(request: NextRequest) {
 
     const { code } = body;
     
+    // 日志：打印 code 信息（不打印完整 code）
+    const codeLength = code?.length || 0;
+    const codePreview = code && code.length > 4 
+      ? `${code.substring(0, 2)}...${code.substring(code.length - 2)}`
+      : code || null;
+    
+    console.log('[INVITE CONSUME]', {
+      debugId,
+      step: 'invite.readBody',
+      ok: !!(code && typeof code === 'string' && code.trim().length > 0),
+      codeLength,
+      codePreview,
+      isEmpty: !code || code.trim().length === 0,
+    });
+    
     if (!code || typeof code !== 'string' || code.trim().length === 0) {
       return NextResponse.json<ConsumeInviteResponse>(
         {
           success: false,
           error: 'Invite code is required',
           debugId,
+          step: 'invite.readBody',
         },
         { status: 400 }
       );
@@ -122,21 +175,13 @@ export async function POST(request: NextRequest) {
     // ============================================================
     // 3. 使用 Service Role Key 查询邀请码（绕过 RLS）
     // ============================================================
-    // 结构化日志：检查 service role key
-    const hasServiceRoleKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-    console.error('[INVITE CONSUME]', {
-      debugId,
-      step: 'check_service_role_key',
-      hasServiceRoleKey,
-      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    });
-    
-    if (!hasServiceRoleKey) {
+    if (!envCheck.hasServiceRoleKey) {
       return NextResponse.json<ConsumeInviteResponse>(
         {
           success: false,
           error: 'Server configuration error',
           debugId,
+          step: 'env.check',
           details: {
             missingEnv: 'SUPABASE_SERVICE_ROLE_KEY',
           },
@@ -145,17 +190,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { createClient: createServiceClient } = await import('@supabase/supabase-js');
-    const serviceSupabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
+    let serviceSupabase: any;
+    let adminClientReady = false;
+    try {
+      const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+      serviceSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        }
+      );
+      adminClientReady = true;
+    } catch (e) {
+      console.log('[INVITE CONSUME]', {
+        debugId,
+        step: 'client.adminClientReady',
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return NextResponse.json<ConsumeInviteResponse>(
+        {
+          success: false,
+          error: 'Failed to initialize admin client',
+          debugId,
+          step: 'client.adminClientReady',
+          details: {
+            error: e instanceof Error ? e.message : String(e),
+          },
         },
-      }
-    );
+        { status: 500 }
+      );
+    }
+    
+    console.log('[INVITE CONSUME]', {
+      debugId,
+      step: 'client.adminClientReady',
+      ok: adminClientReady,
+      clientAdminClientReady: adminClientReady,
+    });
 
     // 查询邀请码 - 包含 issued_by_type 字段
     const { data: invite, error: inviteError } = await serviceSupabase
@@ -165,20 +241,30 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     // 结构化日志：查询 invite 的结果
-    console.error('[INVITE CONSUME]', {
+    // 打印 merchant_id 的原始值（用于调试）
+    const rawMerchantId = invite?.merchant_id;
+    const merchantIdType = typeof rawMerchantId;
+    const merchantIdValue = rawMerchantId === null ? 'null' : rawMerchantId === undefined ? 'undefined' : String(rawMerchantId);
+    
+    console.log('[INVITE CONSUME]', {
       debugId,
-      step: 'query_invite',
-      token: trimmedCode,
+      step: 'invite.lookup',
+      ok: !!invite && !inviteError,
+      queryField: 'token',
+      queryValue: trimmedCode.substring(0, 2) + '...' + trimmedCode.substring(trimmedCode.length - 2),
       found: !!invite,
       inviteId: invite?.id || null,
-      merchantId: invite?.merchant_id || null,
+      merchantId: rawMerchantId,
+      merchantIdRaw: merchantIdValue,
+      merchantIdType,
+      merchantIdIsValid: rawMerchantId ? isValidUuid(rawMerchantId) : false,
       intendedRole: invite?.intended_role || null,
       issuedByType: invite?.issued_by_type || null,
       isActive: invite?.is_active ?? null,
+      disabled: invite?.disabled ?? null,
       expiresAt: invite?.expires_at || null,
       usedCount: invite?.used_count ?? null,
       maxUses: invite?.max_uses ?? null,
-      disabled: invite?.disabled ?? null,
       revokedAt: invite?.revoked_at || null,
       inviteError: inviteError ? {
         message: inviteError.message,
@@ -194,6 +280,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Failed to verify invite code',
           debugId,
+          step: 'invite.lookup',
           details: {
             inviteError: {
               message: inviteError.message,
@@ -211,13 +298,43 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Invalid invite code. Please check and try again.',
           debugId,
+          step: 'invite.lookup',
         },
         { status: 404 }
       );
     }
 
     // ============================================================
-    // 4. 验证邀请码状态
+    // 4. 验证 merchant_id 有效性（在 membership.checkExisting 前）
+    // ============================================================
+    if (!invite.merchant_id || !isValidUuid(invite.merchant_id)) {
+      console.log('[INVITE CONSUME]', {
+        debugId,
+        step: 'invite.invalid_merchant_id',
+        ok: false,
+        merchantId: invite.merchant_id,
+        merchantIdType: typeof invite.merchant_id,
+        merchantIdValue: String(invite.merchant_id),
+        inviteId: invite.id,
+      });
+      
+      return NextResponse.json<ConsumeInviteResponse>(
+        {
+          success: false,
+          error: 'Invite is missing merchant_id. This invite was generated incorrectly.',
+          debugId,
+          step: 'invite.invalid_merchant_id',
+          details: {
+            merchantId: invite.merchant_id,
+            inviteId: invite.id,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================
+    // 5. 验证邀请码状态
     // ============================================================
     
     // 检查是否被禁用
@@ -288,7 +405,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================
-    // 5. 解析角色（区分商家邀请码和员工邀请码）
+    // 6. 解析角色（区分商家邀请码和员工邀请码）
     // ============================================================
     let roleToAssign: string;
     
@@ -336,16 +453,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 结构化日志：角色解析结果
-    console.error('[INVITE CONSUME]', {
+    console.log('[INVITE CONSUME]', {
       debugId,
       step: 'parse_role',
+      ok: !!roleToAssign,
       intendedRole: invite.intended_role,
       issuedByType: invite.issued_by_type,
       roleToAssign,
     });
 
     // ============================================================
-    // 6. 检查用户是否已经是该 merchant 的成员（幂等性检查）
+    // 7. 检查用户是否已经是该 merchant 的成员（幂等性检查）
     // ============================================================
     const { data: existingMembership, error: membershipCheckError } = await serviceSupabase
       .from('merchant_members')
@@ -354,22 +472,42 @@ export async function POST(request: NextRequest) {
       .eq('merchant_id', invite.merchant_id)
       .eq('is_active', true)
       .maybeSingle();
+    
+    // 单独查询 count
+    const { count: membershipCount } = await serviceSupabase
+      .from('merchant_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('merchant_id', invite.merchant_id)
+      .eq('is_active', true);
+    
+    console.log('[INVITE CONSUME]', {
+      debugId,
+      step: 'membership.checkExisting',
+      ok: !membershipCheckError,
+      count: membershipCount ?? (existingMembership ? 1 : 0),
+      queryConditions: {
+        user_id: user.id,
+        merchant_id: invite.merchant_id,
+        is_active: true,
+      },
+      found: !!existingMembership,
+      existingMembershipId: existingMembership?.id || null,
+      existingRole: existingMembership?.role || null,
+      membershipCheckError: membershipCheckError ? {
+        message: membershipCheckError.message,
+        code: membershipCheckError.code,
+        details: membershipCheckError.details,
+      } : null,
+    });
 
     if (membershipCheckError) {
-      console.error('[INVITE CONSUME]', {
-        debugId,
-        step: 'check_existing_membership',
-        error: {
-          message: membershipCheckError.message,
-          code: membershipCheckError.code,
-          details: membershipCheckError.details,
-        },
-      });
       return NextResponse.json<ConsumeInviteResponse>(
         {
           success: false,
           error: 'Failed to check existing membership',
           debugId,
+          step: 'membership.checkExisting',
           details: {
             membershipCheckError: {
               message: membershipCheckError.message,
@@ -383,9 +521,11 @@ export async function POST(request: NextRequest) {
 
     if (existingMembership) {
       // 幂等操作：如果已存在 membership，返回成功
-      console.error('[INVITE CONSUME]', {
+      console.log('[INVITE CONSUME]', {
         debugId,
-        step: 'idempotent_check',
+        step: 'membership.checkExisting',
+        ok: true,
+        idempotent: true,
         existingMembershipId: existingMembership.id,
         existingRole: existingMembership.role,
         isActive: existingMembership.is_active,
@@ -402,28 +542,38 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================
-    // 7. 创建 merchant_member 记录
+    // 8. 创建 merchant_member 记录
     // ============================================================
+    const insertPayload = {
+      merchant_id: invite.merchant_id,
+      user_id: user.id,
+      role: roleToAssign,
+      is_active: true,
+    };
+    
+    console.log('[INVITE CONSUME]', {
+      debugId,
+      step: 'membership.insert',
+      ok: false, // 将在插入后更新
+      payload: {
+        merchant_id: insertPayload.merchant_id,
+        user_id: insertPayload.user_id,
+        role: insertPayload.role,
+        is_active: insertPayload.is_active,
+      },
+    });
 
     const { data: newMembership, error: memberError } = await serviceSupabase
       .from('merchant_members')
-      .insert({
-        merchant_id: invite.merchant_id,
-        user_id: user.id,
-        role: roleToAssign,
-        is_active: true,
-      })
+      .insert(insertPayload)
       .select('id, merchant_id, role')
       .single();
 
     // 结构化日志：插入 merchant_members 的结果
-    console.error('[INVITE CONSUME]', {
+    console.log('[INVITE CONSUME]', {
       debugId,
-      step: 'insert_merchant_members',
-      merchantId: invite.merchant_id,
-      userId: user.id,
-      roleToAssign,
-      success: !!newMembership,
+      step: 'membership.insert',
+      ok: !!newMembership && !memberError,
       newMembershipId: newMembership?.id || null,
       memberError: memberError ? {
         message: memberError.message,
@@ -437,10 +587,12 @@ export async function POST(request: NextRequest) {
       // 检查是否是唯一约束冲突（幂等性保护）
       if (memberError.code === '23505' || memberError.message?.includes('unique') || memberError.message?.includes('duplicate')) {
         // 唯一约束冲突：说明 membership 已存在，返回成功（幂等）
-        console.error('[INVITE CONSUME]', {
+        console.log('[INVITE CONSUME]', {
           debugId,
-          step: 'insert_merchant_members',
+          step: 'membership.insert',
+          ok: false,
           conflict: 'unique_constraint',
+          errorCode: memberError.code,
           message: 'Membership already exists (unique constraint conflict)',
         });
         
@@ -488,7 +640,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================
-    // 8. 更新邀请码使用状态
+    // 9. 更新邀请码使用状态
     // ============================================================
     const currentUsedCount = invite.used_count || 0;
     const newUsedCount = currentUsedCount + 1;
@@ -521,14 +673,18 @@ export async function POST(request: NextRequest) {
       .eq('id', invite.id);
 
     // 结构化日志：更新 invites used_count 的结果
-    console.error('[INVITE CONSUME]', {
+    console.log('[INVITE CONSUME]', {
       debugId,
-      step: 'update_invite',
+      step: 'invite.updateUsed',
+      ok: !updateError,
       inviteId: invite.id,
-      oldUsedCount: currentUsedCount,
-      newUsedCount,
-      redeemedBy: user.id,
-      redeemedAt: now,
+      payload: {
+        used_count: newUsedCount,
+        redeemed_by: user.id,
+        redeemed_at: now,
+        disabled: updateData.disabled ?? null,
+        is_active: updateData.is_active ?? null,
+      },
       updateError: updateError ? {
         message: updateError.message,
         code: updateError.code,
@@ -538,9 +694,10 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       // 不返回错误，membership 已创建成功，只记录日志
-      console.error('[INVITE CONSUME]', {
+      console.log('[INVITE CONSUME]', {
         debugId,
-        step: 'update_invite',
+        step: 'invite.updateUsed',
+        ok: false,
         warning: 'Failed to update invite, but membership was created successfully',
         updateError: {
           message: updateError.message,
@@ -550,8 +707,17 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================
-    // 9. 返回成功
+    // 10. 返回成功
     // ============================================================
+    console.log('[INVITE CONSUME]', {
+      debugId,
+      step: 'response.ok',
+      ok: true,
+      next: '/workspaces',
+      role: roleToAssign,
+      merchantId: invite.merchant_id,
+    });
+    
     return NextResponse.json<ConsumeInviteResponse>({
       success: true,
       data: {
@@ -564,13 +730,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     // 顶层 catch：捕获所有未预期的异常
-    console.error('[INVITE CONSUME]', {
+    const errorStack = error?.stack ? error.stack.substring(0, 500) : null;
+    
+    console.log('[INVITE CONSUME]', {
       debugId,
-      step: 'unexpected_error',
+      step: 'catch.unhandled',
+      ok: false,
       error: {
+        name: error?.name || 'Unknown',
         message: error?.message || 'Unknown error',
-        stack: error?.stack,
-        name: error?.name,
+        stack: errorStack,
       },
     });
     
@@ -579,6 +748,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'An unexpected error occurred. Please try again.',
         debugId,
+        step: 'catch.unhandled',
         details: {
           errorMessage: error?.message || 'Unknown error',
           errorName: error?.name,

@@ -5,6 +5,27 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { getActiveWorkspace } from '@/lib/internal/workspace';
+
+/**
+ * 验证 UUID 格式（v1 或 v4）
+ * @param v 待验证的值
+ * @returns 是否为有效的 UUID
+ */
+function isValidUuid(v: any): boolean {
+  if (!v || typeof v !== 'string') {
+    return false;
+  }
+  
+  // 检查是否为字符串 "null"
+  if (v === 'null' || v === 'NULL') {
+    return false;
+  }
+  
+  // UUID v1/v4 格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(v);
+}
 
 export async function POST(req: Request) {
   try {
@@ -20,12 +41,31 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { merchantId, venueId, role, maxUses, expiresDays } = body;
+    let { merchantId, venueId, role, maxUses, expiresDays } = body;
 
-    // 验证必填字段
+    // 如果没有提供 merchantId，从当前 workspace 获取
     if (!merchantId) {
+      const workspace = await getActiveWorkspace();
+      if (!workspace || !workspace.merchantId) {
+        return NextResponse.json(
+          { error: 'INVALID_REQUEST', message: 'merchantId is required. Please select a workspace first.' },
+          { status: 400 }
+        );
+      }
+      merchantId = workspace.merchantId;
+    }
+
+    // 验证 merchantId 是有效的 UUID
+    if (!isValidUuid(merchantId)) {
       return NextResponse.json(
-        { error: 'INVALID_REQUEST', message: 'merchantId is required' },
+        { 
+          error: 'INVALID_MERCHANT_ID', 
+          message: `Invalid merchant_id format: ${merchantId}. merchant_id must be a valid UUID.`,
+          details: {
+            merchantId,
+            merchantIdType: typeof merchantId,
+          },
+        },
         { status: 400 }
       );
     }

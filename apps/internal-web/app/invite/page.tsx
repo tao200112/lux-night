@@ -67,8 +67,22 @@ function InviteGateContent() {
       console.log('[INVITE] API response:', { status: res.status, data });
 
       if (!res.ok || !data.success) {
-        // 显示错误消息
-        setError(data.error || 'Failed to redeem invite code. Please try again.');
+        // 显示错误消息（包含 error + step + debugId）
+        let errorMessage = data.error || 'Failed to redeem invite code. Please try again.';
+        
+        // 如果有 step 和 debugId，添加到错误消息中
+        if (data.step || data.debugId) {
+          const parts: string[] = [errorMessage];
+          if (data.step) {
+            parts.push(`(Step: ${data.step})`);
+          }
+          if (data.debugId) {
+            parts.push(`(Debug ID: ${data.debugId})`);
+          }
+          errorMessage = parts.join(' ');
+        }
+        
+        setError(errorMessage);
         setLoading(false);
         return;
       }
