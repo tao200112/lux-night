@@ -249,24 +249,13 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     const clientKeyType = process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SERVICE_ROLE' : 'ANON';
     const clientKeyPrefix = process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) || 'N/A';
     
-    // 验证 RLS 是否绕过：使用 service role client 查询 pg_current_user
-    let rlsBypassCheck: any = null;
-    try {
-      const { data: currentUser } = await adminClient.rpc('pg_current_user' as any).catch(() => ({ data: null }));
-      // 或者直接检查 client 的 key
-      rlsBypassCheck = {
-        usingServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-        keyPrefix: clientKeyPrefix,
-        keyType: clientKeyType,
-      };
-    } catch (e) {
-      rlsBypassCheck = {
-        error: 'Failed to check RLS bypass',
-        usingServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-        keyPrefix: clientKeyPrefix,
-        keyType: clientKeyType,
-      };
-    }
+    // 验证 RLS 是否绕过：直接检查 client 的 key（不调用 RPC，避免类型错误）
+    const rlsBypassCheck = {
+      usingServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      keyPrefix: clientKeyPrefix,
+      keyType: clientKeyType,
+      note: 'adminClient from requireAdmin() uses createServiceRoleClient() which uses SUPABASE_SERVICE_ROLE_KEY',
+    };
     
     console.log('[ADMIN MERCHANTS POST]', {
       debugId,
