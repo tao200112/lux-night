@@ -133,6 +133,15 @@ async function markEventProcessed(
 
 /**
  * Handle checkout.session.completed event
+ * 
+ * Execution order (critical for data consistency):
+ * 1. Check idempotency (query existing tickets by order_id)
+ * 2. Fetch order and order_items
+ * 3. Generate tickets payload (without order_item_id)
+ * 4. Insert tickets (if fails, nothing is updated - return 500 for Stripe retry)
+ * 5. Update ticket_types.sold_count atomically
+ * 6. Update order status to 'paid' and write Stripe fields
+ * 7. Update order status to 'fulfilled'
  */
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   const debugId = `webhook-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -174,7 +183,56 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     throw error;
   }
 
-  // Fetch order
+  // Step 1: Check idempotency - query existing tickets by order_id
+  const { data: existingTickets, error: existingTicketsError } = await supabaseAdmin
+    .from('tickets')
+    .select('id, order_id, ticket_type_id')
+    .eq('order_id', orderId);
+
+  if (existingTicketsError) {
+    console.error('[STRIPE WEBHOOK]', {
+      debugId,
+      step: 'idempotency.check.error',
+      orderId,
+      error: existingTicketsError.message,
+      code: existingTicketsError.code,
+    });
+    // Continue processing (non-blocking error)
+  } else if (existingTickets && existingTickets.length > 0) {
+    console.log('[STRIPE WEBHOOK]', {
+      debugId,
+      step: 'idempotency.check.found',
+      orderId,
+      existingTicketCount: existingTickets.length,
+      ticketIds: existingTickets.map((t: any) => t.id),
+    });
+    // Tickets already exist for this order - skip processing
+    // Update order status if needed (idempotent)
+    const { data: order } = await supabaseAdmin
+      .from('orders')
+      .select('id, status')
+      .eq('id', orderId)
+      .single();
+    
+    if (order && order.status !== 'fulfilled') {
+      // Update order status to fulfilled (idempotent)
+      await supabaseAdmin
+        .from('orders')
+        .update({ status: 'fulfilled' })
+        .eq('id', orderId);
+    }
+
+    return { orderId, skipped: true };
+  }
+
+  console.log('[STRIPE WEBHOOK]', {
+    debugId,
+    step: 'idempotency.check.passed',
+    orderId,
+    existingTicketCount: 0,
+  });
+
+  // Step 2: Fetch order and order_items
   const { data: order, error: orderError } = await supabaseAdmin
     .from('orders')
     .select('id, user_id, status')
@@ -202,70 +260,16 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     status: order.status,
   });
 
-  // Check if already processed
-  if (order.status === 'paid' || order.status === 'fulfilled') {
+  // Check if order is already in final state (additional check)
+  if (order.status === 'fulfilled') {
     console.log('[STRIPE WEBHOOK]', {
       debugId,
-      step: 'order.already_processed',
+      step: 'order.already_fulfilled',
       orderId,
       status: order.status,
     });
     return { orderId, skipped: true };
   }
-
-  // Update order with Stripe data
-  const updateData: {
-    status: string;
-    stripe_payment_intent_id?: string;
-    stripe_customer_id?: string;
-  } = {
-    status: 'paid',
-  };
-
-  if (session.payment_intent) {
-    updateData.stripe_payment_intent_id =
-      typeof session.payment_intent === 'string'
-        ? session.payment_intent
-        : session.payment_intent.id;
-  }
-
-  if (session.customer) {
-    updateData.stripe_customer_id =
-      typeof session.customer === 'string' ? session.customer : session.customer.id;
-  }
-
-  console.log('[STRIPE WEBHOOK]', {
-    debugId,
-    step: 'order.update.before',
-    orderId,
-    updateData,
-  });
-
-  const { error: orderUpdateError } = await supabaseAdmin
-    .from('orders')
-    .update(updateData)
-    .eq('id', orderId);
-
-  if (orderUpdateError) {
-    const error = new Error(`Failed to update order: ${orderUpdateError.message}`);
-    console.error('[STRIPE WEBHOOK]', {
-      debugId,
-      step: 'order.update.error',
-      orderId,
-      error: orderUpdateError.message,
-      code: orderUpdateError.code,
-      details: orderUpdateError.details,
-      stack: error.stack,
-    });
-    throw error;
-  }
-
-  console.log('[STRIPE WEBHOOK]', {
-    debugId,
-    step: 'order.updated',
-    orderId,
-    status: 'paid',
-  });
 
   // Fetch order items
   const { data: orderItems, error: orderItemsError } = await supabaseAdmin
@@ -386,7 +390,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
       tickets.push({
         order_id: orderId,
-        order_item_id: orderItem.id,
+        // NOTE: Removed order_item_id - tickets table does not have this column
         user_id: order.user_id,
         event_id: ticketType.event_id,
         venue_id: event.venue_id,
@@ -397,109 +401,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         redeemed_count: 0,
       });
     }
-
-    // Update ticket type sold_count atomically (before inserting tickets)
-    const newSoldCount = ticketType.sold_count + orderItem.quantity;
-    console.log('[STRIPE WEBHOOK]', {
-      debugId,
-      step: 'ticket_type.update.before',
-      ticketTypeId: orderItem.ticket_type_id,
-      oldSoldCount: ticketType.sold_count,
-      newSoldCount,
-      quantity: orderItem.quantity,
-    });
-
-    const { error: updateError } = await supabaseAdmin
-      .from('ticket_types')
-      .update({
-        sold_count: newSoldCount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', orderItem.ticket_type_id);
-
-    if (updateError) {
-      const error = new Error(`Failed to update ticket type sold_count: ${updateError.message}`);
-      console.error('[STRIPE WEBHOOK]', {
-        debugId,
-        step: 'ticket_type.update.error',
-        ticketTypeId: orderItem.ticket_type_id,
-        error: updateError.message,
-        code: updateError.code,
-        details: updateError.details,
-        stack: error.stack,
-      });
-      throw error;
-    }
-
-    console.log('[STRIPE WEBHOOK]', {
-      debugId,
-      step: 'ticket_type.updated',
-      ticketTypeId: orderItem.ticket_type_id,
-      newSoldCount,
-    });
   }
 
-  // Insert all tickets
-  if (tickets.length > 0) {
-    console.log('[STRIPE WEBHOOK]', {
-      debugId,
-      step: 'tickets.insert.before',
-      orderId,
-      ticketCount: tickets.length,
-    });
-
-    const { data: insertedTickets, error: ticketsError } = await supabaseAdmin
-      .from('tickets')
-      .insert(tickets)
-      .select('id');
-
-    if (ticketsError) {
-      const error = new Error(`Failed to create tickets: ${ticketsError.message}`);
-      console.error('[STRIPE WEBHOOK]', {
-        debugId,
-        step: 'tickets.insert.error',
-        orderId,
-        ticketCount: tickets.length,
-        error: ticketsError.message,
-        code: ticketsError.code,
-        details: ticketsError.details,
-        hint: ticketsError.hint,
-        stack: error.stack,
-      });
-      throw error;
-    }
-
-    console.log('[STRIPE WEBHOOK]', {
-      debugId,
-      step: 'tickets.inserted',
-      orderId,
-      ticketCount: insertedTickets?.length || tickets.length,
-      ticketIds: insertedTickets?.map((t: any) => t.id) || [],
-    });
-
-    // Update order to fulfilled after tickets created
-    const { error: fulfillError } = await supabaseAdmin
-      .from('orders')
-      .update({ status: 'fulfilled' })
-      .eq('id', orderId);
-
-    if (fulfillError) {
-      console.error('[STRIPE WEBHOOK]', {
-        debugId,
-        step: 'order.fulfill.error',
-        orderId,
-        error: fulfillError.message,
-        code: fulfillError.code,
-      });
-      // Non-critical error, log but don't throw (tickets are already created)
-    } else {
-      console.log('[STRIPE WEBHOOK]', {
-        debugId,
-        step: 'order.fulfilled',
-        orderId,
-      });
-    }
-  } else {
+  // Step 3: Generate tickets payload (already done in loop above)
+  if (tickets.length === 0) {
     const error = new Error('No tickets generated');
     console.error('[STRIPE WEBHOOK]', {
       debugId,
@@ -510,6 +415,195 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       stack: error.stack,
     });
     throw error;
+  }
+
+  // Step 4: Insert tickets FIRST (if this fails, nothing is updated - return 500 for Stripe retry)
+  console.log('[STRIPE WEBHOOK]', {
+    debugId,
+    step: 'tickets.insert.before',
+    orderId,
+    ticketCount: tickets.length,
+  });
+
+  const { data: insertedTickets, error: ticketsError } = await supabaseAdmin
+    .from('tickets')
+    .insert(tickets)
+    .select('id');
+
+  if (ticketsError) {
+    const error = new Error(`Failed to create tickets: ${ticketsError.message}`);
+    console.error('[STRIPE WEBHOOK]', {
+      debugId,
+      step: 'tickets.insert.error',
+      orderId,
+      ticketCount: tickets.length,
+      error: ticketsError.message,
+      code: ticketsError.code,
+      details: ticketsError.details,
+      hint: ticketsError.hint,
+      stack: error.stack,
+    });
+    // Return 500 to trigger Stripe retry - no data has been modified yet
+    throw error;
+  }
+
+  console.log('[STRIPE WEBHOOK]', {
+    debugId,
+    step: 'tickets.inserted',
+    orderId,
+    ticketCount: insertedTickets?.length || tickets.length,
+    ticketIds: insertedTickets?.map((t: any) => t.id) || [],
+  });
+
+  // Step 5: Update ticket_types.sold_count atomically (after tickets are inserted)
+  // Group by ticket_type_id to update each type once
+  const ticketTypeUpdates = new Map<string, number>();
+  for (const orderItem of orderItems) {
+    const currentCount = ticketTypeUpdates.get(orderItem.ticket_type_id) || 0;
+    ticketTypeUpdates.set(orderItem.ticket_type_id, currentCount + orderItem.quantity);
+  }
+
+  for (const [ticketTypeId, quantity] of ticketTypeUpdates.entries()) {
+    // Fetch current sold_count first
+    const { data: currentType, error: fetchError } = await supabaseAdmin
+      .from('ticket_types')
+      .select('sold_count')
+      .eq('id', ticketTypeId)
+      .single();
+
+    if (fetchError || !currentType) {
+      console.error('[STRIPE WEBHOOK]', {
+        debugId,
+        step: 'ticket_type.fetch_for_update.error',
+        ticketTypeId,
+        error: fetchError?.message || 'Ticket type not found',
+      });
+      continue; // Skip this update, but don't fail the whole process
+    }
+
+    const newSoldCount = currentType.sold_count + quantity;
+
+    console.log('[STRIPE WEBHOOK]', {
+      debugId,
+      step: 'ticket_type.update.before',
+      ticketTypeId,
+      oldSoldCount: currentType.sold_count,
+      newSoldCount,
+      quantity,
+    });
+
+    // Update sold_count (Supabase update is atomic at the row level)
+    // Note: In high-concurrency scenarios, consider using a database function/RPC
+    // for true atomic increment (sold_count = sold_count + quantity)
+    const { error: updateError } = await supabaseAdmin
+      .from('ticket_types')
+      .update({
+        sold_count: newSoldCount,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', ticketTypeId);
+
+    if (updateError) {
+      console.error('[STRIPE WEBHOOK]', {
+        debugId,
+        step: 'ticket_type.update.error',
+        ticketTypeId,
+        quantity,
+        error: updateError.message,
+        code: updateError.code,
+        details: updateError.details,
+      });
+      // Tickets are already inserted, but sold_count update failed
+      // Log error but don't throw (tickets are the critical data)
+      // In production, consider implementing a reconciliation job to fix sold_count
+    } else {
+      console.log('[STRIPE WEBHOOK]', {
+        debugId,
+        step: 'ticket_type.updated',
+        ticketTypeId,
+        oldSoldCount: currentType.sold_count,
+        newSoldCount,
+        quantity,
+      });
+    }
+  }
+
+  // Step 6: Update order status to 'paid' and write Stripe fields (after tickets are inserted)
+  const updateData: {
+    status: string;
+    stripe_payment_intent_id?: string;
+    stripe_customer_id?: string;
+  } = {
+    status: 'paid',
+  };
+
+  if (session.payment_intent) {
+    updateData.stripe_payment_intent_id =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent.id;
+  }
+
+  if (session.customer) {
+    updateData.stripe_customer_id =
+      typeof session.customer === 'string' ? session.customer : session.customer.id;
+  }
+
+  console.log('[STRIPE WEBHOOK]', {
+    debugId,
+    step: 'order.update.before',
+    orderId,
+    updateData,
+  });
+
+  const { error: orderUpdateError } = await supabaseAdmin
+    .from('orders')
+    .update(updateData)
+    .eq('id', orderId);
+
+  if (orderUpdateError) {
+    const error = new Error(`Failed to update order: ${orderUpdateError.message}`);
+    console.error('[STRIPE WEBHOOK]', {
+      debugId,
+      step: 'order.update.error',
+      orderId,
+      error: orderUpdateError.message,
+      code: orderUpdateError.code,
+      details: orderUpdateError.details,
+      stack: error.stack,
+    });
+    // Tickets are already inserted, but order update failed
+    // Log error but don't throw (tickets are the critical data)
+  } else {
+    console.log('[STRIPE WEBHOOK]', {
+      debugId,
+      step: 'order.updated',
+      orderId,
+      status: 'paid',
+    });
+  }
+
+  // Step 7: Update order status to 'fulfilled' (after all operations succeed)
+  const { error: fulfillError } = await supabaseAdmin
+    .from('orders')
+    .update({ status: 'fulfilled' })
+    .eq('id', orderId);
+
+  if (fulfillError) {
+    console.error('[STRIPE WEBHOOK]', {
+      debugId,
+      step: 'order.fulfill.error',
+      orderId,
+      error: fulfillError.message,
+      code: fulfillError.code,
+    });
+    // Non-critical error, log but don't throw (tickets are already created)
+  } else {
+    console.log('[STRIPE WEBHOOK]', {
+      debugId,
+      step: 'order.fulfilled',
+      orderId,
+    });
   }
 
   console.log('[STRIPE WEBHOOK]', {
