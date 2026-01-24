@@ -287,15 +287,72 @@ export async function GET(request: NextRequest) {
  * POST /api/admin/invites
  * Create new admin invite code
  */
+import { randomUUID } from 'crypto';
+
+/**
+ * 验证 UUID 格式（v1 或 v4）
+ * @param v 待验证的值
+ * @returns 是否为有效的 UUID
+ */
+function isValidUuid(v: any): boolean {
+  if (!v || typeof v !== 'string') {
+    return false;
+  }
+  
+  // 检查是否为字符串 "null"
+  if (v === 'null' || v === 'NULL') {
+    return false;
+  }
+  
+  // UUID v1/v4 格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(v);
+}
+
 export async function POST(request: NextRequest) {
+  const debugId = randomUUID().substring(0, 8);
+  
+  // 环境自检
+  const envCheck = {
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+  
+  console.log('[ADMIN INVITES CREATE]', {
+    debugId,
+    step: 'env.check',
+    ...envCheck,
+  });
+  
   try {
     const supabase = await createClient();
     
     // 检查 Admin 权限
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    console.log('[ADMIN INVITES CREATE]', {
+      debugId,
+      step: 'auth.getUser',
+      ok: !!user && !authError,
+      hasUser: !!user,
+      userId: user?.id || null,
+      userEmail: user?.email || null,
+      authError: authError ? {
+        message: authError.message,
+        code: authError.status,
+      } : null,
+    });
+    
     if (!user) {
       return NextResponse.json(
-        { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
+        { 
+          success: false, 
+          code: 'UNAUTHENTICATED', 
+          message: 'Must be logged in',
+          debugId,
+          step: 'auth.getUser',
+        },
         { status: 401 }
       );
     }
@@ -303,17 +360,195 @@ export async function POST(request: NextRequest) {
     const { data: isAdmin } = await supabase.rpc('is_admin');
     if (!isAdmin) {
       return NextResponse.json(
-        { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
+        { 
+          success: false, 
+          code: 'FORBIDDEN', 
+          message: 'Must be admin',
+          debugId,
+          step: 'auth.checkAdmin',
+        },
         { status: 403 }
       );
     }
     
-    const body = await request.json();
-    const { type, region, expiresAt, expiresDays, note } = body;
+    // 读取请求体
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (e) {
+      console.log('[ADMIN INVITES CREATE]', {
+        debugId,
+        step: 'request.readBody',
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'INVALID_REQUEST',
+          message: 'Invalid request body',
+          debugId,
+          step: 'request.readBody',
+          details: {
+            parseError: e instanceof Error ? e.message : String(e),
+          },
+        },
+        { status: 400 }
+      );
+    }
+    
+    const { type, region, expiresAt, expiresDays, note, merchantId } = body;
+    
+    // 打印请求体信息
+    const merchantIdRaw = merchantId ? String(merchantId) : null;
+    const merchantIdType = typeof merchantId;
+    const merchantIdIsValid = merchantId ? isValidUuid(merchantId) : false;
+    
+    console.log('[ADMIN INVITES CREATE]', {
+      debugId,
+      step: 'request.body',
+      type,
+      region,
+      merchantId: merchantId || null,
+      merchantIdRaw,
+      merchantIdType,
+      merchantIdIsValid,
+      intendedRole: type ? (type === 'Staff' ? 'staff' : 'owner') : null,
+      issuedByType: 'admin',
+    });
+    
+    // 映射 type 到 intended_role
+    const roleMap: Record<string, string> = {
+      'VIP Access': 'owner',
+      'General': 'owner',
+      'Staff': 'staff',
+    };
+    const intendedRole = roleMap[type] || 'owner';
+    
+    // 解析 merchant_id（从 body 或需要从其他地方获取）
+    let merchantIdFinal: string | null = null;
+    let merchantIdSource = 'none';
+    
+    // 如果 body 中有 merchantId，使用它
+    if (merchantId) {
+      merchantIdFinal = merchantId;
+      merchantIdSource = 'request.body';
+    }
+    
+    // 验证 merchant_id（如果提供了）
+    if (merchantIdFinal) {
+      if (!isValidUuid(merchantIdFinal)) {
+        console.log('[ADMIN INVITES CREATE]', {
+          debugId,
+          step: 'validate.uuid',
+          ok: false,
+          merchantIdFinal,
+          merchantIdFinalIsValid: false,
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'INVALID_MERCHANT_ID',
+            message: `Invalid merchant_id format: ${merchantIdFinal}. merchant_id must be a valid UUID.`,
+            debugId,
+            step: 'validate.uuid',
+            details: {
+              merchantId: merchantIdFinal,
+              merchantIdType: typeof merchantIdFinal,
+            },
+          },
+          { status: 400 }
+        );
+      }
+      
+      // 验证 merchant 存在
+      const { data: merchantData, error: merchantError } = await supabase
+        .from('merchants')
+        .select('id, name')
+        .eq('id', merchantIdFinal)
+        .single();
+      
+      if (merchantError || !merchantData) {
+        console.log('[ADMIN INVITES CREATE]', {
+          debugId,
+          step: 'merchant.resolve',
+          ok: false,
+          merchantIdFinal,
+          merchantError: merchantError?.message || 'Merchant not found',
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'MERCHANT_NOT_FOUND',
+            message: 'Merchant does not exist',
+            debugId,
+            step: 'merchant.resolve',
+            details: {
+              merchantId: merchantIdFinal,
+            },
+          },
+          { status: 404 }
+        );
+      }
+      
+      console.log('[ADMIN INVITES CREATE]', {
+        debugId,
+        step: 'merchant.resolve',
+        ok: true,
+        merchantIdFromWorkspace: null,
+        merchantIdFromUI: merchantId,
+        merchantIdFromParams: null,
+        merchantIdFinal,
+        merchantName: merchantData.name,
+      });
+    } else {
+      // 如果没有 merchantId，对于 owner/manager 角色，这是错误的
+      if (intendedRole === 'owner' || intendedRole === 'manager') {
+        console.log('[ADMIN INVITES CREATE]', {
+          debugId,
+          step: 'merchant.resolve',
+          ok: false,
+          error: 'merchantId is required for owner/manager invites',
+          intendedRole,
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'MERCHANT_ID_REQUIRED',
+            message: 'merchantId is required for owner/manager invites. Please specify a merchant or use Staff type for region-based invites.',
+            debugId,
+            step: 'merchant.resolve',
+            details: {
+              intendedRole,
+              type,
+            },
+          },
+          { status: 400 }
+        );
+      }
+      
+      // Staff 类型可以没有 merchantId（用于创建新 merchant）
+      console.log('[ADMIN INVITES CREATE]', {
+        debugId,
+        step: 'merchant.resolve',
+        ok: true,
+        merchantIdFromWorkspace: null,
+        merchantIdFromUI: null,
+        merchantIdFromParams: null,
+        merchantIdFinal: null,
+        note: 'Staff invite without merchantId (will create new merchant)',
+      });
+    }
     
     if (!region) {
       return NextResponse.json(
-        { success: false, code: 'VALIDATION_ERROR', message: 'Region is required' },
+        { 
+          success: false, 
+          code: 'VALIDATION_ERROR', 
+          message: 'Region is required',
+          debugId,
+          step: 'validate.region',
+        },
         { status: 400 }
       );
     }
@@ -327,7 +562,13 @@ export async function POST(request: NextRequest) {
     
     if (regionError || !regionData) {
       return NextResponse.json(
-        { success: false, code: 'NOT_FOUND', message: 'Region not found' },
+        { 
+          success: false, 
+          code: 'NOT_FOUND', 
+          message: 'Region not found',
+          debugId,
+          step: 'validate.region',
+        },
         { status: 404 }
       );
     }
@@ -384,40 +625,76 @@ export async function POST(request: NextRequest) {
       expiresAtValue = new Date(Date.now() + expiresDays * 24 * 60 * 60 * 1000).toISOString();
     }
     
-    // 映射 type 到 intended_role
-    const roleMap: Record<string, string> = {
-      'VIP Access': 'owner',
-      'General': 'owner',
-      'Staff': 'staff',
-    };
-    const intendedRole = roleMap[type] || 'owner';
-    
     // 创建邀请码（使用 admin client）
     const adminClient = createAdminClient();
-    const { data: invite, error: insertError } = await adminClient
-      .from('invites')
-      .insert({
+    
+    // 准备插入数据
+    const insertData = {
+      token,
+      region_id: region,
+      merchant_id: merchantIdFinal, // 使用验证后的 merchantIdFinal（可能是 null，但必须是有效的 UUID 或 null）
+      venue_id: null,
+      intended_role: intendedRole,
+      issued_by_type: 'admin',
+      max_uses: 1,
+      used_count: 0,
+      expires_at: expiresAtValue,
+      disabled: false,
+      is_active: true,
+      created_by: user.id,
+      note: note || (merchantIdFinal 
+        ? `Admin-created invite for merchant ${merchantIdFinal}`
+        : `Admin-created invite for ${regionData.name}`),
+    };
+    
+    console.log('[ADMIN INVITES CREATE]', {
+      debugId,
+      step: 'db.insert',
+      ok: false, // 将在插入后更新
+      payload: {
         token,
-        region_id: region,
-        merchant_id: null,
-        venue_id: null,
+        merchant_id: merchantIdFinal,
         intended_role: intendedRole,
         issued_by_type: 'admin',
-        max_uses: 1,
-        used_count: 0,
-        expires_at: expiresAtValue,
-        disabled: false,
-        is_active: true,
-        created_by: user.id,
-        note: note || `Admin-created invite for ${regionData.name}`,
-      })
+      },
+    });
+    
+    const { data: invite, error: insertError } = await adminClient
+      .from('invites')
+      .insert(insertData)
       .select()
       .single();
+    
+    console.log('[ADMIN INVITES CREATE]', {
+      debugId,
+      step: 'db.insert',
+      ok: !!invite && !insertError,
+      inviteId: invite?.id || null,
+      token: invite?.token || null,
+      merchant_id写入值: invite?.merchant_id || null,
+      insertError: insertError ? {
+        message: insertError.message,
+        code: insertError.code,
+        details: insertError.details,
+      } : null,
+    });
     
     if (insertError) {
       console.error('[ADMIN INVITES CREATE API] Error:', insertError);
       return NextResponse.json(
-        { success: false, code: 'INSERT_ERROR', message: insertError.message },
+        { 
+          success: false, 
+          code: 'INSERT_ERROR', 
+          message: insertError.message,
+          debugId,
+          step: 'db.insert',
+          details: {
+            insertError: {
+              message: insertError.message,
+              code: insertError.code,
+            },
+          },
+        },
         { status: 500 }
       );
     }
@@ -436,6 +713,16 @@ export async function POST(request: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
     const inviteLink = appUrl ? `${appUrl}/invite/${token}` : '';
     
+    console.log('[ADMIN INVITES CREATE]', {
+      debugId,
+      step: 'response.ok',
+      ok: true,
+      inviteId: invite.id,
+      token: invite.token,
+      merchant_id: invite.merchant_id,
+      intendedRole: intendedRole,
+    });
+    
     return NextResponse.json({
       success: true,
       data: {
@@ -445,16 +732,41 @@ export async function POST(request: NextRequest) {
         inviteLink,
         regionId: invite.region_id,
         regionName: regionInfo?.name || null,
+        merchantId: invite.merchant_id, // 返回 merchant_id
         expiresAt: invite.expires_at,
         intendedRole: intendedRole,
         createdAt: invite.created_at,
         message: 'Invite code created successfully',
       },
+      debugId,
     });
   } catch (error: any) {
+    const errorStack = error?.stack ? error.stack.substring(0, 500) : null;
+    
+    console.log('[ADMIN INVITES CREATE]', {
+      debugId,
+      step: 'catch.unhandled',
+      ok: false,
+      error: {
+        name: error?.name || 'Unknown',
+        message: error?.message || 'Unknown error',
+        stack: errorStack,
+      },
+    });
+    
     console.error('[ADMIN INVITES CREATE API] Error:', error);
     return NextResponse.json(
-      { success: false, code: 'INTERNAL_ERROR', message: error.message },
+      { 
+        success: false, 
+        code: 'INTERNAL_ERROR', 
+        message: error.message || 'An unexpected error occurred',
+        debugId,
+        step: 'catch.unhandled',
+        details: {
+          errorMessage: error?.message || 'Unknown error',
+          errorName: error?.name,
+        },
+      },
       { status: 500 }
     );
   }

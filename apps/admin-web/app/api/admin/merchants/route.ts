@@ -13,6 +13,27 @@ import {
   withTimeout,
   type ApiResponse,
 } from '@/lib/admin/api';
+import { randomUUID } from 'crypto';
+
+/**
+ * 验证 UUID 格式（v1 或 v4）
+ * @param v 待验证的值
+ * @returns 是否为有效的 UUID
+ */
+function isValidUuid(v: any): boolean {
+  if (!v || typeof v !== 'string') {
+    return false;
+  }
+  
+  // 检查是否为字符串 "null"
+  if (v === 'null' || v === 'NULL') {
+    return false;
+  }
+  
+  // UUID v1/v4 格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(v);
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -191,7 +212,21 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
 // ============================================================
 
 export const POST = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
+  const debugId = randomUUID().substring(0, 8);
   let step = 'init';
+
+  // 环境自检
+  const envCheck = {
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+  
+  console.log('[ADMIN MERCHANTS POST]', {
+    debugId,
+    step: 'env.check',
+    ...envCheck,
+  });
 
   try {
     // STEP 1: 权限检查
@@ -208,11 +243,63 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
 
     const { user, adminClient } = authResult;
     step = 'auth_ok';
+    
+    console.log('[ADMIN MERCHANTS POST]', {
+      debugId,
+      step: 'auth.getUser',
+      ok: !!user,
+      hasUser: !!user,
+      userId: user?.id || null,
+      userEmail: user?.email || null,
+    });
 
     // STEP 2: 读取请求体
     step = 'parse_body';
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (e) {
+      console.log('[ADMIN MERCHANTS POST]', {
+        debugId,
+        step: 'request.readBody',
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Bad Request',
+          code: 'INVALID_REQUEST',
+          message: 'Invalid request body',
+          step,
+          debugId,
+          details: {
+            parseError: e instanceof Error ? e.message : String(e),
+          },
+        },
+        { status: 400 }
+      );
+    }
+    
     const { merchantId, regionId, role, expiresDays } = body;
+    
+    // 打印请求体信息
+    const merchantIdRaw = merchantId ? String(merchantId) : null;
+    const merchantIdType = typeof merchantId;
+    const merchantIdIsValid = merchantId ? isValidUuid(merchantId) : false;
+    
+    console.log('[ADMIN MERCHANTS POST]', {
+      debugId,
+      step: 'request.body',
+      merchantId: merchantId || null,
+      merchantIdRaw,
+      merchantIdType,
+      merchantIdIsValid,
+      regionId: regionId || null,
+      role: role || 'owner',
+      intendedRole: role || 'owner',
+      issuedByType: 'admin',
+    });
 
     if (!merchantId && !regionId) {
       return NextResponse.json<ApiResponse>(
@@ -222,9 +309,84 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
           code: 'VALIDATION_ERROR',
           message: 'Either merchantId or regionId is required',
           step,
+          debugId,
         },
         { status: 400 }
       );
+    }
+    
+    // 如果提供了 merchantId，验证它必须是有效的 UUID
+    let merchantIdFinal: string | null = null;
+    if (merchantId) {
+      if (!isValidUuid(merchantId)) {
+        console.log('[ADMIN MERCHANTS POST]', {
+          debugId,
+          step: 'validate.uuid',
+          ok: false,
+          merchantId,
+          merchantIdIsValid: false,
+        });
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Bad Request',
+            code: 'INVALID_MERCHANT_ID',
+            message: `Invalid merchant_id format: ${merchantId}. merchant_id must be a valid UUID.`,
+            step: 'validate.uuid',
+            debugId,
+            details: {
+              merchantId,
+              merchantIdType: typeof merchantId,
+            },
+          },
+          { status: 400 }
+        );
+      }
+      merchantIdFinal = merchantId;
+      
+      // 验证 merchant 存在
+      const { data: merchantData, error: merchantError } = await adminClient
+        .from('merchants')
+        .select('id, name')
+        .eq('id', merchantIdFinal)
+        .single();
+      
+      console.log('[ADMIN MERCHANTS POST]', {
+        debugId,
+        step: 'merchant.resolve',
+        ok: !merchantError && !!merchantData,
+        merchantIdFinal,
+        merchantName: merchantData?.name || null,
+        merchantError: merchantError ? {
+          message: merchantError.message,
+          code: merchantError.code,
+        } : null,
+      });
+      
+      if (merchantError || !merchantData) {
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Not Found',
+            code: 'MERCHANT_NOT_FOUND',
+            message: 'Merchant does not exist',
+            step: 'merchant.resolve',
+            debugId,
+            details: {
+              merchantId: merchantIdFinal,
+            },
+          },
+          { status: 404 }
+        );
+      }
+    } else {
+      console.log('[ADMIN MERCHANTS POST]', {
+        debugId,
+        step: 'merchant.resolve',
+        ok: true,
+        merchantIdFinal: null,
+        note: 'No merchantId provided (will create new merchant)',
+      });
     }
 
     step = 'validated';
@@ -268,7 +430,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     step = 'insert_invite';
     const inviteData: any = {
       token: inviteCode,
-      merchant_id: merchantId || null,
+      merchant_id: merchantIdFinal, // 使用验证后的 merchantIdFinal（可能是 null，但必须是有效的 UUID 或 null）
       region_id: regionId || null,
       intended_role: role || 'owner',
       issued_by_type: 'admin',
@@ -278,10 +440,22 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       disabled: false,
       is_active: true,
       created_by: user?.id || null,
-      note: merchantId
-        ? `Admin-created invite for merchant ${merchantId}`
+      note: merchantIdFinal
+        ? `Admin-created invite for merchant ${merchantIdFinal}`
         : `Admin-created invite for new merchant in region ${regionId}`,
     };
+    
+    console.log('[ADMIN MERCHANTS POST]', {
+      debugId,
+      step: 'db.insert',
+      ok: false, // 将在插入后更新
+      payload: {
+        token: inviteCode,
+        merchant_id: merchantIdFinal,
+        intended_role: role || 'owner',
+        issued_by_type: 'admin',
+      },
+    });
 
     const { data: invite, error: insertError } = await withTimeout(
       Promise.resolve(
@@ -294,6 +468,20 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       TIMEOUT_MS,
       'insert invite'
     );
+    
+    console.log('[ADMIN MERCHANTS POST]', {
+      debugId,
+      step: 'db.insert',
+      ok: !!invite && !insertError,
+      inviteId: invite?.id || null,
+      token: invite?.token || null,
+      merchant_id写入值: invite?.merchant_id || null,
+      insertError: insertError ? {
+        message: insertError.message,
+        code: insertError.code,
+        details: insertError.details,
+      } : null,
+    });
 
     if (insertError) {
       console.error('[ADMIN MERCHANTS POST] Insert error:', insertError);
@@ -305,12 +493,30 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
           message: insertError.message,
           hint: 'Check if invites table supports region_id when merchant_id is NULL',
           step,
+          debugId,
+          details: {
+            insertError: {
+              message: insertError.message,
+              code: insertError.code,
+            },
+          },
         },
         { status: 500 }
       );
     }
 
     step = 'success';
+    
+    console.log('[ADMIN MERCHANTS POST]', {
+      debugId,
+      step: 'response.ok',
+      ok: true,
+      inviteId: invite.id,
+      token: invite.token,
+      merchant_id: invite.merchant_id,
+      intendedRole: invite.intended_role,
+    });
+    
     return NextResponse.json<ApiResponse>({
       ok: true,
       data: {
@@ -325,6 +531,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         },
       },
       step,
+      debugId,
     });
 
   } catch (error: any) {

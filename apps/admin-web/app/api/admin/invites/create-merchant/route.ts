@@ -8,8 +8,43 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
+
+/**
+ * 验证 UUID 格式（v1 或 v4）
+ * @param v 待验证的值
+ * @returns 是否为有效的 UUID
+ */
+function isValidUuid(v: any): boolean {
+  if (!v || typeof v !== 'string') {
+    return false;
+  }
+  
+  // 检查是否为字符串 "null"
+  if (v === 'null' || v === 'NULL') {
+    return false;
+  }
+  
+  // UUID v1/v4 格式：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(v);
+}
 
 export async function POST(req: Request) {
+  const debugId = randomUUID().substring(0, 8);
+  
+  // 环境自检
+  const envCheck = {
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+  
+  console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+    debugId,
+    step: 'env.check',
+    ...envCheck,
+  });
+  
   try {
     // 验证 service role key 存在
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -17,7 +52,12 @@ export async function POST(req: Request) {
 
     if (!serviceRoleKey || !supabaseUrl) {
       return NextResponse.json(
-        { error: 'MISSING_CONFIG', message: 'Service role key or Supabase URL not configured' },
+        { 
+          error: 'MISSING_CONFIG', 
+          message: 'Service role key or Supabase URL not configured',
+          debugId,
+          step: 'env.check',
+        },
         { status: 500 }
       );
     }
@@ -30,13 +70,83 @@ export async function POST(req: Request) {
       },
     });
 
-    const body = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+        debugId,
+        step: 'request.readBody',
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return NextResponse.json(
+        {
+          error: 'INVALID_REQUEST',
+          message: 'Invalid request body',
+          debugId,
+          step: 'request.readBody',
+          details: {
+            parseError: e instanceof Error ? e.message : String(e),
+          },
+        },
+        { status: 400 }
+      );
+    }
+    
     const { merchantId, regionId, token, role, maxUses, expiresDays, createdByUserId } = body;
+    
+    // 打印请求体信息
+    const merchantIdRaw = merchantId ? String(merchantId) : null;
+    const merchantIdType = typeof merchantId;
+    const merchantIdIsValid = merchantId ? isValidUuid(merchantId) : false;
+    
+    console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+      debugId,
+      step: 'request.body',
+      merchantId: merchantId || null,
+      merchantIdRaw,
+      merchantIdType,
+      merchantIdIsValid,
+      regionId: regionId || null,
+      role: role || 'owner',
+      intendedRole: role?.toLowerCase() || 'owner',
+      issuedByType: 'admin',
+    });
 
     // 验证必填字段：必须有 merchantId 或 regionId
     if (!merchantId && !regionId) {
       return NextResponse.json(
-        { error: 'INVALID_REQUEST', message: 'Either merchantId or regionId is required' },
+        { 
+          error: 'INVALID_REQUEST', 
+          message: 'Either merchantId or regionId is required',
+          debugId,
+          step: 'validate.required',
+        },
+        { status: 400 }
+      );
+    }
+    
+    // 如果提供了 merchantId，验证它必须是有效的 UUID
+    if (merchantId && !isValidUuid(merchantId)) {
+      console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+        debugId,
+        step: 'validate.uuid',
+        ok: false,
+        merchantId,
+        merchantIdIsValid: false,
+      });
+      return NextResponse.json(
+        {
+          error: 'INVALID_MERCHANT_ID',
+          message: `Invalid merchant_id format: ${merchantId}. merchant_id must be a valid UUID.`,
+          debugId,
+          step: 'validate.uuid',
+          details: {
+            merchantId,
+            merchantIdType: typeof merchantId,
+          },
+        },
         { status: 400 }
       );
     }
@@ -53,20 +163,52 @@ export async function POST(req: Request) {
 
     // 验证 merchant 存在（如果提供了 merchantId）
     let merchant: { id: string; name: string; region_id: string } | null = null;
+    let merchantIdFinal: string | null = null;
+    
     if (merchantId) {
+      merchantIdFinal = merchantId; // 已验证是有效的 UUID
+      
       const { data: merchantData, error: merchantError } = await supabaseAdmin
         .from('merchants')
         .select('id, name, region_id')
-        .eq('id', merchantId)
+        .eq('id', merchantIdFinal)
         .single();
+
+      console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+        debugId,
+        step: 'merchant.resolve',
+        ok: !merchantError && !!merchantData,
+        merchantIdFinal,
+        merchantName: merchantData?.name || null,
+        merchantError: merchantError ? {
+          message: merchantError.message,
+          code: merchantError.code,
+        } : null,
+      });
 
       if (merchantError || !merchantData) {
         return NextResponse.json(
-          { error: 'MERCHANT_NOT_FOUND', message: 'Merchant does not exist' },
+          { 
+            error: 'MERCHANT_NOT_FOUND', 
+            message: 'Merchant does not exist',
+            debugId,
+            step: 'merchant.resolve',
+            details: {
+              merchantId: merchantIdFinal,
+            },
+          },
           { status: 404 }
         );
       }
       merchant = merchantData;
+    } else {
+      console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+        debugId,
+        step: 'merchant.resolve',
+        ok: true,
+        merchantIdFinal: null,
+        note: 'No merchantId provided (will create new merchant)',
+      });
     }
 
     // 验证 region 存在（如果提供了 regionId，或者 merchantId 不存在时）
@@ -170,33 +312,82 @@ export async function POST(req: Request) {
 
     // 插入邀请码（使用 service role 绕过 RLS）
     // 如果 merchantId 为空，则 merchant_id 为 NULL，region_id 必须提供
-    const { data: invite, error: insertError } = await supabaseAdmin
-      .from('invites')
-      .insert({
+    const insertData = {
+      token: normalizedToken,
+      merchant_id: merchantIdFinal, // 使用验证后的 merchantIdFinal（可能是 null，但必须是有效的 UUID 或 null）
+      region_id: finalRegionId || null, // region_id（用于创建新 merchant）
+      venue_id: null,
+      intended_role: normalizedRole,
+      issued_by_type: 'admin',
+      max_uses: maxUses || 999999,
+      used_count: 0,
+      expires_at: expiresAt,
+      disabled: false,
+      is_active: true,
+      created_by: createdBy,
+    };
+    
+    console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+      debugId,
+      step: 'db.insert',
+      ok: false, // 将在插入后更新
+      payload: {
         token: normalizedToken,
-        merchant_id: merchantId || null,  // 如果未提供 merchantId，则为 NULL
-        region_id: finalRegionId || null, // region_id（用于创建新 merchant）
-        venue_id: null,
+        merchant_id: merchantIdFinal,
         intended_role: normalizedRole,
         issued_by_type: 'admin',
-        max_uses: maxUses || 999999,
-        used_count: 0,
-        expires_at: expiresAt,
-        disabled: false,
-        is_active: true,
-        created_by: createdBy,
-      })
+      },
+    });
+    
+    const { data: invite, error: insertError } = await supabaseAdmin
+      .from('invites')
+      .insert(insertData)
       .select()
       .single();
+
+    console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+      debugId,
+      step: 'db.insert',
+      ok: !!invite && !insertError,
+      inviteId: invite?.id || null,
+      token: invite?.token || null,
+      merchant_id写入值: invite?.merchant_id || null,
+      insertError: insertError ? {
+        message: insertError.message,
+        code: insertError.code,
+        details: insertError.details,
+      } : null,
+    });
 
     if (insertError) {
       console.error('Insert invite error:', insertError);
       return NextResponse.json(
-        { error: 'INSERT_FAILED', message: insertError.message || 'Failed to create invite' },
+        { 
+          error: 'INSERT_FAILED', 
+          message: insertError.message || 'Failed to create invite',
+          debugId,
+          step: 'db.insert',
+          details: {
+            insertError: {
+              message: insertError.message,
+              code: insertError.code,
+            },
+          },
+        },
         { status: 500 }
       );
     }
 
+    console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+      debugId,
+      step: 'response.ok',
+      ok: true,
+      inviteId: invite.id,
+      token: invite.token,
+      merchant_id: invite.merchant_id,
+      intendedRole: normalizedRole,
+    });
+    
     // 返回创建的邀请码信息
     return NextResponse.json({
       success: true,
@@ -210,11 +401,34 @@ export async function POST(req: Request) {
       max_uses: invite.max_uses,
       expires_at: invite.expires_at,
       note: invite.merchant_id ? 'Bound to existing merchant' : 'Will create new merchant on redemption',
+      debugId,
     });
   } catch (error: any) {
+    const errorStack = error?.stack ? error.stack.substring(0, 500) : null;
+    
+    console.log('[ADMIN INVITES CREATE-MERCHANT]', {
+      debugId,
+      step: 'catch.unhandled',
+      ok: false,
+      error: {
+        name: error?.name || 'Unknown',
+        message: error?.message || 'Unknown error',
+        stack: errorStack,
+      },
+    });
+    
     console.error('Create merchant invite error:', error);
     return NextResponse.json(
-      { error: 'INTERNAL_ERROR', message: error.message || 'Failed to create merchant invite' },
+      { 
+        error: 'INTERNAL_ERROR', 
+        message: error.message || 'An unexpected error occurred',
+        debugId,
+        step: 'catch.unhandled',
+        details: {
+          errorMessage: error?.message || 'Unknown error',
+          errorName: error?.name,
+        },
+      },
       { status: 500 }
     );
   }
