@@ -13,6 +13,7 @@ interface WorkspaceData {
   merchantName: string;
   role: string;
   isActive: boolean;
+  createdAt?: string; // 用于排序
   venues: Array<{
     venueId: string;
     venueName: string;
@@ -31,6 +32,7 @@ export default function WorkspacesPage() {
     merchantId: string;
     venueId?: string;
   } | null>(null);
+  const [activeMerchantId, setActiveMerchantId] = useState<string | null>(null);
 
   useEffect(() => {
     loadWorkspaces();
@@ -77,25 +79,57 @@ export default function WorkspacesPage() {
         console.error('[WORKSPACES PAGE] Membership error:', data.membershipError);
       }
 
-      // 设置 workspaces 数据
-      const workspacesData = data.memberships || [];
-      setWorkspaces(workspacesData);
+      // 设置 workspaces 数据并排序
+      const workspacesData = (data.memberships || []).map((ws: any) => ({
+        ...ws,
+        // 确保 merchantName 不为空或 "Unknown"
+        merchantName: ws.merchantName && ws.merchantName !== 'Unknown' 
+          ? ws.merchantName 
+          : `Merchant ${ws.merchantId.substring(0, 8)}`,
+      }));
+      
+      // 排序：当前 active workspace 放第一，最近加入（created_at 最近的）放第二
+      const defaultMerchantId = data.defaultWorkspace?.merchantId;
+      const sortedWorkspaces = [...workspacesData].sort((a, b) => {
+        // 1. Active workspace 优先
+        if (a.merchantId === defaultMerchantId && b.merchantId !== defaultMerchantId) return -1;
+        if (b.merchantId === defaultMerchantId && a.merchantId !== defaultMerchantId) return 1;
+        
+        // 2. 最近加入的优先（created_at 降序）
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        if (a.createdAt) return -1;
+        if (b.createdAt) return 1;
+        
+        return 0;
+      });
+      
+      setWorkspaces(sortedWorkspaces);
 
       // 检查是否有 merchant_id 为 null 的 membership
-      const invalidMemberships = workspacesData.filter((ws: any) => !ws.merchantId);
+      const invalidMemberships = sortedWorkspaces.filter((ws: any) => !ws.merchantId);
       if (invalidMemberships.length > 0) {
         console.warn('[WORKSPACES PAGE] Found memberships with null merchant_id:', invalidMemberships);
       }
       
-      // 如果有默认workspace，自动选择
+      // 保存 active merchant ID
       if (data.defaultWorkspace) {
+        setActiveMerchantId(data.defaultWorkspace.merchantId);
         setSelectedWorkspace({
           merchantId: data.defaultWorkspace.merchantId,
           venueId: data.defaultWorkspace.venueId,
         });
-      } else if (workspacesData.length === 1) {
+      } else if (sortedWorkspaces.length === 1) {
         // 如果只有一个workspace，自动选择
-        const ws = workspacesData[0];
+        const ws = sortedWorkspaces[0];
+        setSelectedWorkspace({
+          merchantId: ws.merchantId,
+          venueId: ws.venues?.[0]?.venueId,
+        });
+      } else if (sortedWorkspaces.length > 0) {
+        // 如果有多个，默认选择第一个（已排序，第一个是 active 或最近加入的）
+        const ws = sortedWorkspaces[0];
         setSelectedWorkspace({
           merchantId: ws.merchantId,
           venueId: ws.venues?.[0]?.venueId,
@@ -250,8 +284,17 @@ export default function WorkspacesPage() {
               })
             }
           >
-            <div className="font-semibold">{ws.merchantName}</div>
-            <div className="text-sm text-gray-400 mt-1">Role: {ws.role}</div>
+            <div className="flex items-center justify-between">
+              <div className="font-semibold">{ws.merchantName}</div>
+              {activeMerchantId === ws.merchantId && (
+                <span className="text-xs px-2 py-0.5 bg-primary/20 text-primary rounded-full">
+                  Active
+                </span>
+              )}
+            </div>
+            <div className="text-sm text-gray-400 mt-1">
+              Role: {ws.role}
+            </div>
             {ws.venues.length > 0 && (
               <div className="text-sm text-gray-500 mt-1">
                 Venues: {ws.venues.map((v) => v.venueName).join(', ')}

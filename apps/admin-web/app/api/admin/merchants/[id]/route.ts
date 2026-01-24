@@ -5,6 +5,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin, type ApiResponse } from '@/lib/admin/api';
+import { randomUUID } from 'crypto';
 
 export async function GET(
   request: NextRequest,
@@ -189,6 +191,205 @@ export async function GET(
     console.error('[ADMIN MERCHANT DETAIL API] Error:', error);
     return NextResponse.json(
       { success: false, code: 'INTERNAL_ERROR', message: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/admin/merchants/[id]
+ * Update merchant information (name, regionId, status)
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const debugId = randomUUID().substring(0, 8);
+  let step = 'init';
+
+  try {
+    step = 'auth_check';
+    const authResult = await requireAdmin(request);
+    
+    if ('response' in authResult) {
+      return authResult.response;
+    }
+
+    const { adminClient } = authResult;
+    const { id } = await params;
+
+    step = 'read_body';
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (e) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Invalid request body',
+          code: 'INVALID_BODY',
+          message: 'Request body must be valid JSON',
+          step,
+          debugId,
+        },
+        { status: 400 }
+      );
+    }
+
+    step = 'validate_fields';
+    const { name, regionId, status } = body;
+
+    // 至少需要一个字段
+    if (!name && !regionId && !status) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'At least one field is required',
+          code: 'MISSING_FIELDS',
+          message: 'At least one of name, regionId, or status must be provided',
+          step,
+          debugId,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 验证 name（如果提供）
+    if (name !== undefined) {
+      const trimmedName = typeof name === 'string' ? name.trim() : '';
+      if (!trimmedName) {
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Name cannot be empty',
+            code: 'INVALID_NAME',
+            message: 'Merchant name must be a non-empty string',
+            step,
+            debugId,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    step = 'update_merchant';
+    const updatePayload: {
+      name?: string;
+      region_id?: string;
+      status?: string;
+    } = {};
+
+    if (name !== undefined) {
+      updatePayload.name = (typeof name === 'string' ? name : String(name)).trim();
+    }
+    if (regionId !== undefined) {
+      updatePayload.region_id = regionId;
+    }
+    if (status !== undefined) {
+      updatePayload.status = status;
+    }
+
+    const { data: updatedMerchant, error: updateError } = await adminClient
+      .from('merchants')
+      .update(updatePayload)
+      .eq('id', id)
+      .select('id, name, region_id, status, created_at, updated_at')
+      .single();
+
+    if (updateError) {
+      console.error('[ADMIN MERCHANTS PATCH] Update error:', {
+        debugId,
+        step,
+        merchantId: id,
+        updatePayload,
+        error: {
+          message: updateError.message,
+          code: updateError.code,
+          details: updateError.details,
+          hint: updateError.hint,
+        },
+      });
+
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Failed to update merchant',
+          code: 'UPDATE_ERROR',
+          message: updateError.message || 'Database update failed',
+          step,
+          debugId,
+          details: {
+            supabaseError: {
+              message: updateError.message,
+              code: updateError.code,
+              details: updateError.details,
+              hint: updateError.hint,
+            },
+          },
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!updatedMerchant) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Merchant not found',
+          code: 'NOT_FOUND',
+          message: `Merchant with id ${id} not found`,
+          step,
+          debugId,
+        },
+        { status: 404 }
+      );
+    }
+
+    step = 'success';
+    console.log('[ADMIN MERCHANTS PATCH]', {
+      debugId,
+      step,
+      merchantId: id,
+      updatedFields: Object.keys(updatePayload),
+    });
+
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: true,
+        data: {
+          id: updatedMerchant.id,
+          name: updatedMerchant.name,
+          regionId: updatedMerchant.region_id,
+          status: updatedMerchant.status,
+          createdAt: updatedMerchant.created_at,
+          updatedAt: updatedMerchant.updated_at,
+        },
+        step,
+        debugId,
+      },
+      { status: 200 }
+    );
+
+  } catch (error: any) {
+    console.error('[ADMIN MERCHANTS PATCH] Unexpected error:', {
+      debugId,
+      step,
+      error: {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack?.substring(0, 500),
+      },
+    });
+
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR',
+        message: error?.message || 'An unexpected error occurred',
+        step,
+        debugId,
+      },
       { status: 500 }
     );
   }

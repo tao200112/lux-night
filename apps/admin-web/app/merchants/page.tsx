@@ -55,6 +55,9 @@ export default function AdminMerchantsPage() {
     expiresDays: 30,
   });
   const [creatingInvite, setCreatingInvite] = useState(false);
+  const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null);
+  const [editForm, setEditForm] = useState({ name: '' });
+  const [saving, setSaving] = useState(false);
   
   useEffect(() => {
     fetchMerchants();
@@ -147,6 +150,53 @@ export default function AdminMerchantsPage() {
   
   const handleCreateMerchantInvite = () => {
     setShowCreateInviteModal(true);
+  };
+  
+  const handleEditMerchant = (merchant: Merchant) => {
+    setEditingMerchant(merchant);
+    setEditForm({ name: merchant.name });
+  };
+  
+  const handleSaveEdit = async () => {
+    if (!editingMerchant) return;
+    
+    const trimmedName = editForm.name.trim();
+    if (!trimmedName) {
+      alert('Merchant name cannot be empty');
+      return;
+    }
+    
+    try {
+      setSaving(true);
+      
+      const response = await fetch(`/api/admin/merchants/${editingMerchant.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmedName }),
+      });
+      
+      const result = await response.json().catch(() => null);
+      
+      if (!response.ok || !result?.ok) {
+        const errorMsg = result?.message || result?.error || `HTTP ${response.status}`;
+        throw new Error(errorMsg);
+      }
+      
+      // 乐观更新本地列表
+      setMerchants(prev => prev.map(m => 
+        m.id === editingMerchant.id 
+          ? { ...m, name: trimmedName }
+          : m
+      ));
+      
+      setEditingMerchant(null);
+      setEditForm({ name: '' });
+    } catch (err: any) {
+      console.error('[ADMIN MERCHANTS] Edit error:', err);
+      alert(err.message || 'Failed to update merchant name');
+    } finally {
+      setSaving(false);
+    }
   };
   
   const handleSubmitInvite = async () => {
@@ -372,9 +422,16 @@ export default function AdminMerchantsPage() {
               </div>
             </div>
             
-            {/* Context Menu Trigger */}
-            <button className="absolute top-2 right-2 p-1 text-gray-400 hover:text-primary dark:hover:text-white rounded transition-colors">
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>more_vert</span>
+            {/* Edit Button */}
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditMerchant(merchant);
+              }}
+              className="absolute top-2 right-2 p-1 text-gray-400 hover:text-primary dark:hover:text-white rounded transition-colors"
+              title="Edit merchant name"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>edit</span>
             </button>
           </article>
         ))}
@@ -483,6 +540,69 @@ export default function AdminMerchantsPage() {
                   className="flex-1 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {creatingInvite ? 'Creating...' : 'Create Invite'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      
+      {/* Edit Merchant Modal */}
+      {editingMerchant && (
+        <>
+          <div 
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={() => {
+              setEditingMerchant(null);
+              setEditForm({ name: '' });
+            }}
+          />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-surface-dark rounded-t-2xl shadow-2xl max-w-[480px] mx-auto p-6 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-primary dark:text-white">Edit Merchant</h2>
+              <button
+                onClick={() => {
+                  setEditingMerchant(null);
+                  setEditForm({ name: '' });
+                }}
+                className="text-gray-400 hover:text-primary dark:hover:text-white"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Merchant Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ name: e.target.value })}
+                  placeholder="Enter merchant name"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-primary dark:text-white"
+                  autoFocus
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setEditingMerchant(null);
+                    setEditForm({ name: '' });
+                  }}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={saving || !editForm.name.trim()}
+                  className="flex-1 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {saving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>

@@ -24,6 +24,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
+import { setDefaultWorkspace } from '@/lib/internal/workspace';
 
 /**
  * 验证 UUID 格式（v1 或 v4）
@@ -521,7 +522,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingMembership) {
-      // 幂等操作：如果已存在 membership，返回成功
+      // 幂等操作：如果已存在 membership，设置 workspace 并返回成功
       console.log('[INVITE CONSUME]', {
         debugId,
         step: 'membership.checkExisting',
@@ -531,12 +532,33 @@ export async function POST(request: NextRequest) {
         existingRole: existingMembership.role,
         isActive: existingMembership.is_active,
       });
+      
+      // 设置 workspace 为当前 merchant（即使已存在 membership，也要确保 workspace 正确）
+      try {
+        await setDefaultWorkspace(invite.merchant_id);
+        console.log('[INVITE CONSUME]', {
+          debugId,
+          step: 'workspace.setDefault',
+          ok: true,
+          merchantId: invite.merchant_id,
+        });
+      } catch (workspaceError: any) {
+        // 如果设置 workspace 失败，记录日志但不阻止返回成功
+        console.log('[INVITE CONSUME]', {
+          debugId,
+          step: 'workspace.setDefault',
+          ok: false,
+          warning: 'Failed to set default workspace, but membership exists',
+          error: workspaceError?.message || 'Unknown error',
+        });
+      }
+      
       return NextResponse.json<ConsumeInviteResponse>({
         success: true,
         data: {
           merchant_id: invite.merchant_id,
           role: existingMembership.role,
-          next: '/workspaces',
+          next: '/dashboard',
         },
         debugId,
       });
@@ -708,13 +730,35 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================
-    // 10. 返回成功
+    // 10. 设置默认 workspace（原子操作：membership + workspace）
+    // ============================================================
+    try {
+      await setDefaultWorkspace(invite.merchant_id);
+      console.log('[INVITE CONSUME]', {
+        debugId,
+        step: 'workspace.setDefault',
+        ok: true,
+        merchantId: invite.merchant_id,
+      });
+    } catch (workspaceError: any) {
+      // 如果设置 workspace 失败，记录日志但不阻止返回成功（membership 已创建）
+      console.log('[INVITE CONSUME]', {
+        debugId,
+        step: 'workspace.setDefault',
+        ok: false,
+        warning: 'Failed to set default workspace, but membership was created',
+        error: workspaceError?.message || 'Unknown error',
+      });
+    }
+
+    // ============================================================
+    // 11. 返回成功
     // ============================================================
     console.log('[INVITE CONSUME]', {
       debugId,
       step: 'response.ok',
       ok: true,
-      next: '/workspaces',
+      next: '/dashboard',
       role: roleToAssign,
       merchantId: invite.merchant_id,
     });
@@ -724,7 +768,7 @@ export async function POST(request: NextRequest) {
       data: {
         merchant_id: invite.merchant_id,
         role: roleToAssign,
-        next: '/workspaces',
+        next: '/dashboard',
       },
       debugId,
     });

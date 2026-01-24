@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { getActiveWorkspace } from '@/lib/internal/workspace';
 
 // 使用 service role key 创建 admin client（绕过 RLS）
 const getAdminClient = () => {
@@ -74,7 +75,7 @@ export async function GET() {
     if (adminClient) {
       const { data: membershipsData, error: membershipsErr } = await adminClient
         .from('merchant_members')
-        .select('merchant_id, role, is_active')
+        .select('merchant_id, role, is_active, created_at')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .not('merchant_id', 'is', null); // 过滤 merchant_id 为 null 的记录
@@ -176,9 +177,10 @@ export async function GET() {
 
         workspaces.push({
           merchantId: membership.merchant_id,
-          merchantName: merchant.name,
+          merchantName: merchant.name || `Merchant ${membership.merchant_id.substring(0, 8)}`, // 如果 name 为空，显示 merchantId 短码
           role: membership.role,
           isActive: membership.is_active,
+          createdAt: membership.created_at, // 添加 created_at 用于排序
           venues: (venues || []).map((v: any) => ({
             venueId: v.id,
             venueName: v.name,
@@ -198,11 +200,31 @@ export async function GET() {
       });
     }
 
+    // 获取当前 active workspace（从 profile.default_merchant_id）
+    let defaultWorkspace: {
+      merchantId: string;
+      venueId?: string;
+    } | null = null;
+    
+    try {
+      const activeWorkspace = await getActiveWorkspace();
+      if (activeWorkspace) {
+        defaultWorkspace = {
+          merchantId: activeWorkspace.merchantId,
+          venueId: activeWorkspace.venueId,
+        };
+      }
+    } catch (error) {
+      // 忽略错误，defaultWorkspace 保持为 null
+      console.warn('[API /me] Failed to get active workspace:', error);
+    }
+
     return NextResponse.json({
       user,
       roles,
       memberships: workspaces, // 返回完整的 workspaces 数据
       hasMembership: memberships && memberships.length > 0, // 明确标识是否有 membership
+      defaultWorkspace, // 返回当前 active workspace
       membershipError: membershipsError ? {
         message: membershipsError.message,
         code: membershipsError.code,

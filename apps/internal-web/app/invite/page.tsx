@@ -87,9 +87,10 @@ function InviteGateContent() {
         return;
       }
 
-      // 兑换成功，跳转到工作台
-      console.log('[INVITE] ✅ Invite redeemed successfully, redirecting to:', data.data.next);
-      router.push(data.data.next || '/workspaces');
+      // 兑换成功，跳转到工作台（consume API 已设置 workspace，直接跳转到 dashboard）
+      const nextPath = data.data?.next || '/dashboard';
+      console.log('[INVITE] ✅ Invite redeemed successfully, redirecting to:', nextPath);
+      router.push(nextPath);
     } catch (err: any) {
       console.error('[INVITE] ❌ Error redeeming invite:', err);
       setError('Network error. Please check your connection and try again.');
