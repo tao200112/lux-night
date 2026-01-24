@@ -480,6 +480,19 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         .select('id, name')
         .single();
       
+      // 增强错误日志
+      if (merchantInsertResult.error) {
+        console.error('[ADMIN MERCHANTS POST] Merchant insert error:', {
+          debugId,
+          step: 'merchant.insert.error',
+          error: merchantInsertResult.error,
+          payload: merchantInsertPayload,
+          errorMessage: merchantInsertResult.error.message,
+          errorCode: merchantInsertResult.error.code,
+          errorDetails: merchantInsertResult.error.details,
+        });
+      }
+      
       if (merchantInsertResult.error || !merchantInsertResult.data) {
         return NextResponse.json<ApiResponse>(
           {
@@ -493,7 +506,9 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
               merchantInsertError: merchantInsertResult.error ? {
                 message: merchantInsertResult.error.message,
                 code: merchantInsertResult.error.code,
+                details: merchantInsertResult.error.details,
               } : null,
+              payload: merchantInsertPayload,
             },
           },
           { status: 500 }
@@ -817,10 +832,14 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     });
 
   } catch (error: any) {
-    console.error('[ADMIN MERCHANTS POST] Error:', {
+    console.error('[ADMIN MERCHANTS POST] Uncaught error:', {
+      debugId,
       step,
       error: error.message,
-      stack: error.stack,
+      errorName: error.name,
+      errorStack: error.stack,
+      errorCode: error.code,
+      errorDetails: error.details,
     });
 
     if (error.message?.includes('[TIMEOUT]')) {
@@ -831,6 +850,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
           code: 'TIMEOUT',
           message: error.message,
           step,
+          debugId,
         },
         { status: 504 }
       );
@@ -843,6 +863,12 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         code: 'INTERNAL_ERROR',
         message: error.message || 'Unexpected error',
         step,
+        debugId,
+        details: {
+          errorName: error.name,
+          errorCode: error.code,
+          errorDetails: error.details,
+        },
       },
       { status: 500 }
     );
