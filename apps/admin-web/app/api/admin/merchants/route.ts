@@ -244,6 +244,30 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     const { user, adminClient } = authResult;
     step = 'auth_ok';
     
+    // A) 确认 insert merchants 的 supabase client 用的到底是不是 SERVICE ROLE
+    // 验证 client 使用的 key 类型和 RLS 是否绕过
+    const clientKeyType = process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SERVICE_ROLE' : 'ANON';
+    const clientKeyPrefix = process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) || 'N/A';
+    
+    // 验证 RLS 是否绕过：使用 service role client 查询 pg_current_user
+    let rlsBypassCheck: any = null;
+    try {
+      const { data: currentUser } = await adminClient.rpc('pg_current_user' as any).catch(() => ({ data: null }));
+      // 或者直接检查 client 的 key
+      rlsBypassCheck = {
+        usingServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        keyPrefix: clientKeyPrefix,
+        keyType: clientKeyType,
+      };
+    } catch (e) {
+      rlsBypassCheck = {
+        error: 'Failed to check RLS bypass',
+        usingServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        keyPrefix: clientKeyPrefix,
+        keyType: clientKeyType,
+      };
+    }
+    
     console.log('[ADMIN MERCHANTS POST]', {
       debugId,
       step: 'auth.getUser',
@@ -251,6 +275,16 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       hasUser: !!user,
       userId: user?.id || null,
       userEmail: user?.email || null,
+    });
+    
+    console.log('[ADMIN MERCHANTS POST]', {
+      debugId,
+      step: 'client.verification',
+      clientKeyType,
+      usingServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      keyPrefix: clientKeyPrefix,
+      rlsBypassCheck,
+      note: 'adminClient should use SERVICE_ROLE_KEY to bypass RLS',
     });
 
     // STEP 2: 读取请求体
@@ -465,13 +499,24 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         debugId,
       });
       
+      // A) 确认 insert merchants 的 supabase client 用的到底是不是 SERVICE ROLE
+      // 验证 client 使用的 key 类型和 RLS 是否绕过
+      const clientKeyType = process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SERVICE_ROLE' : 'ANON';
+      const clientKeyPrefix = process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) || 'N/A';
+      
       console.log('[ADMIN MERCHANTS POST]', {
         debugId,
         step: 'merchant.insert.before',
+        usingAdminClient: true,
+        clientKeyType,
+        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        keyPrefix: clientKeyPrefix,
         payload: merchantInsertPayload,
+        note: 'adminClient should use SERVICE_ROLE_KEY to bypass RLS',
       });
       
       // 步骤 1: 创建 merchant
+      // 确保使用 service role client（adminClient）来绕过 RLS
       const merchantInsertResult = await adminClient
         .from('merchants')
         .insert(merchantInsertPayload)
@@ -484,6 +529,10 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         step: 'merchant.insert.result',
         error: merchantInsertResult.error,
         data: merchantInsertResult.data,
+        errorCode: merchantInsertResult.error?.code,
+        errorMessage: merchantInsertResult.error?.message,
+        errorDetails: merchantInsertResult.error?.details,
+        errorHint: merchantInsertResult.error?.hint,
       });
       
       // 2) 如果 error 存在，返回 500 JSON
