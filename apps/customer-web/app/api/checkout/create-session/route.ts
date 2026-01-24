@@ -81,21 +81,7 @@ export async function POST(req: NextRequest) {
 
     const { eventId, items } = validationResult.data;
 
-    // Get user profile to check region (last_region_id in new schema)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('last_region_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.last_region_id) {
-      return NextResponse.json(
-        { error: 'Region not selected. Please select a region first.' },
-        { status: 400 }
-      );
-    }
-
-    // Fetch event (has region_id directly in new schema)
+    // Fetch event (region_id is optional and only used for merchant/admin organization)
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
@@ -110,14 +96,15 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (eventError || !event) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
-    }
-
-    // Verify event is in user's region (check event.region_id in new schema)
-    if (event.region_id !== profile.last_region_id) {
-      return NextResponse.json(
-        { error: 'Event is not available in your selected region' },
-        { status: 403 }
+      return NextResponse.json<ApiResponse<never>>(
+        {
+          success: false,
+          error: {
+            code: 'EVENT_NOT_FOUND',
+            message: 'Event not found or not published',
+          },
+        },
+        { status: 404 }
       );
     }
 
@@ -155,12 +142,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Create order in database (pending_payment status, amount_cents in new schema)
+    // region_id is optional: use event.region_id if available, otherwise null
+    // Region is only used for merchant/admin organization, not required for payment
     const orderIdempotencyKey = `${user.id}-${eventId}-${Date.now()}`;
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         user_id: user.id,
-        region_id: profile.last_region_id,
+        region_id: event.region_id || null, // Use event's region_id if available, otherwise null
         status: 'pending_payment',
         amount_cents: Math.round(totalAmount * 100), // Convert to cents
         idempotency_key: orderIdempotencyKey,
@@ -195,6 +184,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. 创建 Stripe checkout session
+    // Use environment variable for base URL, fallback to request origin
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: items.map((item: any) => {
@@ -212,13 +205,15 @@ export async function POST(req: NextRequest) {
         };
       }),
       mode: 'payment',
-      success_url: `${req.nextUrl.origin}/wallet?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.nextUrl.origin}/events/${eventId}`,
+      success_url: `${baseUrl}/wallet?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/events/${eventId}`,
       client_reference_id: order.id,
       metadata: {
         order_id: order.id,
         user_id: user.id,
         event_id: eventId,
+        // Add ticket type IDs for reference
+        ticket_type_ids: items.map((item: any) => item.ticketTypeId).join(','),
       },
     });
 
