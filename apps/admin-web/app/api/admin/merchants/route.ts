@@ -437,40 +437,26 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         payload: merchantInsertPayload,
       });
       
-      const { data: insertedMerchant, error: merchantInsertError } = await adminClient
+      // 步骤 1: 创建 merchant
+      const merchantInsertResult = await adminClient
         .from('merchants')
         .insert(merchantInsertPayload)
         .select('id, name')
         .single();
       
-      newMerchant = insertedMerchant;
-      
-      console.log('[ADMIN MERCHANTS POST]', {
-        debugId,
-        step: 'merchant.insert.after',
-        ok: !!newMerchant && !merchantInsertError,
-        newMerchantId: newMerchant?.id || null,
-        newMerchantName: newMerchant?.name || null,
-        merchantInsertError: merchantInsertError ? {
-          message: merchantInsertError.message,
-          code: merchantInsertError.code,
-          details: merchantInsertError.details,
-        } : null,
-      });
-      
-      if (merchantInsertError || !newMerchant) {
+      if (merchantInsertResult.error || !merchantInsertResult.data) {
         return NextResponse.json<ApiResponse>(
           {
             ok: false,
             error: 'Database Error',
             code: 'MERCHANT_INSERT_ERROR',
-            message: merchantInsertError?.message || 'Failed to create merchant',
+            message: merchantInsertResult.error?.message || 'Failed to create merchant',
             step: 'merchant.insert',
             debugId,
             details: {
-              merchantInsertError: merchantInsertError ? {
-                message: merchantInsertError.message,
-                code: merchantInsertError.code,
+              merchantInsertError: merchantInsertResult.error ? {
+                message: merchantInsertResult.error.message,
+                code: merchantInsertResult.error.code,
               } : null,
             },
           },
@@ -478,8 +464,11 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         );
       }
       
+      // 步骤 2: 提取 merchantId（明确拆分）
+      const merchantId = merchantInsertResult.data.id;
+      
       // 断言：merchantId 必须是有效 UUID
-      if (!newMerchant.id || !isValidUuid(newMerchant.id)) {
+      if (!merchantId || !isValidUuid(merchantId)) {
         return NextResponse.json<ApiResponse>(
           {
             ok: false,
@@ -489,24 +478,24 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
             step: 'merchant.create.missing_id',
             debugId,
             details: {
-              newMerchantId: newMerchant.id,
-              newMerchantIdIsValid: newMerchant.id ? isValidUuid(newMerchant.id) : false,
+              merchantId,
+              merchantIdIsValid: merchantId ? isValidUuid(merchantId) : false,
             },
           },
           { status: 500 }
         );
       }
       
-      merchantIdFinal = newMerchant.id;
-      
-      console.log('[ADMIN MERCHANTS POST]', {
-        debugId,
-        step: 'merchant.resolve',
-        ok: true,
-        merchantIdFinal,
-        merchantName: newMerchant.name,
-        note: 'New merchant created',
+      // ① merchant 创建完成后 - 强制日志
+      console.log({
+        step: 'merchant.created',
+        merchantId,
+        merchant: merchantInsertResult.data,
       });
+      
+      // 更新变量（向后兼容）
+      newMerchant = merchantInsertResult.data;
+      merchantIdFinal = merchantId;
     }
 
     step = 'validated';
@@ -547,6 +536,26 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     step = 'expiry_calculated';
 
     // STEP 5: 创建邀请记录
+    // 强制验证：owner/manager invite 必须有 merchant_id
+    if ((role === 'owner' || role === 'manager') && (!merchantIdFinal || !isValidUuid(merchantIdFinal))) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Validation Error',
+          code: 'MERCHANT_ID_REQUIRED',
+          message: 'merchantId is required for owner/manager invites',
+          step: 'validate.merchant_id',
+          debugId,
+          details: {
+            role,
+            merchantIdFinal,
+            merchantIdFinalIsValid: merchantIdFinal ? isValidUuid(merchantIdFinal) : false,
+          },
+        },
+        { status: 400 }
+      );
+    }
+    
     // 断言：merchantIdFinal 必须是有效 UUID（不能是 null）
     if (!merchantIdFinal || !isValidUuid(merchantIdFinal)) {
       return NextResponse.json<ApiResponse>(
@@ -567,9 +576,16 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     }
     
     step = 'insert_invite';
-    const inviteData: any = {
+    
+    // 强制校验（防止以后再炸）
+    if (!merchantIdFinal) {
+      throw new Error('[ADMIN_MERCHANTS] merchantId is missing before invite creation');
+    }
+    
+    // 步骤 3: 构造 invite 插入 payload（明确拆分）
+    const inviteInsertPayload = {
       token: inviteCode,
-      merchant_id: merchantIdFinal, // 必须是有效 UUID（不能是 null）
+      merchant_id: merchantIdFinal, // ✅ 必须：直接使用 merchantIdFinal，不能是 null/undefined/body.merchantId
       region_id: regionId || null,
       intended_role: role || 'owner',
       issued_by_type: 'admin',
@@ -582,33 +598,62 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       note: `Admin-created invite for merchant ${merchantIdFinal}`,
     };
     
-    console.log('[ADMIN MERCHANTS POST]', {
-      debugId,
-      step: 'invite.create.before',
-      merchantId: merchantIdFinal,
-      role: role || 'owner',
-      token: inviteCode,
-      callMethod: 'direct insert', // 直接 insert，不是 RPC
-      payload: {
-        token: inviteCode,
-        merchant_id: merchantIdFinal,
-        region_id: regionId || null,
-        intended_role: role || 'owner',
-        issued_by_type: 'admin',
-      },
+    // ② 创建 invite 前 - 强制日志
+    console.log({
+      step: 'invite.create.payload',
+      merchantIdUsed: merchantIdFinal,
+      payload: inviteInsertPayload,
     });
 
     const { data: invite, error: insertError } = await withTimeout(
       Promise.resolve(
         adminClient
           .from('invites')
-          .insert(inviteData)
+          .insert(inviteInsertPayload)
           .select('id, token, merchant_id, region_id, intended_role, issued_by_type, max_uses, used_count, expires_at, disabled, is_active, created_by, note, created_at, updated_at')
           .single()
       ),
       TIMEOUT_MS,
       'insert invite'
     );
+    
+    // ③ invite 创建完成后 - 强制日志
+    console.log({
+      step: 'invite.created',
+      invite,
+    });
+    
+    // 验证：数据库返回的 merchant_id 必须与传入的值一致
+    if (invite && invite.merchant_id !== merchantIdFinal) {
+      console.error('[ADMIN MERCHANTS POST] merchant_id mismatch:', {
+        debugId,
+        step: 'invite.create.after.validation',
+        expected: merchantIdFinal,
+        actual: invite.merchant_id,
+        inviteId: invite.id,
+        fullInvite: invite,  // 打印完整对象
+      });
+      // 如果数据库返回的 merchant_id 为 null，尝试重新查询
+      const { data: recheckInvite } = await adminClient
+        .from('invites')
+        .select('id, merchant_id')
+        .eq('id', invite.id)
+        .single();
+      if (recheckInvite && recheckInvite.merchant_id) {
+        console.log('[ADMIN MERCHANTS POST] Recheck found merchant_id:', {
+          debugId,
+          step: 'invite.recheck',
+          merchant_id: recheckInvite.merchant_id,
+        });
+        invite.merchant_id = recheckInvite.merchant_id;
+      } else {
+        console.error('[ADMIN MERCHANTS POST] Recheck also returned null merchant_id:', {
+          debugId,
+          step: 'invite.recheck.failed',
+          recheckInvite,
+        });
+      }
+    }
     
     console.log('[ADMIN MERCHANTS POST]', {
       debugId,
@@ -617,6 +662,8 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       inviteId: invite?.id || null,
       token: invite?.token || null,
       merchant_id: invite?.merchant_id || null,
+      merchantIdFinal,  // 添加传入的值用于对比
+      merchant_id_match: invite?.merchant_id === merchantIdFinal,  // 是否匹配
       intended_role: invite?.intended_role || null,
       insertError: insertError ? {
         message: insertError.message,
@@ -702,6 +749,19 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       intended_role: invite?.intended_role || null,
     };
     
+    // Response 一致性修复：确保 invite.merchantId === merchantIdFinal
+    const responseMerchantId = invite.merchant_id || merchantIdFinal;
+    
+    // 验证一致性
+    if (responseMerchantId !== merchantIdFinal) {
+      console.error('[ADMIN MERCHANTS POST] Response merchantId mismatch:', {
+        debugId,
+        expected: merchantIdFinal,
+        actual: responseMerchantId,
+        inviteMerchantId: invite.merchant_id,
+      });
+    }
+    
     return NextResponse.json<ApiResponse>({
       ok: true,
       data: {
@@ -709,7 +769,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
           id: invite.id,
           code: invite.token,
           token: invite.token, // Backward compatibility
-          merchantId: invite.merchant_id,
+          merchantId: merchantIdFinal, // ✅ 强制使用 merchantIdFinal，确保一致性
           regionId: invite.region_id,
           role: invite.intended_role,
           expiresAt: invite.expires_at,
