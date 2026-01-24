@@ -150,7 +150,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   console.log('[STRIPE WEBHOOK]', {
     debugId,
     step: 'checkout.session.completed.start',
-    eventId: session.id,
+    sessionId: session.id,
     orderId,
     userId,
     eventId,
