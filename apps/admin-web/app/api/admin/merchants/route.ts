@@ -317,6 +317,9 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     
     // 如果提供了 merchantId，验证它必须是有效的 UUID
     let merchantIdFinal: string | null = null;
+    let newMerchant: any = null;
+    let merchantName: string | null = null;
+    
     if (merchantId) {
       if (!isValidUuid(merchantId)) {
         console.log('[ADMIN MERCHANTS POST]', {
@@ -421,32 +424,30 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       
       // 创建新 merchant
       step = 'merchant.insert';
-      const merchantName = `New Merchant - ${regionData.name} - ${new Date().toISOString().slice(0, 10)}`;
+      merchantName = `New Merchant - ${regionData.name} - ${new Date().toISOString().slice(0, 10)}`;
+      const merchantInsertPayload = {
+        name: merchantName,
+        region_id: regionId,
+        status: 'active',
+      };
       
       console.log('[ADMIN MERCHANTS POST]', {
         debugId,
-        step: 'merchant.insert',
-        ok: false, // 将在插入后更新
-        payload: {
-          name: merchantName,
-          region_id: regionId,
-          status: 'active',
-        },
+        step: 'merchant.insert.before',
+        payload: merchantInsertPayload,
       });
       
-      const { data: newMerchant, error: merchantInsertError } = await adminClient
+      const { data: insertedMerchant, error: merchantInsertError } = await adminClient
         .from('merchants')
-        .insert({
-          name: merchantName,
-          region_id: regionId,
-          status: 'active',
-        })
+        .insert(merchantInsertPayload)
         .select('id, name')
         .single();
       
+      newMerchant = insertedMerchant;
+      
       console.log('[ADMIN MERCHANTS POST]', {
         debugId,
-        step: 'merchant.insert',
+        step: 'merchant.insert.after',
         ok: !!newMerchant && !merchantInsertError,
         newMerchantId: newMerchant?.id || null,
         newMerchantName: newMerchant?.name || null,
@@ -583,11 +584,15 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     
     console.log('[ADMIN MERCHANTS POST]', {
       debugId,
-      step: 'invite.insert',
-      ok: false, // 将在插入后更新
+      step: 'invite.create.before',
+      merchantId: merchantIdFinal,
+      role: role || 'owner',
+      token: inviteCode,
+      callMethod: 'direct insert', // 直接 insert，不是 RPC
       payload: {
         token: inviteCode,
         merchant_id: merchantIdFinal,
+        region_id: regionId || null,
         intended_role: role || 'owner',
         issued_by_type: 'admin',
       },
@@ -598,7 +603,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         adminClient
           .from('invites')
           .insert(inviteData)
-          .select()
+          .select('id, token, merchant_id, region_id, intended_role, issued_by_type, max_uses, used_count, expires_at, disabled, is_active, created_by, note, created_at, updated_at')
           .single()
       ),
       TIMEOUT_MS,
@@ -607,7 +612,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     
     console.log('[ADMIN MERCHANTS POST]', {
       debugId,
-      step: 'invite.insert',
+      step: 'invite.create.after',
       ok: !!invite && !insertError,
       inviteId: invite?.id || null,
       token: invite?.token || null,
@@ -654,6 +659,49 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       intendedRole: invite.intended_role,
     });
     
+    // 构建 debug 信息（收集所有步骤的日志）
+    const debugInfo: any = {
+      debugId,
+      steps: {},
+    };
+    
+    // 如果创建了新 merchant，添加 merchant.insert 日志
+    if (newMerchant) {
+      debugInfo.steps['merchant.insert.before'] = {
+        payload: {
+          name: merchantName,
+          region_id: regionId,
+          status: 'active',
+        },
+      };
+      debugInfo.steps['merchant.insert.after'] = {
+        newMerchantId: newMerchant.id || null,
+        newMerchantName: newMerchant.name || null,
+      };
+    }
+    
+    // 添加 invite.create 日志
+    debugInfo.steps['invite.create.before'] = {
+      merchantId: merchantIdFinal,
+      role: role || 'owner',
+      token: inviteCode,
+      callMethod: 'direct insert', // 直接 insert，不是 RPC
+      payload: {
+        token: inviteCode,
+        merchant_id: merchantIdFinal,
+        region_id: regionId || null,
+        intended_role: role || 'owner',
+        issued_by_type: 'admin',
+      },
+    };
+    
+    debugInfo.steps['invite.create.after'] = {
+      inviteId: invite?.id || null,
+      token: invite?.token || null,
+      merchant_id: invite?.merchant_id || null,
+      intended_role: invite?.intended_role || null,
+    };
+    
     return NextResponse.json<ApiResponse>({
       ok: true,
       data: {
@@ -669,6 +717,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       },
       step,
       debugId,
+      debug: debugInfo,
     });
 
   } catch (error: any) {
