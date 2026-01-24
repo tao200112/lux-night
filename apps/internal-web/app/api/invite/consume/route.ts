@@ -53,6 +53,7 @@ interface ConsumeInviteResponse {
   success: boolean;
   error?: string;
   debugId?: string;
+  step?: string;
   details?: any;
   data?: {
     merchant_id: string;
