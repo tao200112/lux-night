@@ -120,6 +120,7 @@ export async function GET() {
       merchantName: string;
       role: string;
       isActive: boolean;
+      createdAt?: string; // 用于排序
       venues: Array<{
         venueId: string;
         venueName: string;
