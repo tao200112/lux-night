@@ -380,12 +380,131 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         );
       }
     } else {
+      // 如果没有 merchantId，需要先创建 merchant
+      if (!regionId) {
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Bad Request',
+            code: 'VALIDATION_ERROR',
+            message: 'regionId is required when creating new merchant',
+            step,
+            debugId,
+          },
+          { status: 400 }
+        );
+      }
+      
+      // 验证 region 存在
+      const { data: regionData, error: regionError } = await adminClient
+        .from('regions')
+        .select('id, name')
+        .eq('id', regionId)
+        .single();
+      
+      if (regionError || !regionData) {
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Not Found',
+            code: 'REGION_NOT_FOUND',
+            message: 'Region does not exist',
+            step: 'region.validate',
+            debugId,
+            details: {
+              regionId,
+            },
+          },
+          { status: 404 }
+        );
+      }
+      
+      // 创建新 merchant
+      step = 'merchant.insert';
+      const merchantName = `New Merchant - ${regionData.name} - ${new Date().toISOString().slice(0, 10)}`;
+      
+      console.log('[ADMIN MERCHANTS POST]', {
+        debugId,
+        step: 'merchant.insert',
+        ok: false, // 将在插入后更新
+        payload: {
+          name: merchantName,
+          region_id: regionId,
+          status: 'active',
+        },
+      });
+      
+      const { data: newMerchant, error: merchantInsertError } = await adminClient
+        .from('merchants')
+        .insert({
+          name: merchantName,
+          region_id: regionId,
+          status: 'active',
+        })
+        .select('id, name')
+        .single();
+      
+      console.log('[ADMIN MERCHANTS POST]', {
+        debugId,
+        step: 'merchant.insert',
+        ok: !!newMerchant && !merchantInsertError,
+        newMerchantId: newMerchant?.id || null,
+        newMerchantName: newMerchant?.name || null,
+        merchantInsertError: merchantInsertError ? {
+          message: merchantInsertError.message,
+          code: merchantInsertError.code,
+          details: merchantInsertError.details,
+        } : null,
+      });
+      
+      if (merchantInsertError || !newMerchant) {
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Database Error',
+            code: 'MERCHANT_INSERT_ERROR',
+            message: merchantInsertError?.message || 'Failed to create merchant',
+            step: 'merchant.insert',
+            debugId,
+            details: {
+              merchantInsertError: merchantInsertError ? {
+                message: merchantInsertError.message,
+                code: merchantInsertError.code,
+              } : null,
+            },
+          },
+          { status: 500 }
+        );
+      }
+      
+      // 断言：merchantId 必须是有效 UUID
+      if (!newMerchant.id || !isValidUuid(newMerchant.id)) {
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Internal Server Error',
+            code: 'MERCHANT_CREATE_MISSING_ID',
+            message: 'Failed to get merchant ID after creation',
+            step: 'merchant.create.missing_id',
+            debugId,
+            details: {
+              newMerchantId: newMerchant.id,
+              newMerchantIdIsValid: newMerchant.id ? isValidUuid(newMerchant.id) : false,
+            },
+          },
+          { status: 500 }
+        );
+      }
+      
+      merchantIdFinal = newMerchant.id;
+      
       console.log('[ADMIN MERCHANTS POST]', {
         debugId,
         step: 'merchant.resolve',
         ok: true,
-        merchantIdFinal: null,
-        note: 'No merchantId provided (will create new merchant)',
+        merchantIdFinal,
+        merchantName: newMerchant.name,
+        note: 'New merchant created',
       });
     }
 
@@ -427,10 +546,29 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     step = 'expiry_calculated';
 
     // STEP 5: 创建邀请记录
+    // 断言：merchantIdFinal 必须是有效 UUID（不能是 null）
+    if (!merchantIdFinal || !isValidUuid(merchantIdFinal)) {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error: 'Internal Server Error',
+          code: 'MERCHANT_CREATE_MISSING_ID',
+          message: 'merchantId is required before creating invite',
+          step: 'merchant.create.missing_id',
+          debugId,
+          details: {
+            merchantIdFinal,
+            merchantIdFinalIsValid: merchantIdFinal ? isValidUuid(merchantIdFinal) : false,
+          },
+        },
+        { status: 500 }
+      );
+    }
+    
     step = 'insert_invite';
     const inviteData: any = {
       token: inviteCode,
-      merchant_id: merchantIdFinal, // 使用验证后的 merchantIdFinal（可能是 null，但必须是有效的 UUID 或 null）
+      merchant_id: merchantIdFinal, // 必须是有效 UUID（不能是 null）
       region_id: regionId || null,
       intended_role: role || 'owner',
       issued_by_type: 'admin',
@@ -440,14 +578,12 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       disabled: false,
       is_active: true,
       created_by: user?.id || null,
-      note: merchantIdFinal
-        ? `Admin-created invite for merchant ${merchantIdFinal}`
-        : `Admin-created invite for new merchant in region ${regionId}`,
+      note: `Admin-created invite for merchant ${merchantIdFinal}`,
     };
     
     console.log('[ADMIN MERCHANTS POST]', {
       debugId,
-      step: 'db.insert',
+      step: 'invite.insert',
       ok: false, // 将在插入后更新
       payload: {
         token: inviteCode,
@@ -471,11 +607,12 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     
     console.log('[ADMIN MERCHANTS POST]', {
       debugId,
-      step: 'db.insert',
+      step: 'invite.insert',
       ok: !!invite && !insertError,
       inviteId: invite?.id || null,
       token: invite?.token || null,
-      merchant_id写入值: invite?.merchant_id || null,
+      merchant_id: invite?.merchant_id || null,
+      intended_role: invite?.intended_role || null,
       insertError: insertError ? {
         message: insertError.message,
         code: insertError.code,
