@@ -448,16 +448,14 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       step = 'merchant.insert';
       merchantName = `New Merchant - ${regionData.name} - ${new Date().toISOString().slice(0, 10)}`;
       
-      // 白名单字段映射：只包含数据库真实存在的列（id, region_id, name, status, created_at, updated_at, default_venue_id）
-      // 禁止直接 spread body，必须显式映射字段
+      // 白名单字段映射：只包含数据库真实存在的列（id, region_id, name, created_at, updated_at, default_venue_id）
+      // 自动兼容修复：先移除 status 字段（如果表没有 status 列）
       const merchantInsertPayload: {
         name: string;
         region_id: string;
-        status: string;
       } = {
         name: merchantName,
         region_id: regionId,
-        status: 'active',
       };
       
       // 临时日志：在 insert 前记录 payload
@@ -480,34 +478,61 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         .select('id, name')
         .single();
       
-      // 增强错误日志
-      if (merchantInsertResult.error) {
-        console.error('[ADMIN MERCHANTS POST] Merchant insert error:', {
-          debugId,
-          step: 'merchant.insert.error',
-          error: merchantInsertResult.error,
-          payload: merchantInsertPayload,
-          errorMessage: merchantInsertResult.error.message,
-          errorCode: merchantInsertResult.error.code,
-          errorDetails: merchantInsertResult.error.details,
-        });
-      }
+      // 1) 在 insert 之后立刻捕获并打印 supabase error 的全部字段
+      console.log('[ADMIN MERCHANTS POST]', {
+        debugId,
+        step: 'merchant.insert.result',
+        error: merchantInsertResult.error,
+        data: merchantInsertResult.data,
+      });
       
-      if (merchantInsertResult.error || !merchantInsertResult.data) {
+      // 2) 如果 error 存在，返回 500 JSON
+      if (merchantInsertResult.error) {
+        const errorMessage = merchantInsertResult.error.message || '';
+        const isStatusColumnError = errorMessage.includes('column "status" does not exist');
+        
+        // 3) 自动兼容修复：如果错误信息包含 'column "status" does not exist'，则永久删除 status 字段
+        // （注意：我们已经移除了 status 字段，所以这里主要是记录日志）
+        if (isStatusColumnError) {
+          console.warn('[ADMIN MERCHANTS POST] Status column does not exist, payload already excludes status:', {
+            debugId,
+            step: 'merchant.insert.auto_fix',
+            payload: merchantInsertPayload,
+          });
+        }
+        
         return NextResponse.json<ApiResponse>(
           {
             ok: false,
             error: 'Database Error',
             code: 'MERCHANT_INSERT_ERROR',
-            message: merchantInsertResult.error?.message || 'Failed to create merchant',
-            step: 'merchant.insert',
+            message: merchantInsertResult.error.message || 'Failed to create merchant',
+            step: 'merchant.insert.error',
             debugId,
             details: {
-              merchantInsertError: merchantInsertResult.error ? {
+              supabaseError: {
                 message: merchantInsertResult.error.message,
                 code: merchantInsertResult.error.code,
                 details: merchantInsertResult.error.details,
-              } : null,
+                hint: merchantInsertResult.error.hint,
+              },
+              payload: merchantInsertPayload,
+            },
+          },
+          { status: 500 }
+        );
+      }
+      
+      if (!merchantInsertResult.data) {
+        return NextResponse.json<ApiResponse>(
+          {
+            ok: false,
+            error: 'Database Error',
+            code: 'MERCHANT_INSERT_ERROR',
+            message: 'Failed to create merchant: no data returned',
+            step: 'merchant.insert.error',
+            debugId,
+            details: {
               payload: merchantInsertPayload,
             },
           },
@@ -813,20 +838,26 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       });
     }
     
+    // 4) 写入成功后，继续创建 owner invite，返回 merchant 和 invite
     return NextResponse.json<ApiResponse>({
       ok: true,
       data: {
+        merchant: newMerchant ? {
+          id: newMerchant.id,
+          name: newMerchant.name,
+          regionId: regionId,
+        } : null,
         invite: {
           id: invite.id,
           code: invite.token,
           token: invite.token, // Backward compatibility
-          merchantId: merchantIdFinal, // ✅ 强制使用 merchantIdFinal，确保一致性
+          merchantId: merchantIdFinal, // ✅ 强制使用 merchantIdFinal，确保一致性（禁止 null）
           regionId: invite.region_id,
           role: invite.intended_role,
           expiresAt: invite.expires_at,
         },
       },
-      step,
+      step: 'success',
       debugId,
       debug: debugInfo,
     });
