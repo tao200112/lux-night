@@ -281,9 +281,10 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       );
     }
     
-    const { merchantId, regionId, role, expiresDays } = body;
+    // 白名单字段映射：只提取数据库真实存在的字段，忽略 timezone 等不存在的字段
+    const { merchantId, regionId, role, expiresDays, timezone, ...otherFields } = body;
     
-    // 打印请求体信息
+    // 打印请求体信息（包括可能存在的 timezone，但不传入数据库）
     const merchantIdRaw = merchantId ? String(merchantId) : null;
     const merchantIdType = typeof merchantId;
     const merchantIdIsValid = merchantId ? isValidUuid(merchantId) : false;
@@ -299,7 +300,28 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       role: role || 'owner',
       intendedRole: role || 'owner',
       issuedByType: 'admin',
+      timezone: timezone || null, // 仅用于日志，不传入数据库
+      otherFields: Object.keys(otherFields).length > 0 ? Object.keys(otherFields) : null, // 记录其他未知字段
     });
+    
+    // 如果请求体包含 timezone 或其他未知字段，记录警告（但不阻止请求）
+    if (timezone !== undefined) {
+      console.warn('[ADMIN MERCHANTS POST] Request body contains timezone field (will be ignored):', {
+        debugId,
+        step: 'request.body.validation',
+        timezone,
+        note: 'timezone is not a valid column in merchants table and will be ignored',
+      });
+    }
+    
+    if (Object.keys(otherFields).length > 0) {
+      console.warn('[ADMIN MERCHANTS POST] Request body contains unknown fields (will be ignored):', {
+        debugId,
+        step: 'request.body.validation',
+        unknownFields: Object.keys(otherFields),
+        note: 'These fields are not valid columns and will be ignored',
+      });
+    }
 
     if (!merchantId && !regionId) {
       return NextResponse.json<ApiResponse>(
@@ -425,11 +447,25 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
       // 创建新 merchant
       step = 'merchant.insert';
       merchantName = `New Merchant - ${regionData.name} - ${new Date().toISOString().slice(0, 10)}`;
-      const merchantInsertPayload = {
+      
+      // 白名单字段映射：只包含数据库真实存在的列（id, region_id, name, status, created_at, updated_at, default_venue_id）
+      // 禁止直接 spread body，必须显式映射字段
+      const merchantInsertPayload: {
+        name: string;
+        region_id: string;
+        status: string;
+      } = {
         name: merchantName,
         region_id: regionId,
         status: 'active',
       };
+      
+      // 临时日志：在 insert 前记录 payload
+      console.log({
+        step: 'merchant.insert.payload',
+        payload: merchantInsertPayload,
+        debugId,
+      });
       
       console.log('[ADMIN MERCHANTS POST]', {
         debugId,
