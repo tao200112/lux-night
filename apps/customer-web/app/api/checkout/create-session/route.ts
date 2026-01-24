@@ -212,8 +212,9 @@ export async function POST(req: NextRequest) {
         order_id: order.id,
         user_id: user.id,
         event_id: eventId,
-        // Add ticket type IDs for reference
+        // Add ticket type IDs and quantities for reference
         ticket_type_ids: items.map((item: any) => item.ticketTypeId).join(','),
+        quantities: items.map((item: any) => `${item.ticketTypeId}:${item.quantity}`).join(','),
       },
     });
 
