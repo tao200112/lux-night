@@ -387,6 +387,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     // Generate tickets
     for (let i = 0; i < orderItem.quantity; i++) {
       const qrSeed = randomBytes(16).toString('hex');
+      // 128-bit+ token for /t/[token] and QR; not guessable, never use short id
+      const publicToken = randomBytes(16).toString('hex') + randomBytes(4).toString('hex');
 
       tickets.push({
         order_id: orderId,
@@ -396,6 +398,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         venue_id: event.venue_id,
         ticket_type_id: orderItem.ticket_type_id,
         qr_seed: qrSeed,
+        public_token: publicToken,
         status: 'active',
         redeem_limit: ticketType.redeem_limit,
         redeemed_count: 0,

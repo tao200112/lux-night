@@ -29,6 +29,14 @@ export interface TicketData {
   };
 }
 
+/** Base URL for /t/[token] and QR; prefer NEXT_PUBLIC_APP_URL. */
+function getAppBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    return process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || '';
+}
+
 export interface Ticket {
   id: string;
   eventId: string;
@@ -38,7 +46,10 @@ export interface Ticket {
   time: string;
   status: 'issued' | 'active' | 'used' | 'refunded' | 'void' | 'expired';
   tierName: string;
+  /** @deprecated use publicToken for QR/URL */
   qrToken: string;
+  /** Token for /t/[token] and /redeem/[token]; 128-bit+, not guessable */
+  publicToken: string;
   qrCodeUrl: string;
   purchaseDate: string;
   redeemedAt?: string;
@@ -55,6 +66,9 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
       event_id,
       status,
       qr_seed,
+      public_token,
+      redeemed_at,
+      redeemed_by,
       created_at,
       updated_at,
       events!inner(
@@ -79,20 +93,26 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
     throw new Error('Failed to fetch tickets');
   }
 
-  // Transform data to match Ticket interface
-  return (data || []).map((t: any) => ({
-    id: t.id,
-    eventId: t.event_id,
-    eventName: t.events.title,
-    venue: t.events.venues.name,
-    date: new Date(t.events.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    time: new Date(t.events.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-    status: t.status,
-    tierName: t.ticket_types.name,
-    qrToken: t.qr_seed,
-    qrCodeUrl: generateQRCodeUrl(t.qr_seed),
-    purchaseDate: new Date(t.created_at).toLocaleDateString(),
-  }));
+  const base = getAppBaseUrl();
+  return (data || []).map((t: any) => {
+    const token = t.public_token || t.qr_seed;
+    return {
+      id: t.id,
+      eventId: t.event_id,
+      eventName: t.events.title,
+      venue: t.events.venues.name,
+      date: new Date(t.events.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      time: new Date(t.events.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      status: t.status,
+      tierName: t.ticket_types.name,
+      qrToken: t.qr_seed,
+      publicToken: token,
+      qrCodeUrl: base ? generateQRCodeUrl(`${base}/t/${token}`) : generateQRCodeUrl(`/t/${token}`),
+      purchaseDate: new Date(t.created_at).toLocaleDateString(),
+      redeemedAt: t.redeemed_at || undefined,
+      redeemedBy: t.redeemed_by || undefined,
+    };
+  });
 }
 
 export async function getTicket(id: string, userId?: string): Promise<Ticket | null> {
@@ -105,6 +125,9 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
       event_id,
       status,
       qr_seed,
+      public_token,
+      redeemed_at,
+      redeemed_by,
       created_at,
       updated_at,
       events!inner(
@@ -133,6 +156,8 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
   const venueData = eventData?.venues ? (Array.isArray(eventData.venues) ? eventData.venues[0] : eventData.venues) : null;
   const ticketTypeData = Array.isArray(data.ticket_types) ? data.ticket_types[0] : data.ticket_types;
 
+  const token = data.public_token || data.qr_seed;
+  const base = getAppBaseUrl();
   return {
     id: data.id,
     eventId: data.event_id,
@@ -143,7 +168,10 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
     status: data.status,
     tierName: ticketTypeData?.name || 'Unknown',
     qrToken: data.qr_seed,
-    qrCodeUrl: generateQRCodeUrl(data.qr_seed),
+    publicToken: token,
+    qrCodeUrl: base ? generateQRCodeUrl(`${base}/t/${token}`) : generateQRCodeUrl(`/t/${token}`),
     purchaseDate: new Date(data.created_at).toLocaleDateString(),
+    redeemedAt: data.redeemed_at || undefined,
+    redeemedBy: data.redeemed_by || undefined,
   };
 }

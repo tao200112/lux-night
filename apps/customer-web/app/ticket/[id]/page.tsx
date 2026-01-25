@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTicket, Ticket } from '@/lib/data/tickets';
 import { useAuth } from '../../../contexts/AuthContext';
-import Button from '../../../components/ui/Button';
-import BackButton from '../../../components/ui/BackButton';
 import { useRouter } from 'next/navigation';
 
 export default function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -64,43 +62,6 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
       fetchTicket();
     }
   }, [ticketId, user, authLoading, router]);
-
-  const handleRedeemClick = async () => {
-    if (redemptionStatus === 'idle') {
-      setRedemptionStatus('confirming');
-      // Reset after 3 seconds if not confirmed
-      setTimeout(() => {
-        setRedemptionStatus(prev => prev === 'confirming' ? 'idle' : prev);
-      }, 3000);
-    } else if (redemptionStatus === 'confirming') {
-      try {
-        const response = await fetch(`/api/tickets/${ticketId}/redeem`, {
-          method: 'POST',
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          if (data.alreadyRedeemed) {
-            setRedemptionStatus('redeemed');
-            if (ticket) {
-              setTicket({ ...ticket, status: 'used' });
-            }
-          }
-          throw new Error(data.error || 'Failed to redeem ticket');
-        }
-
-        setRedemptionStatus('redeemed');
-        if (ticket) {
-          setTicket({ ...ticket, status: 'used', redeemedAt: data.ticket.redeemed_at });
-        }
-      } catch (err: any) {
-        console.error('Redemption error:', err);
-        setRedemptionStatus('idle');
-        alert(err.message || 'Failed to redeem ticket');
-      }
-    }
-  };
 
   if (loading) {
     return (
@@ -209,33 +170,20 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
             </ul>
         </div>
         
-        {/* Staff / Self-Redemption Controls (if staff) */}
-        {(user?.role === 'staff' || user?.role === 'merchant' || user?.role === 'admin') && (
-            <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
-                <h3 className="text-white font-bold text-xs uppercase tracking-widest mb-4 opacity-50">Staff Controls</h3>
-                <Button 
-                    onClick={handleRedeemClick} 
-                    disabled={redemptionStatus === 'redeemed'}
-                    className={`w-full transition-all duration-200 ${redemptionStatus === 'confirming' ? 'bg-alert-red text-white' : ''}`}
-                    icon={redemptionStatus === 'redeemed' ? 'lock' : 'qr_code_scanner'}
-                >
-                    {redemptionStatus === 'idle' && 'Scan / Redeem'}
-                    {redemptionStatus === 'confirming' && 'Tap again to Confirm'}
-                    {redemptionStatus === 'redeemed' && 'Ticket Redeemed'}
-                </Button>
-            </div>
-        )}
-        
+        {/* 核销已迁移到 Show Ticket -> /redeem/[token]，使用三连击与权限校验 */}
         <button className="w-full bg-white/5 hover:bg-white/10 active:bg-white/15 text-white h-14 rounded-2xl flex items-center justify-center gap-2 transition-all border border-white/5 mb-2">
             <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>wallet</span>
             <span className="font-body font-bold text-sm">Add to Apple Wallet</span>
         </button>
       </main>
       
-      {/* Fixed Bottom Button */}
+      {/* Fixed Bottom Button: Show Ticket -> 核销页 /redeem/[token] */}
       <div className="fixed bottom-0 left-0 w-full p-5 bg-gradient-to-t from-[#131417] via-[#131417] to-transparent z-40">
         <div className="max-w-md mx-auto w-full">
-          <button className="group relative w-full bg-primary hover:bg-[#244f43] text-white h-14 rounded-xl flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(43,92,78,0.4)] transition-all overflow-hidden">
+          <button
+            onClick={() => ticket?.publicToken && router.push(`/redeem/${ticket.publicToken}`)}
+            className="group relative w-full bg-primary hover:bg-[#244f43] text-white h-14 rounded-xl flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(43,92,78,0.4)] transition-all overflow-hidden"
+          >
             <div className="absolute inset-0 w-full h-full shimmer"></div>
             <span className="material-symbols-outlined relative z-10" style={{ fontSize: '24px' }}>fullscreen</span>
             <span className="font-bold text-base tracking-wide relative z-10">Show Ticket</span>
