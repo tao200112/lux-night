@@ -579,12 +579,12 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
     return errors;
   };
 
-  // Publish validation: strict
+  // Publish validation: strict - region_id 由 DB trigger 自动从 venue 继承，不再必填
   const validatePublish = (): string[] => {
     const errors: string[] = [];
 
     if (!title.trim()) errors.push('Event title is required');
-    if (!regionId) errors.push('Region is required');
+    // 移除: if (!regionId) errors.push('Region is required');
     if (!venueId) {
       errors.push('Venue is required. Please select a venue.');
     }
@@ -675,7 +675,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           description: description.trim() || null,
           poster_url: posterUrl || null,
           venue_id: venueId || null,
-          region_id: regionId || undefined,
+          // region_id 由 DB trigger 自动从 venue 继承，不需要传入
           start_at: startDateTime?.toISOString() || null,
           end_at: endDateTime?.toISOString() || null,
           redeem_start_at: validRedeemStart?.toISOString() || null,
@@ -761,7 +761,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           description: description.trim() || null,
           poster_url: posterUrl || null,
           venue_id: venueId,
-          region_id: regionId || undefined,
+          // region_id 由 DB trigger 自动从 venue 继承，不需要传入
           start_at: startDateTime.toISOString(),
           end_at: endDateTime.toISOString(),
           redeem_start_at: redeemStart?.toISOString() || null,
@@ -1029,29 +1029,21 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
         <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">② Venue & Basics</h3>
           
-          {/* Region：先选 Region，Venue 仅显示该 region 下的 */}
+          {/* Region：自动从 venue 继承，只读显示 */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Region <span className="text-red-500">*</span>
+              Region <span className="text-xs text-slate-500">(auto-inherited from venue)</span>
             </label>
-            <select
-              value={regionId}
-              onChange={(e) => {
-                const v = e.target.value;
-                setRegionId(v);
-                setVenueId('');
-                setSelectedVenue(null);
-                setHasUnsavedChanges(true);
-                setLoadingVenue(true);
-                loadAllVenues(v || undefined).finally(() => setLoadingVenue(false));
-              }}
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">Select region...</option>
-              {regions.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
+            <input
+              type="text"
+              value={selectedVenue?.region?.name 
+                ? `${selectedVenue.region.name}` 
+                : regionId 
+                  ? regions.find(r => r.id === regionId)?.name || 'Loading...'
+                  : 'Select venue first'}
+              readOnly
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 h-12 px-3 text-base cursor-not-allowed"
+            />
           </div>
 
           {loadingVenue ? (

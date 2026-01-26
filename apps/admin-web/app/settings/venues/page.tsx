@@ -2,21 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import PlaceAutocomplete from '@/components/PlaceAutocomplete';
 import AdminBottomNav from '@/components/admin/AdminBottomNav';
 
-type Region = { id: string; name: string; state?: string | null; country?: string | null };
-type Merchant = { id: string; name: string };
+type Region = { id: string; name: string; city?: string | null; state?: string | null; country?: string | null };
+type Merchant = { id: string; name: string; region_id?: string };
 type Venue = {
   id: string;
   name: string;
   region_id: string;
-  city?: string | null;
-  state?: string | null;
-  formatted_address?: string | null;
+  merchant_id?: string;
+  address_line1?: string | null;
   address_line2?: string | null;
-  region?: { id: string; name: string } | null;
+  formatted_address?: string | null;
+  region?: { id: string; name: string; city?: string | null; state?: string | null } | null;
   merchant?: { id: string; name: string };
 };
 
@@ -30,31 +28,34 @@ export default function SettingsVenuesPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [addName, setAddName] = useState('');
   const [addMerchantId, setAddMerchantId] = useState('');
-  const [addRegionId, setAddRegionId] = useState('');
-  const [addPlaceId, setAddPlaceId] = useState('');
-  const [addPlaceDesc, setAddPlaceDesc] = useState('');
+  const [addAddressLine1, setAddAddressLine1] = useState('');
+  const [addAddressLine2, setAddAddressLine2] = useState('');
+  const [addPostalCode, setAddPostalCode] = useState('');
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editAddressLine1, setEditAddressLine1] = useState('');
   const [editAddressLine2, setEditAddressLine2] = useState('');
-  const [editPlaceId, setEditPlaceId] = useState('');
-  const [editPlaceDesc, setEditPlaceDesc] = useState('');
-  const [hasPlacesKey, setHasPlacesKey] = useState(true);
+  const [editPostalCode, setEditPostalCode] = useState('');
+
+  // 根据选中的 merchant 显示继承的 region
+  const selectedMerchant = merchants.find(m => m.id === addMerchantId);
+  const inheritedRegion = selectedMerchant?.region_id ? regions.find(r => r.id === selectedMerchant.region_id) : null;
 
   const load = async () => {
     setErr(null);
     try {
-      const [vRes, mRes, rRes, statusRes] = await Promise.all([
+      const [vRes, mRes, rRes] = await Promise.all([
         fetch('/api/admin/venues').then((r) => r.json()),
         fetch('/api/admin/merchants').then((r) => r.json()),
         fetch('/api/admin/regions').then((r) => r.json()),
-        fetch('/api/admin/places/status').then((r) => r.json()).catch(() => ({ configured: false })),
       ]);
       if (vRes.success && vRes.data) setVenues(vRes.data);
       else if (vRes.error) setErr(vRes.error?.message || vRes.error);
-      setMerchants(mRes?.data?.merchants || mRes?.merchants || []);
+      // merchants 可能在 data.merchants 或直接 merchants
+      const merchantList = mRes?.data?.merchants || mRes?.merchants || [];
+      setMerchants(merchantList);
       if (rRes.success && rRes.data) setRegions(rRes.data);
-      setHasPlacesKey(!!statusRes?.configured);
     } catch {
       setErr('Failed to load');
     } finally {
@@ -66,18 +67,9 @@ export default function SettingsVenuesPage() {
     load();
   }, []);
 
-  const handleAddPlace = (v: { place_id: string; description: string }) => {
-    setAddPlaceId(v.place_id);
-    setAddPlaceDesc(v.description);
-  };
-  const handleEditPlace = (v: { place_id: string; description: string }) => {
-    setEditPlaceId(v.place_id);
-    setEditPlaceDesc(v.description);
-  };
-
   const handleCreate = async () => {
-    if (!addName.trim() || !addMerchantId || !addRegionId || !addPlaceId) {
-      alert('Please enter venue name, select merchant, region, and address (search and choose).');
+    if (!addName.trim() || !addMerchantId || !addAddressLine1.trim()) {
+      alert('Please enter venue name, select merchant, and provide street address.');
       return;
     }
     setSaving(true);
@@ -89,29 +81,23 @@ export default function SettingsVenuesPage() {
         body: JSON.stringify({
           name: addName.trim(),
           merchant_id: addMerchantId,
-          region_id: addRegionId,
-          place_id: addPlaceId,
+          address_line1: addAddressLine1.trim(),
+          address_line2: addAddressLine2.trim() || null,
+          postal_code: addPostalCode.trim() || null,
+          // region_id 由后端自动继承 merchant.region_id
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        if (data.error?.code === 'CONFIG') {
-          alert('GOOGLE_MAPS_API_KEY not configured. Set it in .env to add venues.');
-          return;
-        }
-        if (data.error?.code === 'PLACE_ID_DUPLICATE') {
-          alert('This address is already used by another venue.');
-          return;
-        }
         throw new Error(data.error?.message || data.error || 'Failed to create');
       }
       setVenues((p) => [...p, data.data]);
       setShowAdd(false);
       setAddName('');
       setAddMerchantId('');
-      setAddRegionId('');
-      setAddPlaceId('');
-      setAddPlaceDesc('');
+      setAddAddressLine1('');
+      setAddAddressLine2('');
+      setAddPostalCode('');
     } catch (e: unknown) {
       alert((e as Error)?.message || 'Failed');
     } finally {
@@ -120,13 +106,19 @@ export default function SettingsVenuesPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingId || !editName.trim()) return;
+    if (!editingId || !editName.trim() || !editAddressLine1.trim()) {
+      alert('Name and street address are required.');
+      return;
+    }
     setSaving(true);
     setErr(null);
     try {
-      const body: { name: string; address_line2?: string; place_id?: string } = { name: editName.trim() };
-      body.address_line2 = editAddressLine2.trim();
-      if (editPlaceId) body.place_id = editPlaceId;
+      const body = {
+        name: editName.trim(),
+        address_line1: editAddressLine1.trim(),
+        address_line2: editAddressLine2.trim() || null,
+        postal_code: editPostalCode.trim() || null,
+      };
       const res = await fetch(`/api/admin/venues/${editingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -134,22 +126,14 @@ export default function SettingsVenuesPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        if (data.error && (String(data.error).includes('GOOGLE_MAPS') || data.status === 503)) {
-          alert('GOOGLE_MAPS_API_KEY not configured. Set it in .env to update venue address.');
-          return;
-        }
-        if (data.code === 'PLACE_ID_DUPLICATE' || (data.error && String(data.error).includes('already used'))) {
-          alert('This address is already used by another venue.');
-          return;
-        }
         throw new Error(data.error || 'Failed to update');
       }
       setVenues((p) => p.map((v) => (v.id === editingId ? { ...v, ...data.data } : v)));
       setEditingId(null);
       setEditName('');
+      setEditAddressLine1('');
       setEditAddressLine2('');
-      setEditPlaceId('');
-      setEditPlaceDesc('');
+      setEditPostalCode('');
     } catch (e: unknown) {
       alert((e as Error)?.message || 'Failed');
     } finally {
@@ -160,9 +144,17 @@ export default function SettingsVenuesPage() {
   const startEdit = (v: Venue) => {
     setEditingId(v.id);
     setEditName(v.name);
+    setEditAddressLine1(v.address_line1 || '');
     setEditAddressLine2(v.address_line2 || '');
-    setEditPlaceId('');
-    setEditPlaceDesc('');
+    setEditPostalCode(''); // postal_code 尚未在 venues 表暴露，可选
+  };
+
+  // 显示地址：address_line1 + Region city/state
+  const formatAddress = (v: Venue) => {
+    const line1 = v.address_line1 || v.formatted_address || '';
+    const cityState = v.region ? [v.region.city || v.region.name, v.region.state].filter(Boolean).join(', ') : '';
+    if (line1 && cityState) return `${line1}, ${cityState}`;
+    return line1 || cityState || '—';
   };
 
   return (
@@ -181,7 +173,7 @@ export default function SettingsVenuesPage() {
         <div>
           {!showAdd ? (
             <button
-              onClick={() => { setShowAdd(true); setAddName(''); setAddMerchantId(''); setAddRegionId(''); setAddPlaceId(''); setAddPlaceDesc(''); }}
+              onClick={() => { setShowAdd(true); setAddName(''); setAddMerchantId(''); setAddAddressLine1(''); setAddAddressLine2(''); setAddPostalCode(''); }}
               className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-primary/50 text-primary font-medium"
             >
               <span className="material-symbols-outlined">add</span>
@@ -212,30 +204,48 @@ export default function SettingsVenuesPage() {
                   ))}
                 </select>
               </div>
+              {/* Region 自动继承，只读显示 */}
+              {addMerchantId && (
+                <div>
+                  <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Region (auto-inherited)</label>
+                  <input
+                    type="text"
+                    value={inheritedRegion ? `${inheritedRegion.city || inheritedRegion.name}, ${inheritedRegion.state}` : 'Loading...'}
+                    readOnly
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-3 py-2 text-sm text-slate-500"
+                  />
+                </div>
+              )}
               <div>
-                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Region *</label>
-                <select
-                  value={addRegionId}
-                  onChange={(e) => setAddRegionId(e.target.value)}
+                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Street address *</label>
+                <input
+                  value={addAddressLine1}
+                  onChange={(e) => setAddAddressLine1(e.target.value)}
+                  placeholder="e.g. 123 Main St"
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm"
-                >
-                  <option value="">Select region</option>
-                  {regions.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
-                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Address * (search and select)</label>
-                {!hasPlacesKey ? (
-                  <p className="text-amber-600 dark:text-amber-400 text-sm py-2">GOOGLE_MAPS_API_KEY not configured. Set it in .env to add venues.</p>
-                ) : (
-                  <PlaceAutocomplete types="address" value={addPlaceDesc} onSelect={handleAddPlace} placeholder="Search and select an address..." />
-                )}
+                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Address line 2 (optional)</label>
+                <input
+                  value={addAddressLine2}
+                  onChange={(e) => setAddAddressLine2(e.target.value)}
+                  placeholder="Suite 101, Floor 2"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Postal code (optional)</label>
+                <input
+                  value={addPostalCode}
+                  onChange={(e) => setAddPostalCode(e.target.value)}
+                  placeholder="90001"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm"
+                />
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600">Cancel</button>
-                <button onClick={handleCreate} disabled={saving || !hasPlacesKey} className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
+                <button onClick={handleCreate} disabled={saving} className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
               </div>
             </div>
           )}
@@ -250,18 +260,18 @@ export default function SettingsVenuesPage() {
                   <li key={v.id} className="p-4 rounded-xl border border-border-light dark:border-border-dark space-y-3">
                     <h3 className="font-semibold">Edit Venue</h3>
                     <div><label className="block text-sm text-gray-500 mb-1">Name *</label><input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm" /></div>
+                    <div><label className="block text-sm text-gray-500 mb-1">Street address *</label><input value={editAddressLine1} onChange={(e) => setEditAddressLine1(e.target.value)} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm" /></div>
                     <div><label className="block text-sm text-gray-500 mb-1">Address line 2 (optional)</label><input value={editAddressLine2} onChange={(e) => setEditAddressLine2(e.target.value)} placeholder="Suite 101" className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm" /></div>
-                    <div><p className="text-xs text-gray-500 mb-1">Current: {v.formatted_address || (v as { address?: string }).address || v.city || '—'}</p>{hasPlacesKey ? <PlaceAutocomplete types="address" value={editPlaceDesc} onSelect={handleEditPlace} placeholder="Search to change address (optional)" /> : <p className="text-amber-600 text-sm">GOOGLE_MAPS_API_KEY not configured. Set it in .env to change address.</p>}</div>
                     <div className="flex gap-2">
                       <button onClick={() => { setEditingId(null); }} className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600">Cancel</button>
-                      <button onClick={handleSaveEdit} disabled={saving || (!!editPlaceId && !hasPlacesKey)} className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
+                      <button onClick={handleSaveEdit} disabled={saving} className="px-4 py-2 rounded-lg bg-primary text-white disabled:opacity-50">{saving ? 'Saving...' : 'Save'}</button>
                     </div>
                   </li>
                 ) : (
                   <li key={v.id} className="p-3 rounded-xl border border-border-light dark:border-border-dark flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="font-medium truncate">{v.name}</div>
-                      <div className="text-xs text-gray-500 truncate line-clamp-2">{v.formatted_address || (v as { address?: string }).address || [v.city, v.state].filter(Boolean).join(', ') || '—'}</div>
+                      <div className="text-xs text-gray-500 truncate line-clamp-2">{formatAddress(v)}</div>
                     </div>
                     <button onClick={() => startEdit(v)} className="shrink-0 p-2 rounded-lg border border-slate-300 dark:border-slate-600 text-sm">Edit</button>
                   </li>

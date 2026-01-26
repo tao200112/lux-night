@@ -511,7 +511,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** POST /api/admin/venues — 新增 venue，必须 place_id 选址 */
+/** 
+ * POST /api/admin/venues — 新增 venue
+ * 重构版：不再依赖 Google Places API
+ * - 必填：name, merchant_id, address_line1
+ * - 可选：address_line2, postal_code
+ * - region_id 由 DB trigger 自动从 merchant 继承，不需要前端传入
+ */
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -524,84 +530,94 @@ export async function POST(req: NextRequest) {
       return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'FORBIDDEN', message: 'Must be admin' } }, { status: 403 });
     }
 
-    if (!process.env.GOOGLE_MAPS_API_KEY) {
-      return NextResponse.json<ApiResponse<never>>(
-        { success: false, error: { code: 'CONFIG', message: 'GOOGLE_MAPS_API_KEY not configured. Set it in .env to add venues.' } },
-        { status: 503 }
-      );
-    }
-
-    let body: { name?: string; merchant_id?: string; region_id?: string; place_id?: string };
+    let body: { 
+      name?: string; 
+      merchant_id?: string; 
+      address_line1?: string; 
+      address_line2?: string; 
+      postal_code?: string;
+      // 向后兼容：仍接受 region_id 和 place_id，但不再必填
+      region_id?: string;
+      place_id?: string;
+    };
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'VALIDATION_ERROR', message: 'JSON body with name, merchant_id, region_id, place_id required' } }, { status: 400 });
+      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'VALIDATION_ERROR', message: 'JSON body required' } }, { status: 400 });
     }
+    
     const name = body.name?.trim();
     const merchant_id = body.merchant_id?.trim();
-    const region_id = body.region_id?.trim();
-    const place_id = body.place_id?.trim();
-    if (!name || !merchant_id || !region_id || !place_id) {
+    const address_line1 = body.address_line1?.trim();
+    const address_line2 = body.address_line2?.trim() || null;
+    const postal_code = body.postal_code?.trim() || null;
+    
+    // 新规格：只需要 name, merchant_id, address_line1
+    if (!name || !merchant_id || !address_line1) {
       return NextResponse.json<ApiResponse<never>>(
-        { success: false, error: { code: 'VALIDATION_ERROR', message: 'name, merchant_id, region_id and place_id are required. Use address search to select a place.' } },
+        { success: false, error: { code: 'VALIDATION_ERROR', message: 'name, merchant_id, and address_line1 are required.' } },
         { status: 400 }
       );
-    }
-
-    const details = await getPlaceDetails(place_id);
-    if (!details) {
-      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'INVALID_PLACE', message: 'Invalid place_id or Places API error' } }, { status: 400 });
     }
 
     const admin = createAdminClient();
-    const { data: existing } = await admin.from('venues').select('id').eq('place_id', place_id).maybeSingle();
-    if (existing) {
-      return NextResponse.json<ApiResponse<never>>(
-        { success: false, error: { code: 'PLACE_ID_DUPLICATE', message: 'This address is already used by another venue.' } },
-        { status: 400 }
-      );
-    }
-    const { data: region } = await admin.from('regions').select('id').eq('id', region_id).single();
-    if (!region) {
-      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid region_id' } }, { status: 400 });
-    }
-    const { data: merchant } = await admin.from('merchants').select('id').eq('id', merchant_id).single();
-    if (!merchant) {
+    
+    // 验证 merchant 存在并获取其 region_id
+    const { data: merchant, error: merchantError } = await admin
+      .from('merchants')
+      .select('id, name, region_id')
+      .eq('id', merchant_id)
+      .single();
+    
+    if (merchantError || !merchant) {
       return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid merchant_id' } }, { status: 400 });
     }
+    
+    if (!merchant.region_id) {
+      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Merchant has no region_id. Cannot create venue.' } }, { status: 400 });
+    }
+    
+    // 获取 region 信息（用于返回）
+    const { data: region } = await admin
+      .from('regions')
+      .select('id, name, city, state')
+      .eq('id', merchant.region_id)
+      .single();
 
+    // 插入 venue
+    // region_id 由 DB trigger (trg_set_venue_region_from_merchant) 自动设置为 merchant.region_id
+    // 这里传入 region_id 作为备用，但 trigger 会覆盖为 merchant.region_id
     const { data: inserted, error } = await admin
       .from('venues')
       .insert({
         merchant_id,
-        region_id,
+        region_id: merchant.region_id, // 显式传入，但 trigger 会确保一致性
         name,
-        place_id,
-        formatted_address: details.formatted_address,
-        address: details.formatted_address,
-        address_line1: details.address_line1 || null,
-        address_line2: details.address_line2 || null,
-        city: details.city || null,
-        state: details.state || null,
-        postal_code: details.postal_code || null,
-        country: details.country || null,
-        lat: details.lat || null,
-        lng: details.lng || null,
+        address_line1,
+        address_line2,
+        postal_code,
+        // 构建 formatted_address 用于展示
+        formatted_address: [address_line1, address_line2, region?.city, region?.state].filter(Boolean).join(', '),
+        address: address_line1, // 旧字段兼容
         is_active: true,
       })
-      .select('id, name, region_id, formatted_address, city, state, place_id')
+      .select('id, name, region_id, address_line1, address_line2, formatted_address')
       .single();
 
     if (error) {
-      if (error.code === '23505') {
-        return NextResponse.json<ApiResponse<never>>(
-          { success: false, error: { code: 'PLACE_ID_DUPLICATE', message: 'This address is already used by another venue.' } },
-          { status: 400 }
-        );
-      }
+      console.error('[ADMIN VENUES POST] Insert error:', error);
       return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'DB_ERROR', message: error.message } }, { status: 500 });
     }
-    return NextResponse.json<ApiResponse<typeof inserted>>({ success: true, data: inserted });
+    
+    // 返回时附加 region 信息
+    return NextResponse.json<ApiResponse<any>>({ 
+      success: true, 
+      data: {
+        ...inserted,
+        region: region ? { id: region.id, name: region.name, city: region.city, state: region.state } : null,
+        merchant: { id: merchant.id, name: merchant.name },
+      }
+    });
   } catch (e: any) {
     console.error('[ADMIN VENUES POST]', e);
     return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'Unexpected error' } }, { status: 500 });

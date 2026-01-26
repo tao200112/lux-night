@@ -235,10 +235,10 @@ export async function POST(request: NextRequest) {
       clientAdminClientReady: adminClientReady,
     });
 
-    // 查询邀请码 - 包含 issued_by_type 字段
+    // 查询邀请码 - 包含 issued_by_type 和 region_id 字段
     const { data: invite, error: inviteError } = await serviceSupabase
       .from('invites')
-      .select('id, token, merchant_id, venue_id, intended_role, issued_by_type, max_uses, used_count, expires_at, disabled, is_active, revoked_at')
+      .select('id, token, merchant_id, venue_id, region_id, intended_role, issued_by_type, max_uses, used_count, expires_at, disabled, is_active, revoked_at')
       .eq('token', trimmedCode)
       .maybeSingle();
 
@@ -307,32 +307,104 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================
-    // 4. 验证 merchant_id 有效性（在 membership.checkExisting 前）
+    // 4. 处理 merchant_id：如果为空且有 region_id，创建新 Merchant
     // ============================================================
-    if (!invite.merchant_id || !isValidUuid(invite.merchant_id)) {
-      console.log('[INVITE CONSUME]', {
-        debugId,
-        step: 'invite.invalid_merchant_id',
-        ok: false,
-        merchantId: invite.merchant_id,
-        merchantIdType: typeof invite.merchant_id,
-        merchantIdValue: String(invite.merchant_id),
-        inviteId: invite.id,
-      });
-      
-      return NextResponse.json<ConsumeInviteResponse>(
-        {
-          success: false,
-          error: 'Invite is missing merchant_id. This invite was generated incorrectly.',
+    let finalMerchantId = invite.merchant_id;
+    let createdNewMerchant = false;
+    
+    if (!finalMerchantId || !isValidUuid(finalMerchantId)) {
+      // 如果是 Admin 创建的 invite 且有 region_id，创建新 Merchant
+      if (invite.issued_by_type === 'admin' && invite.region_id && isValidUuid(invite.region_id)) {
+        console.log('[INVITE CONSUME]', {
+          debugId,
+          step: 'merchant.create',
+          ok: false, // 将在创建后更新
+          regionId: invite.region_id,
+          userId: user.id,
+          userEmail: user.email,
+        });
+        
+        // 生成商家名称（使用用户 email 前缀或默认名称）
+        const merchantName = user.email 
+          ? `${user.email.split('@')[0]}'s Business`
+          : `New Business ${new Date().toISOString().slice(0, 10)}`;
+        
+        // 创建新 Merchant
+        const { data: newMerchant, error: createMerchantError } = await serviceSupabase
+          .from('merchants')
+          .insert({
+            name: merchantName,
+            region_id: invite.region_id,
+            status: 'active',
+          })
+          .select('id, name, region_id')
+          .single();
+        
+        if (createMerchantError || !newMerchant) {
+          console.log('[INVITE CONSUME]', {
+            debugId,
+            step: 'merchant.create',
+            ok: false,
+            error: createMerchantError?.message || 'Failed to create merchant',
+          });
+          return NextResponse.json<ConsumeInviteResponse>(
+            {
+              success: false,
+              error: 'Failed to create merchant. Please try again.',
+              debugId,
+              step: 'merchant.create',
+              details: {
+                error: createMerchantError?.message,
+              },
+            },
+            { status: 500 }
+          );
+        }
+        
+        finalMerchantId = newMerchant.id;
+        createdNewMerchant = true;
+        
+        console.log('[INVITE CONSUME]', {
+          debugId,
+          step: 'merchant.create',
+          ok: true,
+          newMerchantId: finalMerchantId,
+          newMerchantName: newMerchant.name,
+        });
+        
+        // 更新 invite 的 merchant_id（可选，方便追踪）
+        await serviceSupabase
+          .from('invites')
+          .update({ merchant_id: finalMerchantId })
+          .eq('id', invite.id);
+          
+      } else {
+        // 既没有 merchant_id 也没有 region_id，无法继续
+        console.log('[INVITE CONSUME]', {
           debugId,
           step: 'invite.invalid_merchant_id',
-          details: {
-            merchantId: invite.merchant_id,
-            inviteId: invite.id,
+          ok: false,
+          merchantId: invite.merchant_id,
+          regionId: invite.region_id,
+          issuedByType: invite.issued_by_type,
+          inviteId: invite.id,
+        });
+        
+        return NextResponse.json<ConsumeInviteResponse>(
+          {
+            success: false,
+            error: 'Invite is missing required information. Please contact the administrator.',
+            debugId,
+            step: 'invite.invalid_merchant_id',
+            details: {
+              merchantId: invite.merchant_id,
+              regionId: invite.region_id,
+              inviteId: invite.id,
+            },
           },
-        },
-        { status: 400 }
-      );
+          { status: 400 }
+        );
+      }
     }
 
     // ============================================================
@@ -471,7 +543,7 @@ export async function POST(request: NextRequest) {
       .from('merchant_members')
       .select('id, role, is_active')
       .eq('user_id', user.id)
-      .eq('merchant_id', invite.merchant_id)
+      .eq('merchant_id', finalMerchantId)
       .eq('is_active', true)
       .maybeSingle();
     
@@ -480,7 +552,7 @@ export async function POST(request: NextRequest) {
       .from('merchant_members')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .eq('merchant_id', invite.merchant_id)
+      .eq('merchant_id', finalMerchantId)
       .eq('is_active', true);
     
     console.log('[INVITE CONSUME]', {
@@ -490,12 +562,13 @@ export async function POST(request: NextRequest) {
       count: membershipCount ?? (existingMembership ? 1 : 0),
       queryConditions: {
         user_id: user.id,
-        merchant_id: invite.merchant_id,
+        merchant_id: finalMerchantId,
         is_active: true,
       },
       found: !!existingMembership,
       existingMembershipId: existingMembership?.id || null,
       existingRole: existingMembership?.role || null,
+      createdNewMerchant, // 标记是否刚创建了新 merchant
       membershipCheckError: membershipCheckError ? {
         message: membershipCheckError.message,
         code: membershipCheckError.code,
@@ -535,12 +608,12 @@ export async function POST(request: NextRequest) {
       
       // 设置 workspace 为当前 merchant（即使已存在 membership，也要确保 workspace 正确）
       try {
-        await setDefaultWorkspace(invite.merchant_id);
+        await setDefaultWorkspace(finalMerchantId);
         console.log('[INVITE CONSUME]', {
           debugId,
           step: 'workspace.setDefault',
           ok: true,
-          merchantId: invite.merchant_id,
+          merchantId: finalMerchantId,
         });
       } catch (workspaceError: any) {
         // 如果设置 workspace 失败，记录日志但不阻止返回成功
@@ -556,7 +629,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<ConsumeInviteResponse>({
         success: true,
         data: {
-          merchant_id: invite.merchant_id,
+          merchant_id: finalMerchantId,
           role: existingMembership.role,
           next: '/dashboard',
         },
@@ -568,7 +641,7 @@ export async function POST(request: NextRequest) {
     // 8. 创建 merchant_member 记录
     // ============================================================
     const insertPayload = {
-      merchant_id: invite.merchant_id,
+      merchant_id: finalMerchantId,
       user_id: user.id,
       role: roleToAssign,
       is_active: true,
@@ -624,7 +697,7 @@ export async function POST(request: NextRequest) {
           .from('merchant_members')
           .select('id, role, is_active')
           .eq('user_id', user.id)
-          .eq('merchant_id', invite.merchant_id)
+          .eq('merchant_id', finalMerchantId)
           .eq('is_active', true)
           .maybeSingle();
         
@@ -632,7 +705,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json<ConsumeInviteResponse>({
             success: true,
             data: {
-              merchant_id: invite.merchant_id,
+              merchant_id: finalMerchantId,
               role: existingMembershipAfterConflict.role,
               next: '/workspaces',
             },
@@ -733,12 +806,12 @@ export async function POST(request: NextRequest) {
     // 10. 设置默认 workspace（原子操作：membership + workspace）
     // ============================================================
     try {
-      await setDefaultWorkspace(invite.merchant_id);
+      await setDefaultWorkspace(finalMerchantId);
       console.log('[INVITE CONSUME]', {
         debugId,
         step: 'workspace.setDefault',
         ok: true,
-        merchantId: invite.merchant_id,
+        merchantId: finalMerchantId,
       });
     } catch (workspaceError: any) {
       // 如果设置 workspace 失败，记录日志但不阻止返回成功（membership 已创建）
@@ -760,13 +833,14 @@ export async function POST(request: NextRequest) {
       ok: true,
       next: '/dashboard',
       role: roleToAssign,
-      merchantId: invite.merchant_id,
+      merchantId: finalMerchantId,
+      createdNewMerchant,
     });
     
     return NextResponse.json<ConsumeInviteResponse>({
       success: true,
       data: {
-        merchant_id: invite.merchant_id,
+        merchant_id: finalMerchantId,
         role: roleToAssign,
         next: '/dashboard',
       },

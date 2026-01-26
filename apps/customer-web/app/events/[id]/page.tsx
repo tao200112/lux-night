@@ -207,7 +207,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-lg font-bold text-white leading-tight">{event.venue?.name || 'Venue TBA'}</span>
-                <span className="text-sm text-gray-400 line-clamp-2">{event.venue?.address || 'Location details coming soon'}</span>
+                <span className="text-sm text-gray-400 line-clamp-2">
+                  {/* 优先使用 address_line1，回退到 address */}
+                  {event.venue?.address_line1 || event.venue?.address || 'Location details coming soon'}
+                  {/* 显示 region 的 city/state */}
+                  {event.region && (event.region.city || event.region.state) && (
+                    <>, {[event.region.city, event.region.state].filter(Boolean).join(', ')}</>
+                  )}
+                </span>
               </div>
             </div>
           </div>

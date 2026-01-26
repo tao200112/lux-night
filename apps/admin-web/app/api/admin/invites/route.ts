@@ -502,32 +502,8 @@ export async function POST(request: NextRequest) {
         merchantName: merchantData.name,
       });
     } else {
-      // 如果没有 merchantId，对于 owner/manager 角色，这是错误的
-      if (intendedRole === 'owner' || intendedRole === 'manager') {
-        console.log('[ADMIN INVITES CREATE]', {
-          debugId,
-          step: 'merchant.resolve',
-          ok: false,
-          error: 'merchantId is required for owner/manager invites',
-          intendedRole,
-        });
-        return NextResponse.json(
-          {
-            success: false,
-            code: 'MERCHANT_ID_REQUIRED',
-            message: 'merchantId is required for owner/manager invites. Please specify a merchant or use Staff type for region-based invites.',
-            debugId,
-            step: 'merchant.resolve',
-            details: {
-              intendedRole,
-              type,
-            },
-          },
-          { status: 400 }
-        );
-      }
-      
-      // Staff 类型可以没有 merchantId（用于创建新 merchant）
+      // 新规格：owner/manager 类型可以没有 merchantId（merchant 在 consume 时创建）
+      // 只需要 regionId 即可
       console.log('[ADMIN INVITES CREATE]', {
         debugId,
         step: 'merchant.resolve',
@@ -536,7 +512,8 @@ export async function POST(request: NextRequest) {
         merchantIdFromUI: null,
         merchantIdFromParams: null,
         merchantIdFinal: null,
-        note: 'Staff invite without merchantId (will create new merchant)',
+        intendedRole,
+        note: 'Invite without merchantId - merchant will be created on consume',
       });
     }
     
