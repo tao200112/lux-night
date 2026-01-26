@@ -279,6 +279,23 @@ export async function POST(
     
     if (createError || !event) {
       console.error('[ADMIN CREATE EVENT] Error:', createError);
+      
+      // 检查是否是触发器抛出的 check_violation（region 不一致）
+      if (createError?.code === '23514' || createError?.message?.includes('Consistency violation')) {
+        return NextResponse.json(
+          { success: false, code: 'REGION_MISMATCH', message: 'Venue region does not match merchant region. Please use a venue in the same region.' },
+          { status: 400 }
+        );
+      }
+      
+      // 检查是否是 venue/region 相关的触发器错误
+      if (createError?.message?.includes('region_id') || createError?.message?.includes('venue')) {
+        return NextResponse.json(
+          { success: false, code: 'VENUE_REGION_ERROR', message: createError.message || 'Venue or region configuration error' },
+          { status: 400 }
+        );
+      }
+      
       return NextResponse.json(
         { success: false, code: 'CREATE_FAILED', message: createError?.message || 'Failed to create event' },
         { status: 500 }
