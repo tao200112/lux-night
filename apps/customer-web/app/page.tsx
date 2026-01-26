@@ -7,8 +7,8 @@ import type { EventWithVenue } from '@/lib/data/events';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import BottomTabBar from '@/components/ui/BottomTabBar';
+import EventGlassCard from '@/components/EventGlassCard';
 
 export default function DiscoverPage() {
   const router = useRouter();
@@ -123,13 +123,13 @@ export default function DiscoverPage() {
       {/* Main: Events list or empty */}
       <main className="flex-1 overflow-y-auto pb-24 no-scrollbar">
         {!region && (
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+          <div className="mx-4 mt-6 p-6 rounded-xl bg-white/[0.05] backdrop-blur-md border border-[rgba(212,175,55,0.22)] text-center">
             <span className="material-symbols-outlined text-5xl text-white/30 mb-4">location_on</span>
             <h3 className="text-lg font-bold text-white mb-2">Choose your region</h3>
-            <p className="text-white/50 text-sm mb-4">Select an area above to see events near you.</p>
+            <p className="text-white/50 text-sm mb-5">Select an area above to see events near you.</p>
             <button
               onClick={() => setIsRegionOpen(true)}
-              className="px-5 py-3 rounded-xl bg-primary text-background-dark font-bold text-sm"
+              className="px-5 py-3 rounded-xl bg-primary text-background-dark font-bold text-sm hover:opacity-90 transition-opacity"
             >
               Choose Area
             </button>
@@ -158,15 +158,15 @@ export default function DiscoverPage() {
         )}
 
         {region && !eventsLoading && !eventsError && events.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+          <div className="mx-4 mt-6 p-6 rounded-xl bg-white/[0.05] backdrop-blur-md border border-[rgba(212,175,55,0.22)] text-center">
             <span className="material-symbols-outlined text-5xl text-white/30 mb-4">event_busy</span>
             <h3 className="text-lg font-bold text-white mb-2">No events in {region.name}</h3>
-            <p className="text-white/50 text-sm mb-4">Try another region or check back later.</p>
+            <p className="text-white/50 text-sm mb-5">Try another region or check back later.</p>
             <button
               onClick={() => setIsRegionOpen(true)}
-              className="px-5 py-3 rounded-xl bg-primary/20 text-primary font-bold text-sm border border-primary/40"
+              className="px-5 py-3 rounded-xl bg-primary/20 text-primary font-bold text-sm border border-[rgba(212,175,55,0.4)] hover:bg-primary/30 transition-colors"
             >
-              Change Area
+              Change region
             </button>
           </div>
         )}
@@ -174,27 +174,7 @@ export default function DiscoverPage() {
         {region && !eventsLoading && !eventsError && events.length > 0 && (
           <section className="px-4 py-4 space-y-3">
             {events.map((event) => (
-              <Link href={`/events/${event.id}`} key={event.id} className="block">
-                <div className="flex gap-4 p-3 rounded-2xl bg-[#1A1D1F] border border-white/5 hover:border-primary/20 transition-colors">
-                  {event.poster_url ? (
-                    <div className="w-20 aspect-[3/4] shrink-0 rounded-lg overflow-hidden bg-white/5">
-                      <img src={event.poster_url} alt="" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="w-20 aspect-[3/4] shrink-0 rounded-lg bg-white/5 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-white/30">image</span>
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center py-1">
-                    <h4 className="text-white font-bold text-base leading-tight line-clamp-1">{event.title}</h4>
-                    <p className="text-white/50 text-sm mt-1">{event.venue?.name || '—'}</p>
-                    <p className="text-white/40 text-xs mt-1">
-                      {new Date(event.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {new Date(event.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <span className="material-symbols-outlined text-white/40 self-center">chevron_right</span>
-                </div>
-              </Link>
+              <EventGlassCard key={event.id} event={event} />
             ))}
           </section>
         )}

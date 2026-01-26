@@ -33,7 +33,7 @@ export interface EventWithVenue extends Event {
 
 export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
   const supabase = createClient();
-  
+
   let query = supabase
     .from('events')
     .select(`
@@ -41,6 +41,7 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
       venues!inner(id, name, address)
     `)
     .eq('status', 'published')
+    .gte('start_at', new Date().toISOString())
     .order('start_at', { ascending: true });
 
   if (regionId) {
@@ -54,7 +55,15 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
     throw new Error('Failed to fetch events');
   }
 
-  return (data || []) as EventWithVenue[];
+  const rows = data || [];
+  return rows.map((row: Record<string, unknown>) => {
+    const { venues, ...rest } = row;
+    const v = Array.isArray(venues) ? venues[0] : venues;
+    const venue = (v && typeof v === 'object' && 'id' in v)
+      ? { id: (v as { id?: string }).id ?? '', name: (v as { name?: string }).name ?? '—', address: (v as { address?: string | null }).address ?? null }
+      : { id: '', name: '—', address: null as string | null };
+    return { ...rest, venue } as EventWithVenue;
+  });
 }
 
 /** 按 region 取活动，regionId 必填；供 Home/Events 使用 */
@@ -63,11 +72,11 @@ export async function getEventsByRegion(regionId: string): Promise<EventWithVenu
 }
 
 /**
- * 按 region 取 Drops；当前无 drops 表且 events 无 is_drop，先返回 []。
- * 后续：若有 drops 表则 where region_id=? AND active；若有 events.is_drop 则过滤。
+ * 按 region 取 Drops；与 Home 同源，按 region 过滤的已发布、未过期活动。
+ * 后续若有 drops 表或 events.is_drop，可改为专用查询。
  */
-export async function getDropsByRegion(_regionId: string): Promise<EventWithVenue[]> {
-  return [];
+export async function getDropsByRegion(regionId: string): Promise<EventWithVenue[]> {
+  return getEvents(regionId);
 }
 
 export async function getEvent(id: string): Promise<EventWithVenue | null> {
