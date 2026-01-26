@@ -84,3 +84,17 @@ export interface Order {
   totalAmount: number;
   createdAt: string;
 }
+
+/** 从 Google Places Details 解析后的结构化地址，用于写入 venues / regions */
+export interface PlaceDetailsResponse {
+  place_id: string;
+  formatted_address: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  lat: number;
+  lng: number;
+}

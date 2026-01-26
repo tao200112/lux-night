@@ -89,6 +89,33 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* Regional & Venues */}
+        <section className="space-y-3">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 px-1">Regional & Venues</h2>
+          <div className="space-y-2">
+            <Link
+              href="/settings/regional"
+              className="w-full flex items-center justify-between p-4 bg-card-light dark:bg-card-dark rounded-xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary">public</span>
+                <span className="text-base font-medium text-gray-900 dark:text-white">Regional Config</span>
+              </div>
+              <span className="material-symbols-outlined text-gray-400">chevron_right</span>
+            </Link>
+            <Link
+              href="/settings/venues"
+              className="w-full flex items-center justify-between p-4 bg-card-light dark:bg-card-dark rounded-xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary">place</span>
+                <span className="text-base font-medium text-gray-900 dark:text-white">Venues</span>
+              </div>
+              <span className="material-symbols-outlined text-gray-400">chevron_right</span>
+            </Link>
+          </div>
+        </section>
+
         {/* Actions Section */}
         <section className="space-y-3">
           <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 px-1">Actions</h2>

@@ -28,6 +28,11 @@ export interface EventWithVenue extends Event {
     id: string;
     name: string;
     address: string | null;
+    city?: string | null;
+    state?: string | null;
+    region_id?: string | null;
+    lat?: number | null;
+    lng?: number | null;
   };
 }
 
@@ -38,7 +43,7 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
     .from('events')
     .select(`
       *,
-      venues!inner(id, name, address)
+      venues!inner(id, name, address, formatted_address, city, state, region_id, lat, lng)
     `)
     .eq('status', 'published')
     .gte('start_at', new Date().toISOString())
@@ -59,9 +64,20 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
   return rows.map((row: Record<string, unknown>) => {
     const { venues, ...rest } = row;
     const v = Array.isArray(venues) ? venues[0] : venues;
-    const venue = (v && typeof v === 'object' && 'id' in v)
-      ? { id: (v as { id?: string }).id ?? '', name: (v as { name?: string }).name ?? '—', address: (v as { address?: string | null }).address ?? null }
-      : { id: '', name: '—', address: null as string | null };
+    const vv = v && typeof v === 'object' && 'id' in v ? (v as Record<string, unknown>) : null;
+    const address = vv ? ((vv.formatted_address as string | null) || (vv.address as string | null) ?? null) : null;
+    const venue = vv
+      ? {
+          id: (vv.id as string) ?? '',
+          name: (vv.name as string) ?? '—',
+          address,
+          city: (vv.city as string | null | undefined) ?? null,
+          state: (vv.state as string | null | undefined) ?? null,
+          region_id: (vv.region_id as string | null | undefined) ?? null,
+          lat: (vv.lat as number | null | undefined) ?? null,
+          lng: (vv.lng as number | null | undefined) ?? null,
+        }
+      : { id: '', name: '—', address: null as string | null, city: null, state: null, region_id: null, lat: null, lng: null };
     return { ...rest, venue } as EventWithVenue;
   });
 }
@@ -89,7 +105,7 @@ export async function getEvent(id: string): Promise<EventWithVenue | null> {
     .from('events')
     .select(`
       *,
-      venues(id, name, address)
+      venues(id, name, address, formatted_address, city, state, region_id, lat, lng)
     `)
     .eq('id', id)
     .eq('status', 'published')
@@ -133,12 +149,18 @@ export async function getEvent(id: string): Promise<EventWithVenue | null> {
     };
   }
   
+  const address = (venue.formatted_address ?? venue.address) ?? null;
   return {
     ...data,
     venue: {
       id: venue.id,
       name: venue.name,
-      address: venue.address,
+      address,
+      city: venue.city ?? null,
+      state: venue.state ?? null,
+      region_id: venue.region_id ?? null,
+      lat: venue.lat ?? null,
+      lng: venue.lng ?? null,
     },
   } as EventWithVenue;
 }
