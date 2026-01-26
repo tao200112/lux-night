@@ -14,6 +14,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>;
   loginWithApple: () => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -137,6 +138,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setProfile(null);
   };
 
+  const refreshProfile = async () => {
+    if (user) await loadProfile(user.id);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -147,6 +152,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loginWithGoogle,
         loginWithApple,
         logout,
+        refreshProfile,
       }}
     >
       {children}

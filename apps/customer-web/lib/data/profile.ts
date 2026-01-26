@@ -63,3 +63,20 @@ export async function updateProfileRegion(userId: string, regionId: string): Pro
     throw new Error('Failed to update profile region');
   }
 }
+
+export type ProfileUpdate = { display_name?: string | null; phone?: string | null };
+
+export async function updateProfile(userId: string, updates: ProfileUpdate): Promise<void> {
+  const supabase = createClient();
+  const payload: Record<string, unknown> = {};
+  if (updates.display_name !== undefined) payload.display_name = updates.display_name || null;
+  if (updates.phone !== undefined) payload.phone = updates.phone || null;
+  if (Object.keys(payload).length === 0) return;
+
+  const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
+
+  if (error) {
+    console.error('Error updating profile:', error);
+    throw new Error('Failed to update profile');
+  }
+}

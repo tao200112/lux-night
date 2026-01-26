@@ -14,6 +14,8 @@ export interface OrderListItem {
   startAt: string | null;
   /** 订单内票务数量（order_items.quantity 之和） */
   ticketCount: number;
+  /** 简要如 "GA × 2, VIP × 1" */
+  itemsSummary: string;
 }
 
 export interface OrderItemDetail {
@@ -68,6 +70,7 @@ export async function getOrderList(userId: string): Promise<OrderListItem[]> {
       created_at,
       order_items (
         quantity,
+        ticket_types (name),
         events (title, start_at, venues (name))
       )
     `)
@@ -87,6 +90,13 @@ export async function getOrderList(userId: string): Promise<OrderListItem[]> {
     const ven = event?.venues;
     const venue = Array.isArray(ven) ? ven[0] : ven;
     const ticketCount = items.reduce((sum: number, i: any) => sum + (Number(i?.quantity) || 0), 0);
+    const itemsSummary = items
+      .map((i: any) => {
+        const tt = Array.isArray(i?.ticket_types) ? i.ticket_types[0] : i?.ticket_types;
+        const name = tt?.name || 'Ticket';
+        return `${name} × ${Number(i?.quantity) || 0}`;
+      })
+      .join(', ');
     return {
       id: o.id,
       status: o.status,
@@ -97,6 +107,7 @@ export async function getOrderList(userId: string): Promise<OrderListItem[]> {
       venueName: venue?.name || '—',
       startAt: event?.start_at || null,
       ticketCount,
+      itemsSummary: itemsSummary || `${ticketCount} ticket(s)`,
     };
   });
 }

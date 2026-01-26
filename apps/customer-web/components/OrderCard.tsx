@@ -44,7 +44,8 @@ export default function OrderCard({ order }: OrderCardProps) {
         <span className={`text-xs font-medium shrink-0 ${statusCls}`}>{status}</span>
       </div>
       <p className="text-white/50 text-sm mb-1">{order.venueName}</p>
-      <p className="text-white/40 text-xs mb-2">{formatDate(order.createdAt)} · {formatTime(order.startAt)}</p>
+      <p className="text-white/40 text-xs mb-1">{formatDate(order.createdAt)} · {formatTime(order.startAt)}</p>
+      {order.itemsSummary && <p className="text-white/45 text-xs mb-2">{order.itemsSummary}</p>}
       <div className="flex justify-between items-center text-xs">
         <span className="text-white/50">{order.ticketCount} ticket{order.ticketCount !== 1 ? 's' : ''}</span>
         <span className="text-white font-medium">{formatAmount(order.amountCents, order.currency)}</span>
