@@ -6,7 +6,6 @@ import { Ticket } from '@/lib/data/tickets';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import BackButton from '../../components/ui/BackButton';
 import BottomTabBar from '../../components/ui/BottomTabBar';
 
 export default function WalletPage() {
@@ -118,45 +117,69 @@ export default function WalletPage() {
                 </div>
                 <h3 className="font-display text-lg font-bold text-white mb-2">No {activeTab} tickets</h3>
                 <p className="text-gray-400 text-sm max-w-[240px] leading-relaxed mb-8">Your next unforgettable night is waiting for you.</p>
-                <Link href="/" className="flex items-center gap-2 bg-lux-gold text-background-dark hover:bg-[#D4A63B] transition-colors rounded-xl px-6 py-3 font-bold text-sm tracking-wide shadow-[0_0_20px_-5px_rgba(232,185,75,0.3)]">
-                    <span>Explore Events</span>
+                <Link href="/" className="flex items-center gap-2 bg-lux-gold text-lux-dark hover:bg-[#D4A63B] transition-colors rounded-xl px-6 py-3 font-bold text-sm tracking-wide shadow-[0_0_20px_-5px_rgba(232,185,75,0.3)]">
+                  <span>Explore Events</span>
+                  <span className="material-symbols-outlined text-lg font-bold">arrow_forward</span>
                 </Link>
             </div>
         ) : (
-            tickets.map(ticket => (
+            tickets.map((ticket) => {
+              const isToday = ticket.startAt && new Date(ticket.startAt).toDateString() === new Date().toDateString();
+              const isUsedOrRefunded = ticket.status === 'used' || ticket.status === 'refunded';
+              return (
                 <Link href={`/ticket/${ticket.id}`} key={ticket.id} className="block group">
-                     <div className="relative w-full flex flex-row h-48 rounded-2xl overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] transition-transform hover:scale-[1.02] active:scale-[0.98]">
-                         {/* Ticket Left Side */}
-                         <div className="relative flex-grow flex flex-col justify-end p-5 bg-[#1E2224]">
-                             <div className="absolute inset-0 bg-gradient-to-t from-[#121416] via-[#121416]/80 to-transparent z-0"></div>
-                             <div className="relative z-10 w-full">
-                                <div className="flex justify-between items-start mb-auto absolute top-0 left-0 right-0 -mt-1">
-                                    <span className="px-3 py-1 rounded-full bg-lux-gold text-background-dark text-xs font-bold tracking-wider uppercase shadow-lg shadow-lux-gold/20 animate-pulse">Tonight</span>
-                                </div>
-                                <h3 className="font-display text-2xl font-bold text-white leading-tight mb-1 tracking-tight">{ticket.eventName}</h3>
-                                <div className="flex items-center gap-2 text-gray-300 text-sm font-medium">
-                                    <span className="material-symbols-outlined text-[18px] text-lux-gold">calendar_today</span>
-                                    <span>{ticket.date} • {ticket.time}</span>
-                                </div>
-                                <div className="mt-2 text-xs text-gray-500 uppercase tracking-widest font-semibold">{ticket.venue}</div>
-                             </div>
-                         </div>
-                         {/* Perforation */}
-                         <div className="relative w-[1px] bg-[#1E2224] flex flex-col items-center justify-center z-20">
-                            <div className="dashed-line absolute top-2 bottom-2"></div>
-                            <div className="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-background-dark"></div>
-                            <div className="absolute -bottom-3 -left-3 w-6 h-6 rounded-full bg-background-dark"></div>
-                         </div>
-                         {/* Ticket Right Side (QR Stub) */}
-                         <div className="relative w-24 min-w-[96px] bg-[#191D1F] flex flex-col items-center justify-center p-2 border-l border-white/5">
-                            <div className="w-16 h-16 bg-white rounded-lg p-1 mb-2 shadow-inner">
-                                <img alt="QR Code" className="w-full h-full object-contain opacity-90" src={ticket.qrCodeUrl}/>
-                            </div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold text-center">Scan<br/>Entry</span>
-                         </div>
-                     </div>
+                  <div
+                    className={`relative w-full flex flex-row h-48 rounded-2xl overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] transition-transform hover:scale-[1.02] active:scale-[0.98] ${isUsedOrRefunded ? 'opacity-85' : ''}`}
+                  >
+                    {/* Ticket Left Side：商家海报作背景 */}
+                    <div className="relative flex-grow flex flex-col justify-end p-5 bg-[#1E2224]">
+                      {ticket.posterUrl && (
+                        <div
+                          className={`absolute inset-0 bg-cover bg-center z-0 ${isUsedOrRefunded ? 'opacity-40 grayscale' : 'opacity-60 mix-blend-overlay'}`}
+                          style={{ backgroundImage: `url('${ticket.posterUrl}')` }}
+                          aria-hidden
+                        />
+                      )}
+                      <div
+                        className={`absolute inset-0 z-0 ${isUsedOrRefunded ? 'bg-gradient-to-t from-[#121416] via-[#121416]/90 to-[#121416]/60' : 'bg-gradient-to-t from-[#121416] via-[#121416]/80 to-transparent'}`}
+                      />
+                      <div className="relative z-10 w-full">
+                        {isToday && !isUsedOrRefunded && (
+                          <div className="flex justify-between items-start mb-auto absolute top-0 left-0 right-0 -mt-1">
+                            <span className="px-3 py-1 rounded-full bg-lux-gold text-lux-dark text-xs font-bold tracking-wider uppercase shadow-lg shadow-lux-gold/20">Tonight</span>
+                          </div>
+                        )}
+                        <h3 className="font-display text-2xl font-bold text-white leading-tight mb-1 tracking-tight">{ticket.eventName}</h3>
+                        <div className="flex items-center gap-2 text-gray-300 text-sm font-medium">
+                          <span className={`material-symbols-outlined text-[18px] ${isUsedOrRefunded ? 'text-gray-500' : 'text-lux-gold'}`}>calendar_today</span>
+                          <span>{ticket.date} • {ticket.time}</span>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500 uppercase tracking-widest font-semibold">{ticket.venue}</div>
+                      </div>
+                    </div>
+                    {/* Perforation */}
+                    <div className="relative w-[1px] bg-[#1E2224] flex flex-col items-center justify-center z-20">
+                      <div className="dashed-line absolute top-2 bottom-2" />
+                      <div className="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-background-dark" />
+                      <div className="absolute -bottom-3 -left-3 w-6 h-6 rounded-full bg-background-dark" />
+                    </div>
+                    {/* Ticket Right Side (QR Stub) */}
+                    <div className={`relative w-24 min-w-[96px] flex flex-col items-center justify-center p-2 border-l border-white/5 ${isUsedOrRefunded ? 'bg-[#15181A]' : 'bg-[#191D1F]'}`}>
+                      <div className={`w-16 h-16 rounded-lg p-1 mb-2 shadow-inner ${isUsedOrRefunded ? 'bg-white/10 flex items-center justify-center border border-white/10' : 'bg-white'}`}>
+                        {isUsedOrRefunded ? (
+                          <span className="material-symbols-outlined text-white/50 text-3xl">qr_code_2</span>
+                        ) : (
+                          <img alt="QR Code" className="w-full h-full object-contain opacity-90" src={ticket.qrCodeUrl} />
+                        )}
+                      </div>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold text-center">
+                        {isUsedOrRefunded ? <>View<br />Info</> : <>Scan<br />Entry</>}
+                      </span>
+                    </div>
+                  </div>
                 </Link>
-            ))
+              );
+            })
         )}
       </div>
 

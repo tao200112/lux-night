@@ -44,6 +44,10 @@ export interface Ticket {
   venue: string;
   date: string;
   time: string;
+  /** ISO string for event start; used for "Tonight" and ordering */
+  startAt?: string;
+  /** Event poster (商家海报) for card background */
+  posterUrl?: string | null;
   status: 'issued' | 'active' | 'used' | 'refunded' | 'void' | 'expired';
   tierName: string;
   /** @deprecated use publicToken for QR/URL */
@@ -75,6 +79,7 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
         title,
         start_at,
         end_at,
+        poster_url,
         venues!inner(name, address)
       ),
       ticket_types!inner(name)
@@ -96,15 +101,19 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
   const base = getAppBaseUrl();
   return (data || []).map((t: any) => {
     const token = t.public_token || t.qr_seed;
+    const ev = Array.isArray(t.events) ? t.events[0] : t.events;
+    const ven = ev?.venues ? (Array.isArray(ev.venues) ? ev.venues[0] : ev.venues) : null;
     return {
       id: t.id,
       eventId: t.event_id,
-      eventName: t.events.title,
-      venue: t.events.venues.name,
-      date: new Date(t.events.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      time: new Date(t.events.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      eventName: ev?.title || '—',
+      venue: ven?.name || '—',
+      date: ev?.start_at ? new Date(ev.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+      time: ev?.start_at ? new Date(ev.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
+      startAt: ev?.start_at || undefined,
+      posterUrl: ev?.poster_url || null,
       status: t.status,
-      tierName: t.ticket_types.name,
+      tierName: t.ticket_types?.name || '—',
       qrToken: t.qr_seed,
       publicToken: token,
       qrCodeUrl: base ? generateQRCodeUrl(`${base}/t/${token}`) : generateQRCodeUrl(`/t/${token}`),
@@ -134,6 +143,7 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
         title,
         start_at,
         end_at,
+        poster_url,
         venues!inner(name, address)
       ),
       ticket_types!inner(name)
@@ -165,6 +175,8 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
     venue: venueData?.name || 'Unknown Venue',
     date: eventData?.start_at ? new Date(eventData.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
     time: eventData?.start_at ? new Date(eventData.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
+    startAt: eventData?.start_at || undefined,
+    posterUrl: eventData?.poster_url || null,
     status: data.status,
     tierName: ticketTypeData?.name || 'Unknown',
     qrToken: data.qr_seed,
