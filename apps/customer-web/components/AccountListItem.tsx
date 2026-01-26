@@ -1,0 +1,31 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+
+interface AccountListItemProps {
+  icon: string;
+  label: string;
+  href: string;
+  subtitle?: string;
+}
+
+export default function AccountListItem({ icon, label, href, subtitle }: AccountListItemProps) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between p-4 rounded-xl bg-[#1E2224] border border-white/5 hover:border-white/10 hover:bg-white/[0.02] active:bg-white/[0.04] transition-colors"
+    >
+      <div className="flex items-center gap-4">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 text-white/70">
+          <span className="material-symbols-outlined">{icon}</span>
+        </div>
+        <div className="flex flex-col items-start">
+          <span className="text-white font-medium">{label}</span>
+          {subtitle && <span className="text-white/50 text-xs">{subtitle}</span>}
+        </div>
+      </div>
+      <span className="material-symbols-outlined text-white/40 text-xl">chevron_right</span>
+    </Link>
+  );
+}
