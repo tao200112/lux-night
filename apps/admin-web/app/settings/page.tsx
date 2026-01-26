@@ -13,14 +13,20 @@ import ErrorState from '@/components/admin/ErrorState';
 import EmptyState from '@/components/admin/EmptyState';
 import { Skeleton } from '@/components/admin/Skeleton';
 import PlaceAutocomplete from '@/components/PlaceAutocomplete';
+import CitySelect from '@/components/CitySelect';
+import { US_STATES } from '@/lib/usStates';
 
 interface Region {
   id: string;
   name: string;
+  city?: string | null;
   state: string | null;
   country: string | null;
-  status: string; // 'operational', 'maintenance', etc.
-  isActive: boolean;
+  status: string;
+  is_active?: boolean;
+  isActive?: boolean;
+  center_lat?: number | null;
+  center_lng?: number | null;
 }
 
 interface AdminUser {
@@ -42,11 +48,24 @@ export default function AdminSettingsPage() {
   const [apiWriteAccess, setApiWriteAccess] = useState(false);
   const [systemStatus, setSystemStatus] = useState<'active' | 'maintenance'>('active');
   const [lastAudit, setLastAudit] = useState<string | null>(null);
+  const [hasPlacesKey, setHasPlacesKey] = useState(false);
   const [showAddRegionModal, setShowAddRegionModal] = useState(false);
+  const [editingRegion, setEditingRegion] = useState<Region | null>(null);
+  const [newRegionState, setNewRegionState] = useState('');
+  const [newRegionCity, setNewRegionCity] = useState('');
   const [newRegionName, setNewRegionName] = useState('');
-  const [newRegionPlaceId, setNewRegionPlaceId] = useState('');
-  const [newRegionPlaceDesc, setNewRegionPlaceDesc] = useState('');
+  const [newRegionCenterLat, setNewRegionCenterLat] = useState<number | null>(null);
+  const [newRegionCenterLng, setNewRegionCenterLng] = useState<number | null>(null);
+  const [newRegionCenterDesc, setNewRegionCenterDesc] = useState('');
   const [submittingRegion, setSubmittingRegion] = useState(false);
+  const [editState, setEditState] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editCenterLat, setEditCenterLat] = useState<number | null>(null);
+  const [editCenterLng, setEditCenterLng] = useState<number | null>(null);
+  const [editCenterDesc, setEditCenterDesc] = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [submittingEdit, setSubmittingEdit] = useState(false);
   
   useEffect(() => {
     fetchSettings();
@@ -79,6 +98,7 @@ export default function AdminSettingsPage() {
       // Extract data with fallbacks
       setRegions(result.data?.regions || []);
       setAdminUsers(result.data?.adminUsers || []);
+      setHasPlacesKey(!!result.data?.hasPlacesKey);
       setForce2FA(result.data?.settings?.force2FA || false);
       setApiWriteAccess(result.data?.settings?.apiWriteAccess || false);
       setSystemStatus(result.data?.settings?.systemStatus || 'active');
@@ -265,6 +285,7 @@ export default function AdminSettingsPage() {
                     return (
                       <div
                         key={region.id}
+                        onClick={() => { setEditingRegion(region); setEditState(region.state || ''); setEditCity(region.city || ''); setEditName(region.name || ''); setEditCenterLat(region.center_lat ?? null); setEditCenterLng(region.center_lng ?? null); setEditCenterDesc(''); setEditStatus(region.status || 'Operational'); }}
                         className={`group flex items-center justify-between p-4 ${
                           !isLast ? 'border-b border-border-light dark:border-border-dark' : ''
                         } hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer transition-colors`}
@@ -277,8 +298,9 @@ export default function AdminSettingsPage() {
                             <span className="text-sm font-semibold text-primary dark:text-white">
                               {region.name}
                             </span>
-                            <span className={`text-xs font-medium ${getRegionStatusColor(region.status)}`}>
-                              {region.status}
+                            <span className={`text-xs ${getRegionStatusColor(region.status || '')}`}>
+                              {[region.city, region.state].filter(Boolean).join(', ') || '—'}
+                              {region.status ? ` · ${region.status}` : ''}
                             </span>
                           </div>
                         </div>
@@ -298,9 +320,12 @@ export default function AdminSettingsPage() {
                 <button
                   onClick={() => {
                     setShowAddRegionModal(true);
+                    setNewRegionState('');
+                    setNewRegionCity('');
                     setNewRegionName('');
-                    setNewRegionPlaceId('');
-                    setNewRegionPlaceDesc('');
+                    setNewRegionCenterLat(null);
+                    setNewRegionCenterLng(null);
+                    setNewRegionCenterDesc('');
                   }}
                   className="flex items-center justify-center gap-2 p-3 w-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 text-primary-active text-sm font-semibold transition-colors"
                 >
@@ -468,54 +493,46 @@ export default function AdminSettingsPage() {
       {/* Bottom Navigation - 使用统一组件 */}
       <AdminBottomNav pendingCount={0} />
       
-      {/* Add Region Modal */}
+      {/* Add Region Modal — 表格化：Country/State/City 选择，不允许手打 */}
       {showAddRegionModal && (
         <>
-          <div
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowAddRegionModal(false)}
-          />
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddRegionModal(false)} />
           <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto bg-white dark:bg-slate-800 rounded-t-xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New Region</h3>
-              <button
-                onClick={() => setShowAddRegionModal(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-              >
+              <button onClick={() => setShowAddRegionModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
                 <span className="material-symbols-outlined text-slate-600 dark:text-slate-400">close</span>
               </button>
             </div>
-            
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                if (!newRegionName.trim()) {
-                  alert('Region name is required');
-                  return;
-                }
-                if (!newRegionPlaceId) {
-                  alert('Base address is required. Search and select a place.');
+                if (!newRegionState || !newRegionCity.trim()) {
+                  alert('State and City are required. Select from dropdowns or use "Select city center (Google)".');
                   return;
                 }
                 try {
                   setSubmittingRegion(true);
-                  const res = await fetch('/api/admin/settings/regions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: newRegionName.trim(), place_id: newRegionPlaceId }),
-                  });
+                  const body: { country: string; state: string; city: string; name: string; center_lat?: number; center_lng?: number } = {
+                    country: 'US',
+                    state: newRegionState,
+                    city: newRegionCity.trim(),
+                    name: (newRegionName || newRegionCity).trim(),
+                  };
+                  if (typeof newRegionCenterLat === 'number' && typeof newRegionCenterLng === 'number') {
+                    body.center_lat = newRegionCenterLat;
+                    body.center_lng = newRegionCenterLng;
+                  }
+                  const res = await fetch('/api/admin/regions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
                   const data = await res.json();
                   if (!res.ok || !data.success) {
-                    throw new Error(data.message || data.code === 'CONFIG' ? 'GOOGLE_MAPS_API_KEY not configured. Set it in .env.' : data.message || 'Failed to create region');
+                    throw new Error(data.message || data.code || 'Failed to create region');
                   }
                   setShowAddRegionModal(false);
-                  setNewRegionName('');
-                  setNewRegionPlaceId('');
-                  setNewRegionPlaceDesc('');
+                  setNewRegionState(''); setNewRegionCity(''); setNewRegionName(''); setNewRegionCenterLat(null); setNewRegionCenterLng(null); setNewRegionCenterDesc('');
                   await fetchSettings();
                   alert('Region created successfully!');
                 } catch (err: any) {
-                  console.error('[ADD REGION] Error:', err);
                   alert(err.message || 'Failed to create region');
                 } finally {
                   setSubmittingRegion(false);
@@ -524,49 +541,111 @@ export default function AdminSettingsPage() {
               className="space-y-4"
             >
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Region Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newRegionName}
-                  onChange={(e) => setNewRegionName(e.target.value)}
-                  placeholder="e.g. Los Angeles"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
-                  required
-                  disabled={submittingRegion}
-                />
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Country</label>
+                <input type="text" value="US" readOnly className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-3 py-2.5 text-sm text-slate-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Base address / city center <span className="text-red-500">*</span>
-                </label>
-                <PlaceAutocomplete
-                  value={newRegionPlaceDesc}
-                  onSelect={({ place_id, description }) => {
-                    setNewRegionPlaceId(place_id);
-                    setNewRegionPlaceDesc(description);
-                  }}
-                  placeholder="Search and select an address..."
-                  disabled={submittingRegion}
-                />
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">State <span className="text-red-500">*</span></label>
+                <select value={newRegionState} onChange={(e) => { setNewRegionState(e.target.value); setNewRegionCity(''); setNewRegionName(''); }} disabled={submittingRegion} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 text-sm" required>
+                  <option value="">Select state</option>
+                  {US_STATES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">City <span className="text-red-500">*</span></label>
+                <CitySelect country="US" state={newRegionState} value={newRegionCity} hasPlacesKey={hasPlacesKey} disabled={submittingRegion} onChange={(v) => { setNewRegionCity(v.city); if (v.state) setNewRegionState(v.state); if (v.center_lat != null) setNewRegionCenterLat(v.center_lat); if (v.center_lng != null) setNewRegionCenterLng(v.center_lng); setNewRegionName((n) => n || v.city); }} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Display name</label>
+                <input type="text" value={newRegionName} onChange={(e) => setNewRegionName(e.target.value)} placeholder={newRegionCity || 'e.g. Los Angeles'} disabled={submittingRegion} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 text-sm" />
+              </div>
+              {hasPlacesKey && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">City center (optional)</label>
+                  <PlaceAutocomplete types="address" value={newRegionCenterDesc} onSelect={async (v) => {
+                    setNewRegionCenterDesc(v.description);
+                    const r = await fetch('/api/admin/places/details', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ place_id: v.place_id }) });
+                    const d = await r.json();
+                    if (r.ok && d && (typeof d.lat === 'number' && typeof d.lng === 'number')) { setNewRegionCenterLat(d.lat); setNewRegionCenterLng(d.lng); }
+                  }} placeholder="Search to set center point" disabled={submittingRegion} />
+                </div>
+              )}
               <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddRegionModal(false)}
-                  disabled={submittingRegion}
-                  className="flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-medium hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingRegion || !newRegionName.trim() || !newRegionPlaceId}
-                  className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submittingRegion ? 'Creating...' : 'Create Region'}
-                </button>
+                <button type="button" onClick={() => setShowAddRegionModal(false)} disabled={submittingRegion} className="flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-medium disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={submittingRegion || !newRegionState || !newRegionCity.trim()} className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed">{submittingRegion ? 'Creating...' : 'Create Region'}</button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+
+      {/* Edit Region Modal */}
+      {editingRegion && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setEditingRegion(null)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto bg-white dark:bg-slate-800 rounded-t-xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Edit Region</h3>
+              <button onClick={() => setEditingRegion(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"><span className="material-symbols-outlined text-slate-600 dark:text-slate-400">close</span></button>
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!editingRegion?.id || !editState || !editCity.trim()) return;
+                try {
+                  setSubmittingEdit(true);
+                  const body: Record<string, unknown> = { state: editState, city: editCity.trim(), name: editName.trim() || editCity, status: editStatus || 'Operational' };
+                  if (typeof editCenterLat === 'number' && typeof editCenterLng === 'number') { body.center_lat = editCenterLat; body.center_lng = editCenterLng; }
+                  const res = await fetch(`/api/admin/regions/${editingRegion.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                  const data = await res.json();
+                  if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update');
+                  setEditingRegion(null);
+                  await fetchSettings();
+                  alert('Region updated.');
+                } catch (err: any) {
+                  alert(err.message || 'Failed to update');
+                } finally {
+                  setSubmittingEdit(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-1">State <span className="text-red-500">*</span></label>
+                <select value={editState} onChange={(e) => { setEditState(e.target.value); setEditCity(''); }} disabled={submittingEdit} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 text-sm" required>
+                  <option value="">Select state</option>
+                  {US_STATES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">City <span className="text-red-500">*</span></label>
+                <CitySelect country="US" state={editState} value={editCity} hasPlacesKey={hasPlacesKey} disabled={submittingEdit} onChange={(v) => { setEditCity(v.city); if (v.state) setEditState(v.state); if (v.center_lat != null) setEditCenterLat(v.center_lat); if (v.center_lng != null) setEditCenterLng(v.center_lng); }} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Display name</label>
+                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} disabled={submittingEdit} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)} disabled={submittingEdit} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2.5 text-sm">
+                  <option value="Operational">Operational</option>
+                  <option value="Maintenance">Maintenance</option>
+                </select>
+              </div>
+              {hasPlacesKey && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">City center (optional)</label>
+                  <PlaceAutocomplete types="address" value={editCenterDesc} onSelect={async (v) => {
+                    setEditCenterDesc(v.description);
+                    const r = await fetch('/api/admin/places/details', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ place_id: v.place_id }) });
+                    const d = await r.json();
+                    if (r.ok && d && typeof d.lat === 'number' && typeof d.lng === 'number') { setEditCenterLat(d.lat); setEditCenterLng(d.lng); }
+                  }} placeholder="Search to set center" disabled={submittingEdit} />
+                </div>
+              )}
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setEditingRegion(null)} disabled={submittingEdit} className="flex-1 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 font-medium">Cancel</button>
+                <button type="submit" disabled={submittingEdit || !editState || !editCity.trim()} className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-medium disabled:opacity-50">{submittingEdit ? 'Saving...' : 'Save'}</button>
               </div>
             </form>
           </div>

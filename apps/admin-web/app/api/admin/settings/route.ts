@@ -71,6 +71,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       ok: true,
       data: {
         regions: regions || [],
+        hasPlacesKey: !!process.env.GOOGLE_MAPS_API_KEY,
       },
       step,
     });

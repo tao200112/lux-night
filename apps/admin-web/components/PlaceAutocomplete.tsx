@@ -16,6 +16,10 @@ interface PlaceAutocompleteProps {
   disabled?: boolean;
   className?: string;
   inputClassName?: string;
+  /** 'address' (establishment|geocode) or 'cities' (types=cities, country:us) */
+  types?: 'cities' | 'address';
+  /** default /api/admin/places/autocomplete */
+  autocompleteUrl?: string;
 }
 
 export default function PlaceAutocomplete({
@@ -25,6 +29,8 @@ export default function PlaceAutocomplete({
   disabled,
   className = '',
   inputClassName = '',
+  types = 'address',
+  autocompleteUrl = '/api/admin/places/autocomplete',
 }: PlaceAutocompleteProps) {
   const [query, setQuery] = useState(value);
   const [list, setList] = useState<PlaceSuggestion[]>([]);
@@ -42,8 +48,14 @@ export default function PlaceAutocomplete({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(q)}`);
+      const url = `${autocompleteUrl}?input=${encodeURIComponent(q)}&types=${types}`;
+      const res = await fetch(url);
       const data = await res.json();
+      if (res.status === 503 && data?.code === 'CONFIG') {
+        setError('GOOGLE_MAPS_API_KEY not configured. Set it in .env.');
+        setList([]);
+        return;
+      }
       if (!res.ok) {
         setError(data?.error || 'Search unavailable');
         setList([]);
@@ -56,7 +68,7 @@ export default function PlaceAutocomplete({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [autocompleteUrl, types]);
 
   useEffect(() => {
     if (debounce.current) clearTimeout(debounce.current);

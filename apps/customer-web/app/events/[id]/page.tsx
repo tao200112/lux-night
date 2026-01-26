@@ -205,9 +205,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <div className="mt-0.5 size-10 rounded-xl bg-lux-card border border-white/5 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-primary text-[20px]">location_on</span>
               </div>
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <span className="text-lg font-bold text-white leading-tight">{event.venue?.name || 'Venue TBA'}</span>
-                <span className="text-sm text-gray-400">{event.venue?.address || 'Location details coming soon'}</span>
+                <span className="text-sm text-gray-400 line-clamp-2">{event.venue?.address || 'Location details coming soon'}</span>
               </div>
             </div>
           </div>

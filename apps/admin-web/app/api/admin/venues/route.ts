@@ -194,6 +194,7 @@ export async function GET(req: NextRequest) {
             id,
             name,
             address,
+            formatted_address,
             merchant_id,
             region_id,
             merchants(
@@ -209,7 +210,8 @@ export async function GET(req: NextRequest) {
           const formattedVenue = {
             id: defaultVenue.id,
             name: defaultVenue.name,
-            address: defaultVenue.address,
+            address: (defaultVenue as { formatted_address?: string }).formatted_address || defaultVenue.address,
+            formatted_address: (defaultVenue as { formatted_address?: string }).formatted_address || defaultVenue.address,
             merchant: (() => {
               if (!defaultVenue.merchants) return null;
               const merchantData = Array.isArray(defaultVenue.merchants) ? defaultVenue.merchants[0] : defaultVenue.merchants;
@@ -288,7 +290,7 @@ export async function GET(req: NextRequest) {
       try {
         let venuesQuery = adminClient
           .from('venues')
-          .select('id, name, address, merchant_id, region_id')
+          .select('id, name, address, formatted_address, merchant_id, region_id')
           .eq('merchant_id', merchant_id)
           .eq('is_active', true);
         if (region_id) venuesQuery = venuesQuery.eq('region_id', region_id);
@@ -353,22 +355,18 @@ export async function GET(req: NextRequest) {
         }
       }
       
-      // 格式化venues，添加merchant和region信息
+      // 格式化venues，添加merchant和region信息；展示优先 formatted_address ?? address
       const formattedVenues = venues.map((v: any) => {
         const region = regionsMap.get(v.region_id);
+        const addr = v.formatted_address || v.address;
         return {
           id: v.id,
           name: v.name,
-          address: v.address,
+          address: addr,
+          formatted_address: addr,
           region_id: v.region_id,
-          region: region ? {
-            id: region.id,
-            name: region.name,
-          } : null,
-          merchant: {
-            id: merchantInfo.id,
-            name: merchantInfo.name,
-          },
+          region: region ? { id: region.id, name: region.name } : null,
+          merchant: { id: merchantInfo.id, name: merchantInfo.name },
         };
       });
       
@@ -381,15 +379,12 @@ export async function GET(req: NextRequest) {
       });
     }
     
-    // 如果没有指定merchant_id，返回所有active venues
-    // 查询所有venues（包含region信息）
+    // 如果没有指定merchant_id，返回所有active venues；支持 ?region_id= 过滤
     let venues;
     try {
-      const { data: venuesData, error: queryError } = await adminClient
-        .from('venues')
-        .select('id, name, address, merchant_id, region_id')
-        .eq('is_active', true)
-        .order('name');
+      let q = adminClient.from('venues').select('id, name, address, formatted_address, merchant_id, region_id').eq('is_active', true);
+      if (region_id) q = q.eq('region_id', region_id);
+      const { data: venuesData, error: queryError } = await q.order('name');
       
       if (queryError) {
         console.error('[ADMIN VENUES API] Query error:', JSON.stringify(queryError, null, 2));
@@ -478,19 +473,15 @@ export async function GET(req: NextRequest) {
           return null; // 跳过没有merchant的venue
         }
         
+        const addr = (v as { formatted_address?: string }).formatted_address || v.address;
         return {
           id: v.id,
           name: v.name,
-          address: v.address,
+          address: addr,
+          formatted_address: addr,
           region_id: v.region_id,
-          region: region ? {
-            id: region.id,
-            name: region.name,
-          } : null,
-          merchant: {
-            id: merchant.id,
-            name: merchant.name,
-          },
+          region: region ? { id: region.id, name: region.name } : null,
+          merchant: { id: merchant.id, name: merchant.name },
         };
       })
       .filter((v: any) => v !== null);
