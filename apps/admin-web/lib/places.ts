@@ -1,5 +1,5 @@
 /**
- * Server-only: 调用 Google Places Details 并解析为 PlaceDetailsResponse
+ * Server-only: Google Places Details -> 结构化地址；slug 生成
  */
 
 import type { PlaceDetailsResponse } from '@lux-night/shared/types';

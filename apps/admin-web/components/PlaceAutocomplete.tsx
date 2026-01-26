@@ -98,7 +98,7 @@ export default function PlaceAutocomplete({
         placeholder={placeholder}
         disabled={disabled}
         autoComplete="off"
-        className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${inputClassName}`}
+        className={`w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary ${inputClassName}`}
       />
       {loading && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -109,16 +109,16 @@ export default function PlaceAutocomplete({
         <p className="text-red-500 text-xs mt-1">{error}</p>
       )}
       {open && list.length > 0 && (
-        <ul className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg max-h-60 overflow-y-auto">
+        <ul className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg max-h-60 overflow-y-auto">
           {list.map((s) => (
             <li key={s.place_id}>
               <button
                 type="button"
                 onClick={() => handleSelect(s)}
-                className="w-full text-left px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0"
+                className="w-full text-left px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-b border-slate-100 dark:border-slate-700 last:border-0"
               >
-                <div className="font-medium text-gray-900 dark:text-white truncate">{s.main_text || s.description}</div>
-                {s.secondary_text && <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{s.secondary_text}</div>}
+                <div className="font-medium text-slate-900 dark:text-white truncate">{s.main_text || s.description}</div>
+                {s.secondary_text && <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{s.secondary_text}</div>}
               </button>
             </li>
           ))}

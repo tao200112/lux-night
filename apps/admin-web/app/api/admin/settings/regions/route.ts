@@ -1,20 +1,21 @@
 /**
  * POST /api/admin/settings/regions
  * Admin Create/Update Region Settings API
- * 
- * Create: { name, state?, country?, lat?, lng? }
- * Update: { regionId, status, reason? }
+ *
+ * Create: { name, place_id } — 必须用地址选择器选 place_id
+ * Update 地址: { regionId, place_id }
+ * Update 状态: { regionId, status?, reason? }
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
+import { getPlaceDetails, slugFromName } from '@/lib/places';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
-    // 检查 Admin 权限
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json(
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     const { data: isAdmin } = await supabase.rpc('is_admin');
     if (!isAdmin) {
       return NextResponse.json(
@@ -30,22 +31,22 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-    
+
     const body = await request.json();
-    
-    // 判断是创建还是更新：如果有name字段，则是创建；如果有regionId，则是更新
-    if (body.name) {
-      // 创建新地区
-      return await createRegion(body);
-    } else if (body.regionId) {
-      // 更新地区状态
-      return await updateRegionStatus(body);
-    } else {
-      return NextResponse.json(
-        { success: false, code: 'VALIDATION_ERROR', message: 'Either name (for create) or regionId (for update) is required' },
-        { status: 400 }
-      );
+
+    if (body.regionId && body.place_id) {
+      return await updateRegionAddress(body);
     }
+    if (body.regionId) {
+      return await updateRegionStatus(body);
+    }
+    if (body.name) {
+      return await createRegion(body);
+    }
+    return NextResponse.json(
+      { success: false, code: 'VALIDATION_ERROR', message: 'For create: name and place_id required. For update: regionId and optionally place_id or status.' },
+      { status: 400 }
+    );
   } catch (error: any) {
     console.error('[ADMIN SETTINGS REGIONS API] Error:', error);
     return NextResponse.json(
@@ -55,80 +56,113 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function createRegion(body: any) {
-  const { name, state, country, lat, lng } = body;
-  
-  if (!name || !name.trim()) {
+async function updateRegionAddress(body: { regionId: string; place_id: string }) {
+  const { regionId, place_id } = body;
+  if (!process.env.GOOGLE_MAPS_API_KEY) {
+    return NextResponse.json(
+      { success: false, code: 'CONFIG', message: 'GOOGLE_MAPS_API_KEY not configured. Set it in .env to update region address.' },
+      { status: 503 }
+    );
+  }
+  const details = await getPlaceDetails(place_id.trim());
+  if (!details) {
+    return NextResponse.json(
+      { success: false, code: 'INVALID_PLACE', message: 'Invalid place_id or Places API error' },
+      { status: 400 }
+    );
+  }
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('regions')
+    .update({
+      city: details.city || null,
+      state: details.state || null,
+      country: details.country || null,
+      lat: details.lat || null,
+      lng: details.lng || null,
+      center_lat: details.lat || null,
+      center_lng: details.lng || null,
+    })
+    .eq('id', regionId)
+    .select('id, name, slug, city, state, country, center_lat, center_lng')
+    .single();
+  if (error) {
+    return NextResponse.json(
+      { success: false, code: 'UPDATE_FAILED', message: error.message },
+      { status: 500 }
+    );
+  }
+  return NextResponse.json({ success: true, data, message: 'Region address updated' });
+}
+
+async function createRegion(body: { name?: string; place_id?: string }) {
+  const name = body.name?.trim();
+  const place_id = body.place_id?.trim();
+
+  if (!name) {
     return NextResponse.json(
       { success: false, code: 'VALIDATION_ERROR', message: 'Region name is required' },
       { status: 400 }
     );
   }
-  
-  // 使用admin client绕过RLS
-  const adminClient = createAdminClient();
-  
-  // 检查是否已存在（唯一约束：name, state, country）
-  const { data: existing } = await adminClient
-    .from('regions')
-    .select('id, name')
-    .eq('name', name.trim())
-    .eq('state', state || null)
-    .eq('country', country || 'US')
-    .single();
-  
-  if (existing) {
+  if (!place_id) {
     return NextResponse.json(
-      { 
-        success: false, 
-        code: 'DUPLICATE_REGION', 
-        message: `Region "${name}" already exists in ${state || ''} ${country || 'US'}` 
-      },
-      { status: 409 }
+      { success: false, code: 'VALIDATION_ERROR', message: 'Base address is required. Use the address search to select a place.' },
+      { status: 400 }
     );
   }
-  
-  // 创建新地区
+  if (!process.env.GOOGLE_MAPS_API_KEY) {
+    return NextResponse.json(
+      { success: false, code: 'CONFIG', message: 'GOOGLE_MAPS_API_KEY not configured. Set it in .env to add regions with address.' },
+      { status: 503 }
+    );
+  }
+
+  const details = await getPlaceDetails(place_id);
+  if (!details) {
+    return NextResponse.json(
+      { success: false, code: 'INVALID_PLACE', message: 'Invalid place_id or Places API error' },
+      { status: 400 }
+    );
+  }
+
+  const adminClient = createAdminClient();
+  let slug = slugFromName(name);
+  const { data: existingSlug } = await adminClient.from('regions').select('id').eq('slug', slug).maybeSingle();
+  if (existingSlug) slug = `${slug}-${Date.now().toString(36)}`;
+
   const { data: newRegion, error: createError } = await adminClient
     .from('regions')
     .insert({
-      name: name.trim(),
-      state: state || null,
-      country: country || 'US',
-      lat: lat || null,
-      lng: lng || null,
+      name,
+      slug,
+      city: details.city || null,
+      state: details.state || null,
+      country: details.country || 'US',
+      lat: details.lat || null,
+      lng: details.lng || null,
+      center_lat: details.lat || null,
+      center_lng: details.lng || null,
       is_active: true,
-      status: 'Operational', // 默认状态
+      status: 'Operational',
     })
     .select()
     .single();
-  
+
   if (createError || !newRegion) {
     console.error('[CREATE REGION] Error:', createError);
-    
-    // 处理唯一约束冲突
     if (createError?.code === '23505') {
       return NextResponse.json(
-        { 
-          success: false, 
-          code: 'DUPLICATE_REGION', 
-          message: `Region "${name}" already exists` 
-        },
+        { success: false, code: 'DUPLICATE_REGION', message: `Region "${name}" or slug already exists` },
         { status: 409 }
       );
     }
-    
     return NextResponse.json(
-      { 
-        success: false, 
-        code: 'CREATE_FAILED', 
-        message: createError?.message || 'Failed to create region' 
-      },
+      { success: false, code: 'CREATE_FAILED', message: createError?.message || 'Failed to create region' },
       { status: 500 }
     );
   }
-  
-  // 写 audit log
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -138,22 +172,23 @@ async function createRegion(body: any) {
         p_entity_type: 'region',
         p_entity_id: newRegion.id,
         p_before_state: null,
-        p_after_state: { name: newRegion.name, state: newRegion.state, country: newRegion.country },
+        p_after_state: { name: newRegion.name, state: newRegion.state, country: newRegion.country, city: newRegion.city },
         p_metadata: null,
       });
     }
   } catch (auditError) {
     console.warn('[CREATE REGION] Audit log failed:', auditError);
-    // 不阻断流程
   }
-  
+
   return NextResponse.json({
     success: true,
     data: {
       id: newRegion.id,
       name: newRegion.name,
+      slug: newRegion.slug,
       state: newRegion.state,
       country: newRegion.country,
+      city: newRegion.city,
       status: newRegion.status || 'Operational',
       isActive: newRegion.is_active,
       message: 'Region created successfully',

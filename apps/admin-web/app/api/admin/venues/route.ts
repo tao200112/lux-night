@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPlaceDetails } from '@/lib/places';
 
 // Zod schema for query validation
 const VenuesQuerySchema = z.object({
@@ -505,7 +506,7 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     const duration = Date.now() - startTime;
     console.error(`[ADMIN VENUES API] Unexpected error (${duration}ms):`, error);
-    
+
     return NextResponse.json<ApiResponse<never>>(
       {
         success: false,
@@ -516,5 +517,102 @@ export async function GET(req: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+/** POST /api/admin/venues — 新增 venue，必须 place_id 选址 */
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'UNAUTHORIZED', message: 'Must be logged in' } }, { status: 401 });
+    }
+    const { data: isAdmin } = await supabase.rpc('is_admin');
+    if (!isAdmin) {
+      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'FORBIDDEN', message: 'Must be admin' } }, { status: 403 });
+    }
+
+    if (!process.env.GOOGLE_MAPS_API_KEY) {
+      return NextResponse.json<ApiResponse<never>>(
+        { success: false, error: { code: 'CONFIG', message: 'GOOGLE_MAPS_API_KEY not configured. Set it in .env to add venues.' } },
+        { status: 503 }
+      );
+    }
+
+    let body: { name?: string; merchant_id?: string; region_id?: string; place_id?: string };
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'VALIDATION_ERROR', message: 'JSON body with name, merchant_id, region_id, place_id required' } }, { status: 400 });
+    }
+    const name = body.name?.trim();
+    const merchant_id = body.merchant_id?.trim();
+    const region_id = body.region_id?.trim();
+    const place_id = body.place_id?.trim();
+    if (!name || !merchant_id || !region_id || !place_id) {
+      return NextResponse.json<ApiResponse<never>>(
+        { success: false, error: { code: 'VALIDATION_ERROR', message: 'name, merchant_id, region_id and place_id are required. Use address search to select a place.' } },
+        { status: 400 }
+      );
+    }
+
+    const details = await getPlaceDetails(place_id);
+    if (!details) {
+      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'INVALID_PLACE', message: 'Invalid place_id or Places API error' } }, { status: 400 });
+    }
+
+    const admin = createAdminClient();
+    const { data: existing } = await admin.from('venues').select('id').eq('place_id', place_id).maybeSingle();
+    if (existing) {
+      return NextResponse.json<ApiResponse<never>>(
+        { success: false, error: { code: 'PLACE_ID_DUPLICATE', message: 'This address is already used by another venue.' } },
+        { status: 400 }
+      );
+    }
+    const { data: region } = await admin.from('regions').select('id').eq('id', region_id).single();
+    if (!region) {
+      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid region_id' } }, { status: 400 });
+    }
+    const { data: merchant } = await admin.from('merchants').select('id').eq('id', merchant_id).single();
+    if (!merchant) {
+      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid merchant_id' } }, { status: 400 });
+    }
+
+    const { data: inserted, error } = await admin
+      .from('venues')
+      .insert({
+        merchant_id,
+        region_id,
+        name,
+        place_id,
+        formatted_address: details.formatted_address,
+        address: details.formatted_address,
+        address_line1: details.address_line1 || null,
+        address_line2: details.address_line2 || null,
+        city: details.city || null,
+        state: details.state || null,
+        postal_code: details.postal_code || null,
+        country: details.country || null,
+        lat: details.lat || null,
+        lng: details.lng || null,
+        is_active: true,
+      })
+      .select('id, name, region_id, formatted_address, city, state, place_id')
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json<ApiResponse<never>>(
+          { success: false, error: { code: 'PLACE_ID_DUPLICATE', message: 'This address is already used by another venue.' } },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'DB_ERROR', message: error.message } }, { status: 500 });
+    }
+    return NextResponse.json<ApiResponse<typeof inserted>>({ success: true, data: inserted });
+  } catch (e: any) {
+    console.error('[ADMIN VENUES POST]', e);
+    return NextResponse.json<ApiResponse<never>>({ success: false, error: { code: 'INTERNAL_ERROR', message: e?.message || 'Unexpected error' } }, { status: 500 });
   }
 }

@@ -12,6 +12,7 @@ import AdminBottomNav from '@/components/admin/AdminBottomNav';
 import ErrorState from '@/components/admin/ErrorState';
 import EmptyState from '@/components/admin/EmptyState';
 import { Skeleton } from '@/components/admin/Skeleton';
+import PlaceAutocomplete from '@/components/PlaceAutocomplete';
 
 interface Region {
   id: string;
@@ -43,8 +44,8 @@ export default function AdminSettingsPage() {
   const [lastAudit, setLastAudit] = useState<string | null>(null);
   const [showAddRegionModal, setShowAddRegionModal] = useState(false);
   const [newRegionName, setNewRegionName] = useState('');
-  const [newRegionState, setNewRegionState] = useState('');
-  const [newRegionCountry, setNewRegionCountry] = useState('US');
+  const [newRegionPlaceId, setNewRegionPlaceId] = useState('');
+  const [newRegionPlaceDesc, setNewRegionPlaceDesc] = useState('');
   const [submittingRegion, setSubmittingRegion] = useState(false);
   
   useEffect(() => {
@@ -242,9 +243,17 @@ export default function AdminSettingsPage() {
                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
                   Regional Config
                 </h3>
-                <span className="text-xs font-medium text-primary-active bg-primary-active/10 px-2 py-0.5 rounded">
-                  {regions.filter((r) => r.status === 'operational' || r.status === 'Operational').length} Active
-                </span>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/settings/venues"
+                    className="text-xs font-medium text-primary-active hover:underline"
+                  >
+                    Venues
+                  </Link>
+                  <span className="text-xs font-medium text-primary-active bg-primary-active/10 px-2 py-0.5 rounded">
+                    {regions.filter((r) => r.status === 'operational' || r.status === 'Operational').length} Active
+                  </span>
+                </div>
               </div>
               
               <div className="flex flex-col bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded overflow-hidden">
@@ -286,10 +295,12 @@ export default function AdminSettingsPage() {
                 )}
                 
                 {/* Add Button - 完全按照 UI 文档 */}
-                <button 
+                <button
                   onClick={() => {
-                    console.log('[SETTINGS] Add region button clicked');
                     setShowAddRegionModal(true);
+                    setNewRegionName('');
+                    setNewRegionPlaceId('');
+                    setNewRegionPlaceDesc('');
                   }}
                   className="flex items-center justify-center gap-2 p-3 w-full bg-gray-50 hover:bg-gray-100 dark:bg-white/5 dark:hover:bg-white/10 text-primary-active text-sm font-semibold transition-colors"
                 >
@@ -482,33 +493,26 @@ export default function AdminSettingsPage() {
                   alert('Region name is required');
                   return;
                 }
-                
+                if (!newRegionPlaceId) {
+                  alert('Base address is required. Search and select a place.');
+                  return;
+                }
                 try {
                   setSubmittingRegion(true);
                   const res = await fetch('/api/admin/settings/regions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      name: newRegionName.trim(),
-                      state: newRegionState.trim() || null,
-                      country: newRegionCountry || 'US',
-                    }),
+                    body: JSON.stringify({ name: newRegionName.trim(), place_id: newRegionPlaceId }),
                   });
-                  
                   const data = await res.json();
-                  
                   if (!res.ok || !data.success) {
-                    throw new Error(data.message || data.error?.message || 'Failed to create region');
+                    throw new Error(data.message || data.code === 'CONFIG' ? 'GOOGLE_MAPS_API_KEY not configured. Set it in .env.' : data.message || 'Failed to create region');
                   }
-                  
-                  // 成功：关闭弹窗，重置表单，刷新列表
                   setShowAddRegionModal(false);
                   setNewRegionName('');
-                  setNewRegionState('');
-                  setNewRegionCountry('US');
-                  await fetchSettings(); // 刷新列表
-                  
-                  // 显示成功提示（简单alert，可以后续改为toast）
+                  setNewRegionPlaceId('');
+                  setNewRegionPlaceDesc('');
+                  await fetchSettings();
                   alert('Region created successfully!');
                 } catch (err: any) {
                   console.error('[ADD REGION] Error:', err);
@@ -527,41 +531,26 @@ export default function AdminSettingsPage() {
                   type="text"
                   value={newRegionName}
                   onChange={(e) => setNewRegionName(e.target.value)}
-                  placeholder="e.g. North America"
+                  placeholder="e.g. Los Angeles"
                   className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                   disabled={submittingRegion}
                 />
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  State (Optional)
+                  Base address / city center <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={newRegionState}
-                  onChange={(e) => setNewRegionState(e.target.value)}
-                  placeholder="e.g. California"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+                <PlaceAutocomplete
+                  value={newRegionPlaceDesc}
+                  onSelect={({ place_id, description }) => {
+                    setNewRegionPlaceId(place_id);
+                    setNewRegionPlaceDesc(description);
+                  }}
+                  placeholder="Search and select an address..."
                   disabled={submittingRegion}
                 />
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Country
-                </label>
-                <input
-                  type="text"
-                  value={newRegionCountry}
-                  onChange={(e) => setNewRegionCountry(e.target.value)}
-                  placeholder="US"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
-                  disabled={submittingRegion}
-                />
-              </div>
-              
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
@@ -573,7 +562,7 @@ export default function AdminSettingsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingRegion || !newRegionName.trim()}
+                  disabled={submittingRegion || !newRegionName.trim() || !newRegionPlaceId}
                   className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submittingRegion ? 'Creating...' : 'Create Region'}
