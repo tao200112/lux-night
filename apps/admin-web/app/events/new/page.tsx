@@ -53,6 +53,8 @@ function AdminCreateEventPageContent() {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [regions, setRegions] = useState<{ id: string; name: string; state: string | null; country: string }[]>([]);
+  const [regionId, setRegionId] = useState<string>('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [loadingVenue, setLoadingVenue] = useState(true);
   const [hasDefaultVenue, setHasDefaultVenue] = useState<boolean | null>(null);
@@ -89,6 +91,14 @@ function AdminCreateEventPageContent() {
 
   // Section 6: Policies
   const [refundPolicy, setRefundPolicy] = useState<'no_refund' | '24h' | 'flexible' | 'venue_policy' | 'UNTIL_START' | 'CUSTOM'>('no_refund');
+
+  // 加载 regions
+  useEffect(() => {
+    fetch('/api/admin/regions')
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.data) setRegions(d.data); })
+      .catch(() => {});
+  }, []);
 
   // 加载 merchant default venue
   useEffect(() => {
@@ -153,13 +163,11 @@ function AdminCreateEventPageContent() {
         if (defaultVenueRes.status === 404) {
           console.warn('[Create Event] Merchant not found, but continuing...');
           setHasDefaultVenue(false);
-          await loadAllVenues();
+          await loadAllVenues(undefined);
           return;
         }
-        
-        // 其他错误，降级处理
         setHasDefaultVenue(false);
-        await loadAllVenues();
+        await loadAllVenues(undefined);
         return;
       }
       
@@ -171,50 +179,42 @@ function AdminCreateEventPageContent() {
         setMerchantName(merchant_name);
         
         if (venue) {
-          // 有 default venue，自动设置
           setHasDefaultVenue(true);
           setVenueId(venue.id);
+          const rid = venue.region_id || null;
+          if (rid) setRegionId(rid);
           setSelectedVenue({
             id: venue.id,
             name: venue.name,
             address: venue.address,
             region_id: venue.region_id || null,
             region: venue.region || null,
-            merchant: {
-              id: merchantId,
-              name: merchant_name,
-            },
+            merchant: { id: merchantId, name: merchant_name },
           });
-          
-          // 同时加载所有venues（用于未来更换venue）
-          await loadAllVenues();
+          await loadAllVenues(rid || undefined);
         } else {
-          // 没有 default venue
           setHasDefaultVenue(false);
-          // 仍然加载所有venues，用于绑定
           await loadAllVenues();
         }
       } else {
-        // API 返回错误，尝试加载所有venues
         setHasDefaultVenue(false);
         await loadAllVenues();
       }
     } catch (err) {
       console.error('Failed to load merchant default venue:', err);
       setHasDefaultVenue(false);
-      // 降级：尝试加载所有venues
       await loadAllVenues();
     } finally {
       setLoadingVenue(false);
     }
   };
 
-  // 加载所有venues（用于更换venue或绑定venue）
-  const loadAllVenues = async () => {
+  // 加载所有venues（用于更换venue或绑定venue）；regionId 过滤该 region 的 venues
+  const loadAllVenues = async (regionIdParam?: string) => {
     if (!merchantId) return;
-    
+    const url = `/api/admin/venues?merchant_id=${merchantId}` + (regionIdParam ? `&region_id=${regionIdParam}` : '');
     try {
-      const res = await fetch(`/api/admin/venues?merchant_id=${merchantId}`);
+      const res = await fetch(url);
       
       // 检查响应状态，避免解析HTML错误页面
       if (!res.ok) {
@@ -482,6 +482,7 @@ function AdminCreateEventPageContent() {
 
     // 必须字段
     if (!title.trim()) errors.push('Event title is required');
+    if (!regionId) errors.push('Region is required');
     if (!venueId) {
       errors.push('Venue is required. Please bind a venue to this merchant first.');
     }
@@ -581,17 +582,15 @@ function AdminCreateEventPageContent() {
           subtitle: subtitle.trim() || null,
           description: description.trim() || null,
           poster_url: posterUrl || null,
-          venue_id: venueId || null, // 草稿允许venue_id为空
+          venue_id: venueId || null,
+          region_id: regionId || undefined,
           start_at: startDateTime?.toISOString() || null,
           end_at: endDateTime?.toISOString() || null,
           redeem_start_at: validRedeemStart?.toISOString() || null,
           redeem_end_at: validRedeemEnd?.toISOString() || null,
           refund_policy: refundPolicy,
           published_status: 'DRAFT',
-          ticket_types: ticketTypes.map(tt => ({
-            ...tt,
-            price_cents: tt.price_cents,
-          })),
+          ticket_types: ticketTypes.map(tt => ({ ...tt, price_cents: tt.price_cents })),
         }),
       });
 
@@ -667,6 +666,7 @@ function AdminCreateEventPageContent() {
           description: description.trim() || null,
           poster_url: posterUrl || null,
           venue_id: venueId,
+          region_id: regionId || undefined,
           start_at: startDateTime.toISOString(),
           end_at: endDateTime.toISOString(),
           redeem_start_at: redeemStart?.toISOString() || null,
@@ -824,6 +824,30 @@ function AdminCreateEventPageContent() {
         {/* Section 2: Venue & Basics */}
         <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">② Venue & Basics</h3>
+          
+          {/* Region: 先选 Region，Venue 仅显示该 region 下的 */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Region <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={regionId}
+              onChange={(e) => {
+                const v = e.target.value;
+                setRegionId(v);
+                setVenueId('');
+                setSelectedVenue(null);
+                setLoadingVenue(true);
+                loadAllVenues(v || undefined).finally(() => setLoadingVenue(false));
+              }}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Select region...</option>
+              {regions.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+          </div>
           
           {loadingVenue ? (
             <div className="flex items-center justify-center p-8">

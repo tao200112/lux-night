@@ -57,6 +57,19 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
   return (data || []) as EventWithVenue[];
 }
 
+/** 按 region 取活动，regionId 必填；供 Home/Events 使用 */
+export async function getEventsByRegion(regionId: string): Promise<EventWithVenue[]> {
+  return getEvents(regionId);
+}
+
+/**
+ * 按 region 取 Drops；当前无 drops 表且 events 无 is_drop，先返回 []。
+ * 后续：若有 drops 表则 where region_id=? AND active；若有 events.is_drop 则过滤。
+ */
+export async function getDropsByRegion(_regionId: string): Promise<EventWithVenue[]> {
+  return [];
+}
+
 export async function getEvent(id: string): Promise<EventWithVenue | null> {
   const supabase = createClient();
   

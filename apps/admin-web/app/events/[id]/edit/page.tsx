@@ -60,6 +60,8 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
   const [publishing, setPublishing] = useState(false);
   const [pausing, setPausing] = useState(false);
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [regions, setRegions] = useState<{ id: string; name: string; state: string | null; country: string }[]>([]);
+  const [regionId, setRegionId] = useState<string>('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [loadingVenue, setLoadingVenue] = useState(true);
   const [merchantName, setMerchantName] = useState<string>('');
@@ -110,6 +112,14 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
     }
     resolveParams();
   }, [params]);
+
+  // 加载 regions
+  useEffect(() => {
+    fetch('/api/admin/regions')
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.data) setRegions(d.data); })
+      .catch(() => {});
+  }, []);
 
   // Load event data
   useEffect(() => {
@@ -174,6 +184,10 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           setPosterPreview(event.posterUrl);
         }
 
+        // Set region（event.region?.id 或 venue.region_id，兼容旧数据）
+        const rid = event.region?.id || event.venue?.region_id || '';
+        setRegionId(rid);
+
         // Set venue
         if (event.venue) {
           setVenueId(event.venue.id);
@@ -181,7 +195,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
             id: event.venue.id,
             name: event.venue.name,
             address: event.venue.address,
-            region_id: event.region?.id || null,
+            region_id: event.region?.id || event.venue?.region_id || null,
             region: event.region || null,
             merchant: event.merchant || { id: '', name: '' },
           });
@@ -240,9 +254,9 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           setRefundPolicy(event.refundPolicy as any);
         }
 
-        // Load venues
+        // Load venues（按 region 过滤）
         if (event.merchant?.id) {
-          await loadAllVenues(event.merchant.id);
+          await loadAllVenues(rid || undefined, event.merchant.id);
         }
       } catch (err: any) {
         console.error('[EditEventPage] Error loading event:', err);
@@ -260,7 +274,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
   // Track unsaved changes
   useEffect(() => {
     setHasUnsavedChanges(true);
-  }, [title, subtitle, description, venueId, startDate, startTime, endDate, endTime, ticketTypes, refundPolicy]);
+  }, [title, subtitle, description, regionId, venueId, startDate, startTime, endDate, endTime, ticketTypes, refundPolicy]);
 
   // Handle cross-day events: if end_time < start_time, auto-adjust end_date
   useEffect(() => {
@@ -305,22 +319,20 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
     }
   }, [startDate, startTime, endDate, endTime, redeemStartDate, redeemWindowInitialized]);
 
-  const loadAllVenues = async (merchantIdParam?: string) => {
+  // 加载该 merchant 下的 venues；regionIdParam 过滤只显示该 region 的 venues；merchantIdParam 用于初次加载时传入
+  const loadAllVenues = async (regionIdParam?: string, merchantIdParam?: string) => {
     const targetMerchantId = merchantIdParam || merchantId;
     if (!targetMerchantId) return;
-    
+    const url = `/api/admin/venues?merchant_id=${targetMerchantId}` + (regionIdParam ? `&region_id=${regionIdParam}` : '');
     try {
-      const res = await fetch(`/api/admin/venues?merchant_id=${targetMerchantId}`);
-      
+      const res = await fetch(url);
       if (!res.ok) {
         const errorText = await res.text();
         console.error('[EditEventPage] Venues API error:', res.status, errorText);
         setVenues([]);
         return;
       }
-      
       const data = await res.json();
-      
       if (data.success && data.data) {
         setVenues(data.data);
       } else {
@@ -572,6 +584,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
     const errors: string[] = [];
 
     if (!title.trim()) errors.push('Event title is required');
+    if (!regionId) errors.push('Region is required');
     if (!venueId) {
       errors.push('Venue is required. Please select a venue.');
     }
@@ -662,6 +675,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           description: description.trim() || null,
           poster_url: posterUrl || null,
           venue_id: venueId || null,
+          region_id: regionId || undefined,
           start_at: startDateTime?.toISOString() || null,
           end_at: endDateTime?.toISOString() || null,
           redeem_start_at: validRedeemStart?.toISOString() || null,
@@ -747,6 +761,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           description: description.trim() || null,
           poster_url: posterUrl || null,
           venue_id: venueId,
+          region_id: regionId || undefined,
           start_at: startDateTime.toISOString(),
           end_at: endDateTime.toISOString(),
           redeem_start_at: redeemStart?.toISOString() || null,
@@ -1014,6 +1029,31 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
         <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">② Venue & Basics</h3>
           
+          {/* Region：先选 Region，Venue 仅显示该 region 下的 */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Region <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={regionId}
+              onChange={(e) => {
+                const v = e.target.value;
+                setRegionId(v);
+                setVenueId('');
+                setSelectedVenue(null);
+                setHasUnsavedChanges(true);
+                setLoadingVenue(true);
+                loadAllVenues(v || undefined).finally(() => setLoadingVenue(false));
+              }}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Select region...</option>
+              {regions.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+          </div>
+
           {loadingVenue ? (
             <div className="flex items-center justify-center p-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1109,7 +1149,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">③ Event Time</h3>
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              Timezone: <span className="font-medium">{selectedVenue?.region?.name || 'America/New_York'}</span>
+              Timezone: <span className="font-medium">{regions.find(r => r.id === regionId)?.name || selectedVenue?.region?.name || 'America/New_York'}</span>
             </span>
           </div>
           <div className="grid grid-cols-2 gap-4">

@@ -39,6 +39,7 @@ export async function POST(
       description,
       poster_url,
       venue_id,
+      region_id: body_region_id,
       start_at,
       end_at,
       redeem_start_at,
@@ -210,10 +211,20 @@ export async function POST(
         );
       }
       venue = venueData;
-      // 使用venue的region_id（优先级更高）
-      if (venue.region_id) {
+      // 若 body 显式传了 region_id，须与 venue.region_id 一致
+      if (body_region_id && venue.region_id !== body_region_id) {
+        return NextResponse.json(
+          { success: false, code: 'VALIDATION_ERROR', message: 'Venue must belong to the selected region' },
+          { status: 400 }
+        );
+      }
+      if (body_region_id) {
+        finalRegionId = body_region_id;
+      } else if (venue.region_id) {
         finalRegionId = venue.region_id;
       }
+    } else if (body_region_id) {
+      finalRegionId = body_region_id;
     }
     
     // 构建event数据

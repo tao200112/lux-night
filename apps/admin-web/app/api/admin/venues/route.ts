@@ -19,6 +19,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 // Zod schema for query validation
 const VenuesQuerySchema = z.object({
   merchant_id: z.string().uuid().optional(),
+  region_id: z.string().uuid().optional(),
 });
 
 // Response type
@@ -107,6 +108,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const queryParams = {
       merchant_id: searchParams.get('merchant_id') || undefined,
+      region_id: searchParams.get('region_id') || undefined,
     };
     
     const validationResult = VenuesQuerySchema.safeParse(queryParams);
@@ -125,7 +127,7 @@ export async function GET(req: NextRequest) {
       );
     }
     
-    const { merchant_id } = validationResult.data;
+    const { merchant_id, region_id } = validationResult.data;
     
     // 3. 使用admin client查询venues（绕过RLS）
     let adminClient;
@@ -183,8 +185,8 @@ export async function GET(req: NextRequest) {
         );
       }
       
-      // 如果有default_venue_id，优先返回它
-      if (merchant?.default_venue_id) {
+      // 如果有 default_venue_id 且未按 region 过滤，优先返回它
+      if (merchant?.default_venue_id && !region_id) {
         const { data: defaultVenue, error: venueError } = await adminClient
           .from('venues')
           .select(`
@@ -283,12 +285,13 @@ export async function GET(req: NextRequest) {
       // 查询venues（包含region信息）
       let venues;
       try {
-        const { data: venuesData, error: queryError } = await adminClient
+        let venuesQuery = adminClient
           .from('venues')
           .select('id, name, address, merchant_id, region_id')
           .eq('merchant_id', merchant_id)
-          .eq('is_active', true)
-          .order('name');
+          .eq('is_active', true);
+        if (region_id) venuesQuery = venuesQuery.eq('region_id', region_id);
+        const { data: venuesData, error: queryError } = await venuesQuery.order('name');
         
         if (queryError) {
           console.error('[ADMIN VENUES API] Venues query error:', JSON.stringify(queryError, null, 2));

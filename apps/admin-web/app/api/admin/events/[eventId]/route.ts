@@ -183,6 +183,7 @@ const UpdateEventSchema = z.object({
   description: z.string().nullable().optional(),
   poster_url: z.string().nullable().optional(),
   venue_id: z.string().uuid().nullable().optional(),
+  region_id: z.string().uuid().optional(),
   start_at: z.string().datetime().optional(),
   end_at: z.string().datetime().optional(),
   redeem_start_at: z.string().datetime().nullable().optional(),
@@ -262,7 +263,15 @@ export async function PUT(
           { status: 400 }
         );
       }
-      
+      if (data.region_id && data.venue_id) {
+        const { data: v } = await supabase.from('venues').select('region_id').eq('id', data.venue_id).single();
+        if (v && v.region_id !== data.region_id) {
+          return NextResponse.json(
+            { success: false, code: 'VALIDATION_ERROR', message: 'Venue must belong to the selected region' },
+            { status: 400 }
+          );
+        }
+      }
       if (!data.start_at || !data.end_at) {
         return NextResponse.json(
           { success: false, code: 'VALIDATION_ERROR', message: 'Start and end times are required for publishing' },
@@ -311,6 +320,7 @@ export async function PUT(
     if (data.description !== undefined) updateData.description = data.description?.trim() || null;
     if (data.poster_url !== undefined) updateData.poster_url = data.poster_url;
     if (data.venue_id !== undefined) updateData.venue_id = data.venue_id;
+    if (data.region_id !== undefined) updateData.region_id = data.region_id;
     if (data.start_at !== undefined) updateData.start_at = data.start_at;
     if (data.end_at !== undefined) updateData.end_at = data.end_at;
     if (data.redeem_start_at !== undefined) updateData.redeem_start_at = data.redeem_start_at;
