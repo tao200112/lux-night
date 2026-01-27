@@ -1,5 +1,5 @@
 /**
- * GET /api/admin/events/[eventId]
+ * GET /api/admin/events/[id]
  * Admin Event Detail API
  */
 
@@ -10,10 +10,10 @@ import { z } from 'zod';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ eventId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { eventId } = await params;
+    const { id } = await params;
     const supabase = await createClient();
     
     // 检查 Admin 权限
@@ -56,7 +56,7 @@ export async function GET(
         ),
         event_weekly_rules(*)
       `)
-      .eq('id', eventId)
+      .eq('id', id)
       .single();
     
     if (eventError || !event) {
@@ -73,19 +73,19 @@ export async function GET(
         *,
         ticket_type_prices(*)
       `)
-      .eq('event_id', eventId)
+      .eq('event_id', id)
       .order('sort_order', { ascending: true });
     
     // 获取订单统计
     const { count: totalOrders } = await supabase
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('event_id', eventId);
+      .eq('event_id', id);
     
     const { data: revenueOrders } = await supabase
       .from('orders')
       .select('total_cents')
-      .eq('event_id', eventId)
+      .eq('event_id', id)
       .eq('status', 'completed');
     
     const totalRevenue = (revenueOrders || []).reduce((sum, order) => sum + (order.total_cents || 0), 0);
@@ -94,7 +94,7 @@ export async function GET(
     const { count: redeemedTickets } = await supabase
       .from('checkins')
       .select('*', { count: 'exact', head: true })
-      .eq('event_id', eventId);
+      .eq('event_id', id);
     
     return NextResponse.json({
       success: true,
@@ -231,10 +231,10 @@ const UpdateEventSchema = z.object({
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ eventId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { eventId } = await params;
+    const { id } = await params;
     const supabase = await createClient();
     
     // 检查 Admin 权限
@@ -365,7 +365,7 @@ export async function PUT(
     const { data: updatedEvent, error: updateError } = await adminClient
       .from('events')
       .update(updateData)
-      .eq('id', eventId)
+      .eq('id', id)
       .select()
       .single();
     
@@ -380,11 +380,11 @@ export async function PUT(
     // 更新Weekly Schedule Rules
     if (data.weekly_schedule_rules !== undefined) {
          // 先删除旧规则
-         await adminClient.from('event_weekly_rules').delete().eq('event_id', eventId);
+         await adminClient.from('event_weekly_rules').delete().eq('event_id', id);
          
          if (data.weekly_schedule_rules && data.weekly_schedule_rules.length > 0) {
              const rulesToInsert = data.weekly_schedule_rules.map(rule => ({
-                 event_id: eventId,
+                 event_id: id,
                  day_of_week: rule.day_of_week,
                  is_on_sale: rule.is_on_sale,
                  valid_from_time: rule.valid_from_time,
@@ -401,7 +401,7 @@ export async function PUT(
       const { data: existingTicketTypes } = await adminClient
         .from('ticket_types')
         .select('id, sold_count')
-        .eq('event_id', eventId);
+        .eq('event_id', id);
       
       const existingIds = new Set((existingTicketTypes || []).map((tt: any) => tt.id));
       const existingSoldCounts = new Map((existingTicketTypes || []).map((tt: any) => [tt.id, tt.sold_count || 0]));
@@ -432,7 +432,7 @@ export async function PUT(
       // 更新或插入票种
       for (const tt of newTicketTypes) {
         const ticketData: any = {
-          event_id: eventId,
+          event_id: id,
           name: tt.name,
           description: tt.description || null,
           category: tt.category,

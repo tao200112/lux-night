@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/events/[eventId]/pricing
+ * POST /api/admin/events/[id]/pricing
  * Admin Override Event Pricing API
  * 管理员直接修改票价/库存（必须写 audit_logs 和 reason）
  */
@@ -9,10 +9,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ eventId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { eventId } = await params;
+    const { id } = await params;
     const body = await request.json();
     const { ticketTypeId, priceCents, inventoryLimit, reason } = body;
     
@@ -54,7 +54,7 @@ export async function POST(
       .from('ticket_types')
       .select('*')
       .eq('id', ticketTypeId)
-      .eq('event_id', eventId)
+      .eq('event_id', id)
       .single();
     
     if (ticketTypeError || !ticketType) {
@@ -100,7 +100,7 @@ export async function POST(
       p_before_state: beforeState,
       p_after_state: afterState,
       p_metadata: {
-        event_id: eventId,
+        event_id: id,
         reason,
         admin_user_id: user.id,
       },
