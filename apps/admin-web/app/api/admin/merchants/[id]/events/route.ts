@@ -280,6 +280,18 @@ export async function POST(
     if (createError || !event) {
       console.error('[ADMIN CREATE EVENT] Error:', createError);
       
+      // 检查是否是 venue_id NOT NULL 约束（表明数据库迁移未执行）
+      if (createError?.code === '23502' && createError?.message?.includes('venue_id')) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            code: 'NEED_VENUE', 
+            message: 'Cannot save draft: venue_id is required. This may indicate the database migration has not been applied. Please contact support or apply migration 031_fix_event_draft_without_venue.sql.' 
+          },
+          { status: 400 }
+        );
+      }
+      
       // 检查是否是触发器抛出的 check_violation（region 不一致）
       if (createError?.code === '23514' || createError?.message?.includes('Consistency violation')) {
         return NextResponse.json(
