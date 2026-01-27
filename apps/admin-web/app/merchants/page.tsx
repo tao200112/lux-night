@@ -64,6 +64,10 @@ export default function AdminMerchantsPage() {
   }, [searchQuery, selectedRegion, selectedStatus]);
   
   const fetchMerchants = async () => {
+    // Create AbortController for 10s timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     try {
       setLoading(true);
       setError(null);
@@ -73,7 +77,25 @@ export default function AdminMerchantsPage() {
       if (selectedRegion) params.set('region', selectedRegion);
       if (selectedStatus) params.set('status', selectedStatus);
       
-      const response = await fetch(`/api/admin/merchants?${params.toString()}`);
+      const response = await fetch(`/api/admin/merchants?${params.toString()}`, {
+        signal: controller.signal,
+        cache: 'no-store', // Prevent Next.js caching issues
+      });
+
+      clearTimeout(timeoutId);
+      
+      // Handle 401 Unauthorized
+      if (response.status === 401) {
+        setError('Unauthorized. Please log in again.');
+        return;
+      }
+
+      // Handle other HTTP errors
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({ message: `HTTP ${response.status}` }));
+        throw new Error(result.message || result.error || `Server error (${response.status})`);
+      }
+
       const result = await response.json();
       
       if (!result.ok && !result.success) {
@@ -84,9 +106,16 @@ export default function AdminMerchantsPage() {
       setRegions(result.data?.regions || []);
     } catch (err: any) {
       console.error('[ADMIN MERCHANTS] Error:', err);
-      setError(err.message);
+      
+      // Handle abort/timeout
+      if (err.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(err.message || 'Failed to load merchants');
+      }
     } finally {
-      setLoading(false);
+      clearTimeout(timeoutId);
+      setLoading(false); // CRITICAL: Always stop loading
     }
   };
   

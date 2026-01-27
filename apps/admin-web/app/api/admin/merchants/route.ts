@@ -45,6 +45,7 @@ const TIMEOUT_MS = 10000; // 10秒超时
 // ============================================================
 
 export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
+  const debugId = randomUUID().substring(0, 8);
   let step = 'init';
 
   try {
@@ -116,6 +117,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
           code: 'QUERY_ERROR',
           message: merchantsError.message,
           step,
+          debugId,
         },
         { status: 500 }
       );
@@ -163,17 +165,26 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     }));
 
     step = 'success';
-    return NextResponse.json<ApiResponse>({
+    
+    // Add cache-control headers to prevent RSC caching
+    const response = NextResponse.json<ApiResponse>({
       ok: true,
       data: {
         merchants: merchantsWithStats,
         regions: regions || [],
       },
       step,
+      debugId,
     });
+
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    
+    return response;
 
   } catch (error: any) {
     console.error('[ADMIN MERCHANTS GET] Error:', {
+      debugId,
       step,
       error: error.message,
       stack: error.stack,
@@ -188,6 +199,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
           code: 'TIMEOUT',
           message: error.message,
           step,
+          debugId,
         },
         { status: 504 }
       );
@@ -201,6 +213,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         code: 'INTERNAL_ERROR',
         message: error.message || 'Unexpected error',
         step,
+        debugId,
       },
       { status: 500 }
     );

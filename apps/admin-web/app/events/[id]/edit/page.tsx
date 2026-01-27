@@ -11,6 +11,9 @@ import { useRouter } from 'next/navigation';
 import AdminTopBar from '@/components/admin/AdminTopBar';
 import AdminButton from '@/components/admin/AdminButton';
 
+import WeeklyScheduleEditor, { WeeklyRule } from '@/components/admin/WeeklyScheduleEditor';
+import TicketDayPricingEditor, { DayPrice } from '@/components/admin/TicketDayPricingEditor';
+
 interface Venue {
   id: string;
   name: string;
@@ -43,6 +46,7 @@ interface TicketType {
   redeem_start_at_override: string | null;
   redeem_end_at_override: string | null;
   sold_count?: number; // 已售出数量（用于判断是否可以删除）
+  day_prices?: DayPrice[];
 }
 
 interface EventStats {
@@ -100,6 +104,11 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [editingTicketType, setEditingTicketType] = useState<TicketType | null>(null);
   const [showTicketTypeModal, setShowTicketTypeModal] = useState(false);
+  
+  // Weekly Schedule & Pricing
+  const [scheduleMode, setScheduleMode] = useState<'single' | 'weekly'>('single');
+  const [weeklyRules, setWeeklyRules] = useState<WeeklyRule[]>([]);
+  const [pricingTicketId, setPricingTicketId] = useState<string | null>(null);
 
   // Section 6: Policies
   const [refundPolicy, setRefundPolicy] = useState<'no_refund' | '24h' | 'flexible' | 'venue_policy' | 'UNTIL_START' | 'CUSTOM'>('no_refund');
@@ -227,6 +236,13 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           setRedeemWindowInitialized(true);
         }
 
+        if (event.weeklyRules && event.weeklyRules.length > 0) {
+           setWeeklyRules(event.weeklyRules);
+           setScheduleMode('weekly');
+        } else {
+           setScheduleMode('single');
+        }
+
         // Set ticket types (priceCents from API is in cents, convert to dollars for display)
         if (event.ticketTypes && Array.isArray(event.ticketTypes)) {
           setTicketTypes(event.ticketTypes.map((tt: any) => ({
@@ -246,6 +262,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
             redeem_start_at_override: tt.redeemStartAtOverride || null,
             redeem_end_at_override: tt.redeemEndAtOverride || null,
             sold_count: tt.soldCount || 0, // 已售出数量
+            day_prices: tt.dayPrices || [],
           })));
         }
 
@@ -428,6 +445,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     } else if (template === '21_PLUS') {
       newTicket = {
@@ -445,6 +463,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     } else if (template === 'DRINK') {
       newTicket = {
@@ -462,6 +481,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     } else if (template === 'SKIP_LINE') {
       newTicket = {
@@ -479,6 +499,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     } else {
       newTicket = {
@@ -496,6 +517,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     }
 
@@ -618,6 +640,19 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
     return errors;
   };
 
+  const saveTicketDayPricing = (dayPrices: DayPrice[]) => {
+    if (!pricingTicketId) return;
+
+    setTicketTypes(prev => prev.map(tt => {
+      if (tt.id === pricingTicketId) {
+        return { ...tt, day_prices: dayPrices };
+      }
+      return tt;
+    }));
+    setPricingTicketId(null); // Close modal
+    setHasUnsavedChanges(true); // Mark as unsaved
+  };
+
   const handleSaveDraft = async () => {
     if (!eventId) return;
 
@@ -682,6 +717,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           redeem_end_at: validRedeemEnd?.toISOString() || null,
           refund_policy: refundPolicy,
           published_status: 'DRAFT',
+          weekly_schedule_rules: scheduleMode === 'weekly' ? weeklyRules : [],
           ticket_types: ticketTypes.map(tt => ({
             id: tt.id,
             name: tt.name,
@@ -698,6 +734,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
             redeem_limit: tt.redeem_limit,
             redeem_start_at_override: tt.redeem_start_at_override,
             redeem_end_at_override: tt.redeem_end_at_override,
+            day_prices: tt.day_prices || [],
           })),
         }),
       });
@@ -768,6 +805,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
           redeem_end_at: redeemEnd?.toISOString() || null,
           refund_policy: refundPolicy,
           published_status: 'PUBLISHED',
+          weekly_schedule_rules: scheduleMode === 'weekly' ? weeklyRules : [],
           ticket_types: ticketTypes.map(tt => ({
             id: tt.id,
             name: tt.name,
@@ -784,6 +822,7 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
             redeem_limit: tt.redeem_limit,
             redeem_start_at_override: tt.redeem_start_at_override,
             redeem_end_at_override: tt.redeem_end_at_override,
+            day_prices: tt.day_prices || [],
           })),
         }),
       });
@@ -1139,15 +1178,48 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
         {/* Section 3: Event Time */}
         <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">③ Event Time</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">③ Event Time & Schedule</h3>
             <span className="text-xs text-slate-500 dark:text-slate-400">
               Timezone: <span className="font-medium">{regions.find(r => r.id === regionId)?.name || selectedVenue?.region?.name || 'America/New_York'}</span>
             </span>
           </div>
+
+          {/* Schedule Mode Toggle */}
+          <div className="flex p-1 bg-slate-100 dark:bg-slate-700/50 rounded-lg mb-6 w-fit">
+            <button
+               type="button"
+               onClick={() => {
+                 setScheduleMode('single');
+                 setHasUnsavedChanges(true);
+               }}
+               className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                 scheduleMode === 'single'
+                   ? 'bg-white dark:bg-slate-600 text-primary shadow-sm'
+                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+               }`}
+            >
+              Single Event
+            </button>
+            <button
+               type="button"
+               onClick={() => {
+                 setScheduleMode('weekly');
+                 setHasUnsavedChanges(true);
+               }}
+               className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                 scheduleMode === 'weekly'
+                   ? 'bg-white dark:bg-slate-600 text-primary shadow-sm'
+                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+               }`}
+            >
+              Weekly Schedule
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Start Date <span className="text-red-500">*</span>
+                {scheduleMode === 'weekly' ? 'Validity Start Date' : 'Start Date'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
@@ -1160,24 +1232,28 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
                 required
               />
             </div>
+            
+            {scheduleMode === 'single' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Start Time <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => {
+                    setStartTime(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Start Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => {
-                  setStartTime(e.target.value);
-                  setHasUnsavedChanges(true);
-                }}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                End Date <span className="text-red-500">*</span>
+                {scheduleMode === 'weekly' ? 'Validity End Date' : 'End Date'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
@@ -1190,24 +1266,44 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                End Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => {
-                  setEndTime(e.target.value);
-                  setHasUnsavedChanges(true);
-                }}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
+            
+            {scheduleMode === 'single' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  End Time <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => {
+                    setEndTime(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+              </div>
+            )}
           </div>
-          {/* Cross-day indicator */}
-          {startDate && startTime && endDate && endTime && (() => {
+          
+          {scheduleMode === 'weekly' && (
+             <div className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <WeeklyScheduleEditor
+                    eventId={eventId} 
+                    scheduleMode="weekly"
+                    onScheduleModeChange={() => {}} 
+                    mode="local"
+                    initialRules={weeklyRules}
+                    onRulesChange={(rules) => {
+                        setWeeklyRules(rules);
+                        setHasUnsavedChanges(true);
+                    }}
+                />
+             </div>
+          )}
+
+          {/* Cross-day indicator (Only for single mode) */}
+          {scheduleMode === 'single' && startDate && startTime && endDate && endTime && (() => {
             const start = new Date(`${startDate}T${startTime}`);
             const end = new Date(`${endDate}T${endTime}`);
             if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
@@ -1416,6 +1512,13 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => setPricingTicketId(tt.id || null)}
+                          className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                          title="Edit Day Pricing"
+                        >
+                          <span className="material-symbols-outlined text-sm">attach_money</span>
+                        </button>
+                        <button
                           onClick={() => editTicketType(tt)}
                           className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
                           title="Edit ticket type"
@@ -1577,6 +1680,19 @@ function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }>
             setShowTicketTypeModal(false);
             setEditingTicketType(null);
           }}
+        />
+      )}
+      
+      {/* Pricing Editor Modal */}
+       {!!pricingTicketId && (
+        <TicketDayPricingEditor
+          ticketTypeId={pricingTicketId}
+          defaultPriceCents={ticketTypes.find(t => t.id === pricingTicketId)?.price_cents || 0}
+          isOpen={!!pricingTicketId}
+          onClose={() => setPricingTicketId(null)}
+          mode="local"
+          initialPrices={ticketTypes.find(t => t.id === pricingTicketId)?.day_prices || []}
+          onSave={saveTicketDayPricing}
         />
       )}
     </div>

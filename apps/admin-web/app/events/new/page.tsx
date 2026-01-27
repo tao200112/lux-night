@@ -10,6 +10,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AdminTopBar from '@/components/admin/AdminTopBar';
 import AdminButton from '@/components/admin/AdminButton';
+import WeeklyScheduleEditor, { WeeklyRule } from '@/components/admin/WeeklyScheduleEditor';
+import TicketDayPricingEditor, { DayPrice } from '@/components/admin/TicketDayPricingEditor';
 
 interface Venue {
   id: string;
@@ -42,6 +44,7 @@ interface TicketType {
   redeem_limit: number;
   redeem_start_at_override: string | null;
   redeem_end_at_override: string | null;
+  day_prices?: DayPrice[];
 }
 
 function AdminCreateEventPageContent() {
@@ -88,6 +91,11 @@ function AdminCreateEventPageContent() {
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [editingTicketType, setEditingTicketType] = useState<TicketType | null>(null);
   const [showTicketTypeModal, setShowTicketTypeModal] = useState(false);
+  
+  // Weekly Schedule & Pricing
+  const [scheduleMode, setScheduleMode] = useState<'single' | 'weekly'>('single');
+  const [weeklyRules, setWeeklyRules] = useState<WeeklyRule[]>([]);
+  const [pricingTicketId, setPricingTicketId] = useState<string | null>(null); // ID of ticket being edited for pricing
 
   // Section 6: Policies
   const [refundPolicy, setRefundPolicy] = useState<'no_refund' | '24h' | 'flexible' | 'venue_policy' | 'UNTIL_START' | 'CUSTOM'>('no_refund');
@@ -341,6 +349,7 @@ function AdminCreateEventPageContent() {
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     } else if (template === '21_PLUS') {
       newTicket = {
@@ -358,6 +367,7 @@ function AdminCreateEventPageContent() {
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     } else if (template === 'DRINK') {
       newTicket = {
@@ -375,6 +385,7 @@ function AdminCreateEventPageContent() {
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     } else if (template === 'SKIP_LINE') {
       newTicket = {
@@ -392,6 +403,7 @@ function AdminCreateEventPageContent() {
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     } else {
       newTicket = {
@@ -409,6 +421,7 @@ function AdminCreateEventPageContent() {
         redeem_limit: 1,
         redeem_start_at_override: null,
         redeem_end_at_override: null,
+        day_prices: [],
       };
     }
 
@@ -441,6 +454,16 @@ function AdminCreateEventPageContent() {
 
     setShowTicketTypeModal(false);
     setEditingTicketType(null);
+  };
+  
+  const saveTicketDayPricing = (prices: DayPrice[]) => {
+    if (!pricingTicketId) return;
+    setTicketTypes(prev => prev.map(tt => {
+      if (tt.id === pricingTicketId) {
+        return { ...tt, day_prices: prices };
+      }
+      return tt;
+    }));
   };
 
   const deleteTicketType = (id: string) => {
@@ -486,17 +509,26 @@ function AdminCreateEventPageContent() {
     if (!venueId) {
       errors.push('Venue is required. Please bind a venue to this merchant first.');
     }
-    if (!startDate || !startTime) errors.push('Start date and time are required');
-    if (!endDate || !endTime) errors.push('End date and time are required');
+    if (!startDate) errors.push('Start date is required');
+    if (!endDate) errors.push('End date is required');
+    if (scheduleMode === 'single') {
+        if (!startTime) errors.push('Start time is required');
+        if (!endTime) errors.push('End time is required');
+    }
 
     // 验证时间
-    if (startDate && startTime && endDate && endTime) {
-      const start = new Date(`${startDate}T${startTime}`);
-      const end = new Date(`${endDate}T${endTime}`);
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        errors.push('Invalid date format');
-      } else if (end <= start) {
-        errors.push('End time must be after start time');
+    if (startDate && endDate) {
+      const startT = scheduleMode === 'single' ? startTime : '00:00';
+      const endT = scheduleMode === 'single' ? endTime : '23:59';
+      
+      if (startT && endT) {
+        const start = new Date(`${startDate}T${startT}`);
+        const end = new Date(`${endDate}T${endT}`);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            errors.push('Invalid date format');
+        } else if (end <= start) {
+            errors.push('End time must be after start time');
+        }
       }
     }
 
@@ -586,6 +618,7 @@ function AdminCreateEventPageContent() {
           // region_id 由 DB trigger 自动从 venue 继承，不需要传入
           start_at: startDateTime?.toISOString() || null,
           end_at: endDateTime?.toISOString() || null,
+          weekly_schedule_rules: scheduleMode === 'weekly' ? weeklyRules : null,
           redeem_start_at: validRedeemStart?.toISOString() || null,
           redeem_end_at: validRedeemEnd?.toISOString() || null,
           refund_policy: refundPolicy,
@@ -669,6 +702,7 @@ function AdminCreateEventPageContent() {
           // region_id 由 DB trigger 自动从 venue 继承，不需要传入
           start_at: startDateTime.toISOString(),
           end_at: endDateTime.toISOString(),
+          weekly_schedule_rules: scheduleMode === 'weekly' ? weeklyRules : null,
           redeem_start_at: redeemStart?.toISOString() || null,
           redeem_end_at: redeemEnd?.toISOString() || null,
           refund_policy: refundPolicy,
@@ -698,6 +732,7 @@ function AdminCreateEventPageContent() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
       <AdminTopBar title="Create Event" showBack />
       
@@ -993,15 +1028,42 @@ function AdminCreateEventPageContent() {
         {/* Section 3: Event Time */}
         <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">③ Event Time</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">③ Event Time & Schedule</h3>
             <span className="text-xs text-slate-500 dark:text-slate-400">
               Timezone: <span className="font-medium">America/New_York</span>
             </span>
           </div>
+
+          {/* Schedule Mode Toggle */}
+          <div className="flex p-1 bg-slate-100 dark:bg-slate-700/50 rounded-lg mb-6 w-fit">
+            <button
+               type="button"
+               onClick={() => setScheduleMode('single')}
+               className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                 scheduleMode === 'single'
+                   ? 'bg-white dark:bg-slate-600 text-primary shadow-sm'
+                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+               }`}
+            >
+              Single Event
+            </button>
+            <button
+               type="button"
+               onClick={() => setScheduleMode('weekly')}
+               className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                 scheduleMode === 'weekly'
+                   ? 'bg-white dark:bg-slate-600 text-primary shadow-sm'
+                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+               }`}
+            >
+              Weekly Schedule
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Start Date <span className="text-red-500">*</span>
+                {scheduleMode === 'weekly' ? 'Validity Start Date' : 'Start Date'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
@@ -1011,21 +1073,25 @@ function AdminCreateEventPageContent() {
                 required
               />
             </div>
+            
+            {scheduleMode === 'single' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Start Time <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Start Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                End Date <span className="text-red-500">*</span>
+                {scheduleMode === 'weekly' ? 'Validity End Date' : 'End Date'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
@@ -1035,19 +1101,35 @@ function AdminCreateEventPageContent() {
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                End Time <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
+
+            {scheduleMode === 'single' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  End Time <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white h-12 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+              </div>
+            )}
           </div>
+          
+          {scheduleMode === 'weekly' && (
+             <div className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-4">
+                <WeeklyScheduleEditor
+                    eventId="" 
+                    scheduleMode="weekly"
+                    onScheduleModeChange={() => {}} 
+                    mode="local"
+                    initialRules={weeklyRules}
+                    onRulesChange={setWeeklyRules}
+                />
+             </div>
+          )}
         </section>
 
         {/* Section 4: Ticket Redemption Window */}
@@ -1230,6 +1312,14 @@ function AdminCreateEventPageContent() {
                       >
                         <span className="material-symbols-outlined text-sm">delete</span>
                       </button>
+                      <button
+                        onClick={() => setPricingTicketId(tt.id!)}
+                        className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-1"
+                        title="Edit Day Pricing"
+                      >
+                         <span className="material-symbols-outlined text-sm">calendar_month</span>
+                         <span className="text-xs font-medium">Pricing</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1317,6 +1407,19 @@ function AdminCreateEventPageContent() {
         />
       )}
     </div>
+      {/* Pricing Editor Modal */}
+       {!!pricingTicketId && (
+        <TicketDayPricingEditor
+          ticketTypeId={pricingTicketId}
+          defaultPriceCents={ticketTypes.find(t => t.id === pricingTicketId)?.price_cents || 0}
+          isOpen={!!pricingTicketId}
+          onClose={() => setPricingTicketId(null)}
+          mode="local"
+          initialPrices={ticketTypes.find(t => t.id === pricingTicketId)?.day_prices}
+          onSave={saveTicketDayPricing}
+        />
+      )}
+    </>
   );
 }
 
@@ -1537,6 +1640,8 @@ function TicketTypeModal({
           </div>
         </div>
       </div>
+      </div>
+
     </>
   );
 }

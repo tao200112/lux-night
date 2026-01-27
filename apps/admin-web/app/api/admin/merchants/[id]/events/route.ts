@@ -302,14 +302,34 @@ export async function POST(
       );
     }
     
-    // 创建票种（如果有）
+    // Create weekly schedule rules (if provided)
+    if (body.weekly_schedule_rules && Array.isArray(body.weekly_schedule_rules)) {
+      const rulesData = body.weekly_schedule_rules.map((rule: any) => ({
+        event_id: event.id,
+        day_of_week: rule.day_of_week,
+        is_on_sale: rule.is_on_sale,
+        valid_from_time: rule.valid_from_time,
+        valid_to_time: rule.valid_to_time,
+        timezone: rule.timezone || 'America/Los_Angeles',
+      }));
+      
+      const { error: rulesError } = await supabase
+        .from('event_weekly_rules')
+        .insert(rulesData);
+      
+      if (rulesError) {
+        console.error('[CREATE WEEKLY RULES] Error:', rulesError);
+      }
+    }
+
+    // Create ticket types (if provided)
     if (ticket_types && Array.isArray(ticket_types) && ticket_types.length > 0) {
       const ticketTypesData = ticket_types.map((tt: any, index: number) => ({
         event_id: event.id,
         name: tt.name.trim(),
         description: tt.description?.trim() || null,
         category: tt.category || 'ENTRY',
-        price_cents: Math.round((tt.price_cents || 0) * 100), // 前端传美元，转换为分
+        price_cents: Math.round((tt.price_cents || 0) * 100),
         currency: 'usd',
         quantity_total: tt.quantity_total || null,
         max_per_order: tt.max_per_order || 4,
@@ -323,13 +343,48 @@ export async function POST(
         redeem_end_at_override: tt.redeem_end_at_override ? new Date(tt.redeem_end_at_override).toISOString() : null,
       }));
       
-      const { error: ticketTypesError } = await supabase
+      const { data: createdTickets, error: ticketTypesError } = await supabase
         .from('ticket_types')
-        .insert(ticketTypesData);
+        .insert(ticketTypesData)
+        .select('id, name'); // Select ID to map back for pricing
       
       if (ticketTypesError) {
         console.error('[CREATE TICKET TYPES] Error:', ticketTypesError);
-        // 不失败整个请求，只记录错误
+      } else if (createdTickets) {
+        // Handle per-day pricing for tickets
+        // We assume the order is preserved. If not, we might need another way to match, 
+        // effectively matching by name + event_id if unique, or just trust the index.
+        // For robustness, let's just loop if we can't trust order? 
+        // Supabase `insert` with array generally preserves order.
+        
+        const allPriceInserts = [];
+        
+        for (let i = 0; i < createdTickets.length; i++) {
+          const originalTicket = ticket_types[i];
+          const createdTicket = createdTickets[i];
+          
+          if (originalTicket.day_prices && Array.isArray(originalTicket.day_prices)) {
+             for (const price of originalTicket.day_prices) {
+               allPriceInserts.push({
+                 ticket_type_id: createdTicket.id,
+                 day_of_week: price.day_of_week,
+                 is_enabled: price.is_enabled,
+                 price_cents: Math.round((price.price_cents || 0) * 100), // Convert to cents
+                 quantity_limit: price.quantity_limit
+               });
+             }
+          }
+        }
+        
+        if (allPriceInserts.length > 0) {
+          const { error: priceError } = await supabase
+            .from('ticket_type_prices')
+            .insert(allPriceInserts);
+            
+          if (priceError) {
+            console.error('[CREATE TICKET PRICES] Error:', priceError);
+          }
+        }
       }
     }
     

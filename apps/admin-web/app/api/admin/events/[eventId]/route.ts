@@ -53,7 +53,8 @@ export async function GET(
           name,
           address,
           region_id
-        )
+        ),
+        event_weekly_rules(*)
       `)
       .eq('id', eventId)
       .single();
@@ -68,7 +69,10 @@ export async function GET(
     // 获取票务类型（包含所有字段和已售出数量）
     const { data: ticketTypes, error: ticketTypesError } = await supabase
       .from('ticket_types')
-      .select('*')
+      .select(`
+        *,
+        ticket_type_prices(*)
+      `)
       .eq('event_id', eventId)
       .order('sort_order', { ascending: true });
     
@@ -135,6 +139,7 @@ export async function GET(
             region_id: venueData.region_id,
           } : null;
         })(),
+        weeklyRules: event.event_weekly_rules || [],
         ticketTypes: (ticketTypes || []).map((tt: any) => ({
           id: tt.id,
           name: tt.name,
@@ -156,6 +161,7 @@ export async function GET(
           redeemLimit: tt.redeem_limit || 1,
           redeemStartAtOverride: tt.redeem_start_at_override,
           redeemEndAtOverride: tt.redeem_end_at_override,
+          dayPrices: tt.ticket_type_prices || [],
         })),
         stats: {
           totalOrders: totalOrders || 0,
@@ -190,6 +196,13 @@ const UpdateEventSchema = z.object({
   redeem_end_at: z.string().datetime().nullable().optional(),
   refund_policy: z.string().optional(),
   published_status: z.enum(['DRAFT', 'PUBLISHED', 'PAUSED', 'CANCELLED']).optional(),
+  weekly_schedule_rules: z.array(z.object({
+    day_of_week: z.number().min(0).max(6),
+    is_on_sale: z.boolean(),
+    valid_from_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+    valid_to_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+    timezone: z.string().optional(),
+  })).nullable().optional(),
   ticket_types: z.array(z.object({
     id: z.string().uuid().optional(),
     name: z.string(),
@@ -207,6 +220,12 @@ const UpdateEventSchema = z.object({
     redeem_limit: z.number().int().min(0).optional(),
     redeem_start_at_override: z.string().datetime().nullable().optional(),
     redeem_end_at_override: z.string().datetime().nullable().optional(),
+    day_prices: z.array(z.object({
+        day_of_week: z.number().min(0).max(6),
+        is_enabled: z.boolean(),
+        price_cents: z.number().int().min(0),
+        quantity_limit: z.number().int().min(0).nullable().optional(),
+    })).optional(),
   })).optional(),
 });
 
@@ -358,7 +377,25 @@ export async function PUT(
       );
     }
     
-    // 更新票种（如果提供了）- 使用增删改策略
+    // 更新Weekly Schedule Rules
+    if (data.weekly_schedule_rules !== undefined) {
+         // 先删除旧规则
+         await adminClient.from('event_weekly_rules').delete().eq('event_id', eventId);
+         
+         if (data.weekly_schedule_rules && data.weekly_schedule_rules.length > 0) {
+             const rulesToInsert = data.weekly_schedule_rules.map(rule => ({
+                 event_id: eventId,
+                 day_of_week: rule.day_of_week,
+                 is_on_sale: rule.is_on_sale,
+                 valid_from_time: rule.valid_from_time,
+                 valid_to_time: rule.valid_to_time,
+                 timezone: rule.timezone || 'America/Los_Angeles'
+             }));
+             await adminClient.from('event_weekly_rules').insert(rulesToInsert);
+         }
+    }
+    
+    // 更新票种
     if (data.ticket_types && Array.isArray(data.ticket_types)) {
       // 获取现有票种（检查已售出数量）
       const { data: existingTicketTypes } = await adminClient
@@ -383,6 +420,8 @@ export async function PUT(
             .eq('id', id);
         } else {
           // 未售出，可以删除
+          // Note: cascading delete might handle ticket_type_prices if configured, but let's be safe
+          await adminClient.from('ticket_type_prices').delete().eq('ticket_type_id', id);
           await adminClient
             .from('ticket_types')
             .delete()
@@ -410,10 +449,10 @@ export async function PUT(
           redeem_end_at_override: tt.redeem_end_at_override || null,
         };
         
+        let currentTicketId = tt.id;
+
         if (tt.id && existingIds.has(tt.id)) {
           // 更新现有票种
-          // 如果已售出，价格修改只影响新订单（通过版本化或只更新新订单逻辑）
-          // 这里简化处理：直接更新，但记录警告
           const soldCount = existingSoldCounts.get(tt.id) || 0;
           if (soldCount > 0) {
             console.warn(`[ADMIN EVENT UPDATE] Ticket type ${tt.id} has ${soldCount} sold tickets. Price change will only affect new orders.`);
@@ -425,9 +464,32 @@ export async function PUT(
             .eq('id', tt.id);
         } else {
           // 插入新票种
-          await adminClient
+          const { data: newTicket, error: insertError } = await adminClient
             .from('ticket_types')
-            .insert(ticketData);
+            .insert(ticketData)
+            .select('id')
+            .single();
+            
+          if (newTicket) {
+              currentTicketId = newTicket.id;
+          }
+        }
+        
+        // Handle day prices
+        if (currentTicketId && tt.day_prices) {
+             // Delete existing prices for this ticket
+             await adminClient.from('ticket_type_prices').delete().eq('ticket_type_id', currentTicketId);
+             
+             if (tt.day_prices.length > 0) {
+                 const pricesToInsert = tt.day_prices.map(p => ({
+                     ticket_type_id: currentTicketId,
+                     day_of_week: p.day_of_week,
+                     is_enabled: p.is_enabled,
+                     price_cents: p.price_cents,
+                     quantity_limit: p.quantity_limit
+                 }));
+                 await adminClient.from('ticket_type_prices').insert(pricesToInsert);
+             }
         }
       }
     }
