@@ -1640,7 +1640,6 @@ function TicketTypeModal({
           </div>
         </div>
       </div>
-      </div>
 
     </>
   );
