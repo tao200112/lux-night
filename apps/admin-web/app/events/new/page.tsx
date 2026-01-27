@@ -93,7 +93,7 @@ function AdminCreateEventPageContent() {
   const [showTicketTypeModal, setShowTicketTypeModal] = useState(false);
   
   // Weekly Schedule & Pricing
-  const [scheduleMode, setScheduleMode] = useState<'single' | 'weekly'>('single');
+  const [scheduleMode, setScheduleMode] = useState<'single' | 'weekly'>('weekly');
   const [weeklyRules, setWeeklyRules] = useState<WeeklyRule[]>([]);
   const [pricingTicketId, setPricingTicketId] = useState<string | null>(null); // ID of ticket being edited for pricing
 
