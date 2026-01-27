@@ -503,33 +503,41 @@ function AdminCreateEventPageContent() {
   const validatePublish = (): string[] => {
     const errors: string[] = [];
 
-    // 必须字段 - region_id 由 DB trigger 自动从 venue 继承，不再必填
+    // 必须字段
     if (!title.trim()) errors.push('Event title is required');
-    // 移除: if (!regionId) errors.push('Region is required');
-    if (!venueId) {
-      errors.push('Venue is required. Please bind a venue to this merchant first.');
-    }
-    if (!startDate) errors.push('Start date is required');
-    if (!endDate) errors.push('End date is required');
+    
+    // Venue is now OPTIONAL
+    // We do NOT check for venueId here anymore.
+
+    if (!startDate) errors.push(scheduleMode === 'weekly' ? 'Validity start date is required' : 'Start date is required');
+    if (!endDate) errors.push(scheduleMode === 'weekly' ? 'Validity end date is required' : 'End date is required');
+
     if (scheduleMode === 'single') {
         if (!startTime) errors.push('Start time is required');
         if (!endTime) errors.push('End time is required');
     }
 
     // 验证时间
-    if (startDate && endDate) {
-      const startT = scheduleMode === 'single' ? startTime : '00:00';
-      const endT = scheduleMode === 'single' ? endTime : '23:59';
-      
-      if (startT && endT) {
-        const start = new Date(`${startDate}T${startT}`);
-        const end = new Date(`${endDate}T${endT}`);
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            errors.push('Invalid date format');
-        } else if (end <= start) {
-            errors.push('End time must be after start time');
+    if (scheduleMode === 'weekly') {
+        if (startDate && endDate && endDate < startDate) {
+            errors.push('Validity end date must be after start date');
         }
-      }
+        // Check at least one enabled day
+        const enabled = weeklyRules.some(r => r.is_on_sale);
+        if (!enabled) {
+            errors.push('At least one day must be enabled in Weekly Schedule');
+        }
+    } else {
+        // Single mode
+        if (startDate && startTime && endDate && endTime) {
+            const start = new Date(`${startDate}T${startTime}`);
+            const end = new Date(`${endDate}T${endTime}`);
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                errors.push('Invalid date format');
+            } else if (end <= start) {
+                errors.push('End time must be after start time');
+            }
+        }
     }
 
     // 验证至少有一个 ACTIVE 票种
@@ -570,24 +578,6 @@ function AdminCreateEventPageContent() {
       setSaving(true);
       setValidationErrors([]);
 
-      // 构建时间（如果提供了）
-      let startDateTime: Date | null = null;
-      let endDateTime: Date | null = null;
-      
-      if (startDate && startTime) {
-        startDateTime = new Date(`${startDate}T${startTime}`);
-        if (isNaN(startDateTime.getTime())) {
-          startDateTime = null;
-        }
-      }
-      
-      if (endDate && endTime) {
-        endDateTime = new Date(`${endDate}T${endTime}`);
-        if (isNaN(endDateTime.getTime())) {
-          endDateTime = null;
-        }
-      }
-
       const redeemStart = redeemStartDate && redeemStartTime
         ? new Date(`${redeemStartDate}T${redeemStartTime}`)
         : null;
@@ -595,36 +585,39 @@ function AdminCreateEventPageContent() {
         ? new Date(`${redeemEndDate}T${redeemEndTime}`)
         : null;
 
-      // 验证redeem时间
-      let validRedeemStart = null;
-      let validRedeemEnd = null;
-      
-      if (redeemStart && !isNaN(redeemStart.getTime())) {
-        validRedeemStart = redeemStart;
-      }
-      if (redeemEnd && !isNaN(redeemEnd.getTime())) {
-        validRedeemEnd = redeemEnd;
-      }
-
-      const res = await fetch(`/api/admin/merchants/${merchantId}/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const payload: any = {
           title: title.trim() || null,
           subtitle: subtitle.trim() || null,
           description: description.trim() || null,
           poster_url: posterUrl || null,
           venue_id: venueId || null,
-          // region_id 由 DB trigger 自动从 venue 继承，不需要传入
-          start_at: startDateTime?.toISOString() || null,
-          end_at: endDateTime?.toISOString() || null,
+          schedule_mode: scheduleMode,
           weekly_schedule_rules: scheduleMode === 'weekly' ? weeklyRules : null,
-          redeem_start_at: validRedeemStart?.toISOString() || null,
-          redeem_end_at: validRedeemEnd?.toISOString() || null,
           refund_policy: refundPolicy,
           published_status: 'DRAFT',
           ticket_types: ticketTypes.map(tt => ({ ...tt, price_cents: tt.price_cents })),
-        }),
+          redeem_start_at: redeemStart?.toISOString() || null,
+          redeem_end_at: redeemEnd?.toISOString() || null,
+      };
+
+      if (scheduleMode === 'weekly') {
+          payload.validity_start_date = startDate || null;
+          payload.validity_end_date = endDate || null;
+      } else {
+          // Single Mode
+          let startDateTime = null;
+          let endDateTime = null;
+          if (startDate && startTime) startDateTime = new Date(`${startDate}T${startTime}`);
+          if (endDate && endTime) endDateTime = new Date(`${endDate}T${endTime}`);
+          
+          if (startDateTime && !isNaN(startDateTime.getTime())) payload.start_at = startDateTime.toISOString();
+          if (endDateTime && !isNaN(endDateTime.getTime())) payload.end_at = endDateTime.toISOString();
+      }
+
+      const res = await fetch(`/api/admin/merchants/${merchantId}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -655,17 +648,6 @@ function AdminCreateEventPageContent() {
       return;
     }
 
-    // 检查venue是否存在
-    if (!venueId || !selectedVenue) {
-      // 如果没有venue，尝试使用merchant的default venue
-      if (merchantId && hasDefaultVenue === false) {
-        alert('Merchant has no venue bound. Please bind a venue to this merchant first.');
-        return;
-      }
-      alert('Venue is required');
-      return;
-    }
-
     if (!merchantId) {
       alert('Merchant ID is required');
       return;
@@ -675,13 +657,6 @@ function AdminCreateEventPageContent() {
       setPublishing(true);
       setValidationErrors([]);
 
-      const startDateTime = new Date(`${startDate}T${startTime}`);
-      const endDateTime = new Date(`${endDate}T${endTime}`);
-      
-      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
-        throw new Error('Invalid date format');
-      }
-      
       const redeemStart = redeemStartDate && redeemStartTime
         ? new Date(`${redeemStartDate}T${redeemStartTime}`)
         : null;
@@ -689,22 +664,14 @@ function AdminCreateEventPageContent() {
         ? new Date(`${redeemEndDate}T${redeemEndTime}`)
         : null;
 
-      // 创建并直接发布 - region_id 由 DB trigger 自动从 venue 继承
-      const res = await fetch(`/api/admin/merchants/${merchantId}/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
+      const payload: any = {
+          title: title.trim(), // Required
           subtitle: subtitle.trim() || null,
           description: description.trim() || null,
           poster_url: posterUrl || null,
-          venue_id: venueId,
-          // region_id 由 DB trigger 自动从 venue 继承，不需要传入
-          start_at: startDateTime.toISOString(),
-          end_at: endDateTime.toISOString(),
+          venue_id: venueId || null, // Optional for publish now
+          schedule_mode: scheduleMode,
           weekly_schedule_rules: scheduleMode === 'weekly' ? weeklyRules : null,
-          redeem_start_at: redeemStart?.toISOString() || null,
-          redeem_end_at: redeemEnd?.toISOString() || null,
           refund_policy: refundPolicy,
           published_status: 'PUBLISHED',
           ticket_types: ticketTypes.map(tt => ({
@@ -712,7 +679,25 @@ function AdminCreateEventPageContent() {
             price_cents: tt.price_cents,
             status: tt.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT',
           })),
-        }),
+          redeem_start_at: redeemStart?.toISOString() || null,
+          redeem_end_at: redeemEnd?.toISOString() || null,
+      };
+
+      if (scheduleMode === 'weekly') {
+          payload.validity_start_date = startDate;
+          payload.validity_end_date = endDate;
+      } else {
+          // Single Mode
+          const startDateTime = new Date(`${startDate}T${startTime}`);
+          const endDateTime = new Date(`${endDate}T${endTime}`);
+          payload.start_at = startDateTime.toISOString();
+          payload.end_at = endDateTime.toISOString();
+      }
+
+      const res = await fetch(`/api/admin/merchants/${merchantId}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -1017,9 +1002,7 @@ function AdminCreateEventPageContent() {
                     </button>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-4">
-                  💡 You can save draft without a venue, but publishing requires a venue.
-                </p>
+                  💡 Venue is optional. You can bind a venue now or later.
               </div>
             </div>
           )}

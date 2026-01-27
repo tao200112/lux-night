@@ -65,7 +65,7 @@ export async function POST(
     // 验证 merchant 存在且有 region
     const { data: merchant, error: merchantError } = await supabase
       .from('merchants')
-      .select('id, region_id, default_venue_id')
+      .select('id, region_id, default_venue_id, timezone')
       .eq('id', merchantId)
       .single();
     
@@ -316,7 +316,7 @@ export async function POST(
     // AUDIT LOG
     // ========================================
     
-    await supabase.rpc('log_audit', {
+    const { error: auditError } = await supabase.rpc('log_audit', {
       p_action: 'admin_create_event',
       p_entity_type: 'event',
       p_entity_id: event.id,
@@ -328,7 +328,9 @@ export async function POST(
         merchant_id: merchantId 
       },
       p_metadata: { created_by_admin: true },
-    }).catch(err => console.error('[AUDIT LOG] Error:', err));
+    });
+    
+    if (auditError) console.error('[AUDIT LOG] Error:', auditError);
     
     return NextResponse.json({
       success: true,
