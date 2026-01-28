@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -15,7 +15,7 @@ const formatAddress = (venue: any) => {
   return venue.address || venue.name || 'Unknown Location';
 };
 
-export default function NewEventV2Page() {
+function NewEventForm() {
   console.log('[HIT] V2 events-v2/new');
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -366,5 +366,13 @@ export default function NewEventV2Page() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function NewEventV2Page() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center">Loading...</div>}>
+      <NewEventForm />
+    </Suspense>
   );
 }
