@@ -200,7 +200,7 @@ export default function AdminEventsPage() {
         <h1 className="text-white text-lg font-bold leading-tight tracking-tight">Events & Pricing</h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.push('/events/new')}
+            onClick={() => router.push('/events-v2/new')}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary bg-white hover:bg-white/90 rounded-lg transition-colors"
           >
             <span className="material-symbols-outlined text-sm">add</span>

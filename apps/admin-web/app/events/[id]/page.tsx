@@ -329,10 +329,10 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         {/* Actions */}
         <div className="flex gap-3">
           <Link
-            href={`/events/${event.id}/edit`}
+            href={`/events-v2/${event.id}/week`}
             className="flex-1 px-4 py-3 bg-primary text-white rounded-lg font-medium text-center hover:bg-primary-hover transition-colors"
           >
-            Edit Event
+            Configure Week
           </Link>
           <Link
             href="/events"

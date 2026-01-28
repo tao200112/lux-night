@@ -74,7 +74,7 @@ export async function POST(
         // 获取或创建 day
         const { data: dayRecord, error: dayError } = await supabase
           .from('event_week_days')
-          .select('id, enabled, start_time, end_time, end_next_day')
+          .select('id')
           .eq('event_week_id', eventWeekId)
           .eq('dow', dow)
           .single();

@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import BackButton from '@/components/ui/BackButton';
-import { getStripe } from '@/lib/stripe/client';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAY_SHORT_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -182,13 +181,14 @@ export default function CustomerEventV2DetailPage() {
       }
 
       // Redirect to Stripe Checkout
-      const stripe = await getStripe();
+      const stripe = await import('@stripe/stripe-js').then((m) => m.loadStripe);
+      const stripeInstance = await stripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-      if (!stripe) {
+      if (!stripeInstance) {
         throw new Error('Stripe failed to load');
       }
 
-      const { error: stripeError } = await stripe.redirectToCheckout({
+      const { error: stripeError } = await stripeInstance.redirectToCheckout({
         sessionId: result.data.sessionId,
       });
 

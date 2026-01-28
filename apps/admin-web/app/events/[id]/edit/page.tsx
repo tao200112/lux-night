@@ -57,6 +57,7 @@ interface EventStats {
 }
 
 function AdminEditEventPageContent({ params }: { params: Promise<{ id: string }> }) {
+  console.log('[OLD PAGE] AdminEditEventPageContent loaded - /events/[id]/edit');
   const router = useRouter();
   const [eventId, setEventId] = useState<string>('');
   const [loading, setLoading] = useState(true);

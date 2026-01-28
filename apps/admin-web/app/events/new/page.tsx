@@ -48,6 +48,7 @@ interface TicketType {
 }
 
 function AdminCreateEventPageContent() {
+  console.log('[OLD PAGE] AdminCreateEventPageContent loaded - /events/new');
   const router = useRouter();
   const searchParams = useSearchParams();
   const merchantId = searchParams.get('merchant_id');

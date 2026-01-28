@@ -11,6 +11,7 @@ import Link from 'next/link';
 import AdminBottomNav from '@/components/admin/AdminBottomNav';
 
 export default function AdminNewEventV2Page() {
+  console.log('[NEW V2 PAGE] AdminNewEventV2Page loaded - /events-v2/new');
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +22,15 @@ export default function AdminNewEventV2Page() {
     poster_url: '',
     status: 'active' as 'active' | 'paused' | 'archived',
   });
+
+  // 从 URL 参数获取 merchant_id（如果从 merchant 页面跳转过来）
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const merchantId = searchParams.get('merchant_id');
+    if (merchantId) {
+      setFormData((prev) => ({ ...prev, merchant_id: merchantId }));
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
