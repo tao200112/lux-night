@@ -127,7 +127,7 @@ function PriceChangeRequestPageContent() {
 
       // 成功，返回事件详情页
       alert(`Submitted (Pending Approval)\nRequest ID: ${data.request.id}`);
-      router.push(`/events/${selectedEventId}`);
+      router.push(`/events-v2/${selectedEventId}`);
     } catch (err: any) {
       console.error('Error submitting request:', err);
       alert(err.message || 'Failed to submit request');

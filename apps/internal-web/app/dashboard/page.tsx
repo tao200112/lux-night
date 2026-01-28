@@ -216,7 +216,7 @@ export default function DashboardPage() {
               stats.tonightEvents.map((event) => (
                 <Link
                   key={event.id}
-                  href={`/events/${event.id}`}
+                  href={`/events-v2/${event.id}`}
                   className="bg-card-light dark:bg-card-dark rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm flex hover:border-primary/50 transition-colors cursor-pointer"
                 >
                   <div className="w-24 h-auto relative shrink-0 bg-gray-200 dark:bg-gray-700">

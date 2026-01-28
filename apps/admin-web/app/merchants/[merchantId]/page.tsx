@@ -234,7 +234,7 @@ export default function AdminMerchantDetailPage() {
               {merchant.events.map((event) => (
                 <ListItemCard
                   key={event.id}
-                  href={`/events/${event.id}`}
+                  href={`/events-v2/${event.id}/week`}
                   title={event.title}
                   subtitle={new Date(event.startAt).toLocaleDateString()}
                   status={event.status as any}

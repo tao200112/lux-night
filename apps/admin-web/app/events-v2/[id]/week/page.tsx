@@ -43,6 +43,7 @@ interface WeekConfig {
 }
 
 export default function AdminEventWeekPage() {
+  console.log('[HIT] NEW events-v2/[id]/week');
   console.log('[NEW V2 PAGE] AdminEventWeekPage loaded - /events-v2/[id]/week');
   const router = useRouter();
   const params = useParams();

@@ -233,7 +233,7 @@ export default function EventsPage() {
                     <div className="flex justify-between items-start">
                       <h3 className="text-base font-bold text-gray-900 dark:text-white">{event.title}</h3>
                       <Link
-                        href={`/events/${event.id}`}
+                        href={`/events-v2/${event.id}`}
                         className="text-xs font-medium text-primary hover:underline"
                       >
                         View
@@ -280,7 +280,7 @@ export default function EventsPage() {
                             Scan Tickets
                           </Link>
                           <Link
-                            href={`/events/${event.id}`}
+                            href={`/events-v2/${event.id}`}
                             className="w-12 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center"
                           >
                             <span className="material-symbols-outlined text-base">analytics</span>
@@ -304,7 +304,7 @@ export default function EventsPage() {
                         </div>
                         <div className="flex justify-between items-center pt-1">
                           <Link
-                            href={`/events/${event.id}`}
+                            href={`/events-v2/${event.id}`}
                             className="px-4 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center"
                           >
                             {event.status === 'draft' ? 'Edit' : 'Manage'}
