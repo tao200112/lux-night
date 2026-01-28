@@ -19,10 +19,10 @@ export async function GET(
       .from('events_v2')
       .select(`
         *,
-        merchants!inner (
+        merchants:merchants!events_v2_merchant_id_fkey!inner (
           id,
           name,
-          venues!inner (
+          venues:venues!venues_merchant_id_fkey!inner (
             id,
             name,
             address

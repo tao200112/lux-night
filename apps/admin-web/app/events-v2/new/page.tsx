@@ -162,6 +162,8 @@ function NewEventForm() {
         throw new Error(result.error);
       }
 
+      // Success
+      alert('✅ Event Created! Redirecting to configuration...');
       router.push(`/events-v2/${result.event.id}/week`);
 
     } catch (err: any) {

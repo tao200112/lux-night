@@ -27,6 +27,27 @@ export async function POST(req: NextRequest) {
 
     const supabase = createAdminClient();
 
+    // 1. 获取 Merchant 信息以自动绑定 Region 和 Venue
+    const { data: merchantData, error: merchantError } = await supabase
+      .from('merchants')
+      .select(`
+        id, 
+        region_id, 
+        venues(id)
+      `)
+      .eq('id', merchant_id)
+      .single();
+
+    if (merchantError || !merchantData) {
+      return NextResponse.json(
+        { error: 'Merchant not found' },
+        { status: 404 }
+      );
+    }
+
+    // 默认选用第一个 Venue (如有)
+    const defaultVenueId = merchantData.venues?.[0]?.id || null;
+
     // 创建活动
     const { data: event, error: insertError } = await supabase
       .from('events_v2')
@@ -36,6 +57,8 @@ export async function POST(req: NextRequest) {
         description: description || null,
         poster_url,
         status,
+        region_id: merchantData.region_id,
+        venue_id: defaultVenueId,
       })
       .select()
       .single();
