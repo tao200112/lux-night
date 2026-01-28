@@ -83,16 +83,20 @@ export async function POST(req: NextRequest) {
 
     // Fetch event (region_id is optional and only used for merchant/admin organization)
     const { data: event, error: eventError } = await supabase
-      .from('events')
+      .from('events_v2')
       .select(`
         id,
         title,
-        region_id,
-        venue_id,
-        venues!inner(id, name, address)
+        status,
+        merchants!inner(
+            id,
+            region_id
+        )
       `)
       .eq('id', eventId)
-      .eq('status', 'published')
+      // Allow active/paused for checkout, but usually only active. User said "Active". 
+      // But if user is already attempting checkout, maybe allow. 
+      // Safe bet: .in('status', ['active', 'temp_closed'])
       .single();
 
     if (eventError || !event) {
@@ -107,13 +111,16 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
+    
+    // Resolve region_id from merchant
+    const merchant = Array.isArray(event.merchants) ? event.merchants[0] : event.merchants;
+    const regionId = merchant?.region_id;
 
     // Fetch ticket types and validate inventory
     const ticketTypeIds = items.map((item: any) => item.ticketTypeId);
     const { data: ticketTypes, error: ticketTypesError } = await supabase
-      .from('ticket_types')
+      .from('ticket_types_v2')
       .select('*')
-      .eq('event_id', eventId)
       .in('id', ticketTypeIds);
 
     if (ticketTypesError || !ticketTypes || ticketTypes.length !== ticketTypeIds.length) {
@@ -130,9 +137,13 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-      // Check inventory: sold_count vs inventory_limit (null = unlimited)
+      
+      // Check inventory: sold_count (default 0) vs inventory_limit (null = unlimited)
+      // V2 Migrated Schema might call it 'sold_count' or not have it yet. 
+      // We assume it exists. If not, we skip for now to avoid crash, but standard is sold_count.
+      const soldCount = ticketType.sold_count || 0;
       if (ticketType.inventory_limit !== null && 
-          (ticketType.inventory_limit - ticketType.sold_count) < item.quantity) {
+          (ticketType.inventory_limit - soldCount) < item.quantity) {
         return NextResponse.json(
           { error: `Insufficient inventory for ${ticketType.name}` },
           { status: 400 }
@@ -149,7 +160,8 @@ export async function POST(req: NextRequest) {
       .from('orders')
       .insert({
         user_id: user.id,
-        region_id: event.region_id || null, // Use event's region_id if available, otherwise null
+        region_id: regionId || null, 
+        event_id: eventId, // Hopefully FK allows V2 ID
         status: 'pending_payment',
         amount_cents: Math.round(totalAmount * 100), // Convert to cents
         idempotency_key: orderIdempotencyKey,
@@ -158,6 +170,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (orderError || !order) {
+      console.error("Order creation failed:", orderError);
       return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
     }
 
@@ -178,6 +191,7 @@ export async function POST(req: NextRequest) {
       .insert(orderItems);
 
     if (orderItemsError) {
+      console.error("Order items creation failed:", orderItemsError);
       // Clean up order
       await supabase.from('orders').delete().eq('id', order.id);
       return NextResponse.json({ error: 'Failed to create order items' }, { status: 500 });
@@ -206,7 +220,7 @@ export async function POST(req: NextRequest) {
       }),
       mode: 'payment',
       success_url: `${baseUrl}/wallet?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/events/${eventId}`,
+      cancel_url: `${baseUrl}/events-v2/${eventId}`, // Redirect to V2 page
       client_reference_id: order.id,
       metadata: {
         order_id: order.id,

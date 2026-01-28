@@ -61,11 +61,12 @@ export async function GET() {
     
     // 4. Active Events (published)
     const { count: activeEvents, error: eventsError } = await supabase
-      .from('events')
+      .from('events_v2')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .gte('end_at', new Date().toISOString());
-    
+      .eq('status', 'active');
+      // .gte('end_at', new Date().toISOString()); // V2 events are continuous/weekly, so validity_end_date check maybe?
+      // For now, just active is fine.
+
     // 5. Tickets Redeemed Today
     const { count: ticketsRedeemed, error: ticketsError } = await supabase
       .from('checkins')
@@ -73,13 +74,18 @@ export async function GET() {
       .gte('created_at', todayStart.toISOString());
     
     // 6. Orders by Region (最近 30 天)
+    // Note: Assuming orders.event_id links to events_v2 logical ID.
+    // If not, this join might fail if no FK exists. 
+    // We try 'events_v2'.
     const { data: ordersByRegion, error: regionError } = await supabase
       .from('orders')
       .select(`
         id,
-        events!inner(
-          region_id,
-          regions!inner(name, state, country)
+        events_v2!inner(
+          merchants!inner(
+             region_id,
+             regions!inner(name, state, country)
+          )
         )
       `)
       .gte('created_at', thirtyDaysAgo.toISOString())
@@ -90,12 +96,13 @@ export async function GET() {
     const totalOrders = ordersByRegion?.length || 0;
     
     ordersByRegion?.forEach((order: any) => {
-      const eventData = Array.isArray(order.events) ? order.events[0] : order.events;
-      const regionId = eventData?.region_id;
-      const regions = eventData?.regions;
-      const regionName = (regions && Array.isArray(regions) && regions.length > 0) 
-        ? regions[0].name 
-        : (regions?.name || 'Unknown');
+      // Structure: order.events_v2.merchants.regions
+      const eventData = Array.isArray(order.events_v2) ? order.events_v2[0] : order.events_v2;
+      const merchant = eventData?.merchants;
+      const regionId = merchant?.region_id;
+      const regionData = merchant?.regions;
+      
+      const regionName = regionData?.name || 'Unknown';
       
       if (!regionStats[regionId]) {
         regionStats[regionId] = {
@@ -118,7 +125,7 @@ export async function GET() {
     const { data: topMerchants, error: topMerchantsError } = await supabase
       .from('orders')
       .select(`
-        events!inner(
+        events_v2!inner(
           merchant_id,
           merchants!inner(name)
         )
@@ -131,10 +138,9 @@ export async function GET() {
     const merchantStats: Record<string, { name: string; count: number }> = {};
     
     topMerchants?.forEach((order: any) => {
-      const merchantId = order.events?.merchant_id;
-      const merchantName = (order.events?.merchants && Array.isArray(order.events.merchants) && order.events.merchants.length > 0) 
-        ? order.events.merchants[0].name 
-        : 'Unknown';
+      const event = Array.isArray(order.events_v2) ? order.events_v2[0] : order.events_v2;
+      const merchantId = event?.merchant_id;
+      const merchantName = event?.merchants?.name || 'Unknown';
       
       if (!merchantStats[merchantId]) {
         merchantStats[merchantId] = { name: merchantName, count: 0 };

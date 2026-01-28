@@ -86,8 +86,11 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
   const { data, error } = await query;
 
   if (error) {
-    console.error('Error fetching v2 events:', error);
-    throw new Error('Failed to fetch events');
+    console.error('Error fetching v2 events:', JSON.stringify(error, null, 2));
+    // Return empty array instead of throwing to prevent page crash, or throw with message
+    // User asked to "solve" the error. If it's RLS, we need to know.
+    // I'll throw nicely.
+    throw new Error(`Failed to fetch events: ${error.message} (${error.code})`);
   }
 
   const rows = data || [];
@@ -159,88 +162,101 @@ export async function getDropsByRegion(regionId: string): Promise<EventWithVenue
 export async function getEvent(id: string): Promise<EventWithVenue | null> {
   const supabase = createClient();
   
-  console.log('[getEvent] Fetching event:', id);
+  console.log('[getEvent] Fetching v2 event:', id);
   
-  // Use left join to handle cases where venue might be missing
+  // Query V2 Event
   const { data, error } = await supabase
-    .from('events')
+    .from('events_v2')
     .select(`
       *,
-      venues(id, name, address, address_line1, formatted_address, city, state, region_id, lat, lng),
-      regions(id, name, city, state)
+      merchants!inner (
+        id,
+        name,
+        region_id,
+        venues (
+          id,
+          name,
+          address,
+          address_line1,
+          formatted_address,
+          city,
+          state,
+          region_id,
+          lat,
+          lng
+        ),
+        regions (
+          id,
+          name,
+          city,
+          state
+        )
+      )
     `)
     .eq('id', id)
-    .eq('status', 'published')
+    .neq('status', 'draft')
+    .neq('status', 'archived')
     .maybeSingle();
 
   if (error) {
-    console.error('[getEvent] Supabase error:', {
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-    });
-    return null;
+    console.error('[getEvent] Supabase error:', JSON.stringify(error, null, 2));
+    throw new Error(`Failed to fetch event: ${error.message}`);
   }
 
   if (!data) {
-    console.warn('[getEvent] No event found with id:', id);
+    console.warn('[getEvent] No active/visible v2 event found with id:', id);
     return null;
   }
 
-  console.log('[getEvent] Event data received:', {
-    id: data.id,
-    title: data.title,
-    hasVenue: !!data.venues,
-    venueType: Array.isArray(data.venues) ? 'array' : typeof data.venues,
-    hasRegion: !!data.regions,
-  });
+  // Flatten Data
+  const merchant = data.merchants;
+  const v = merchant?.venues?.[0]; // Use first venue
+  const r = merchant?.regions;
 
-  // Ensure venue exists, provide fallback if missing
-  let venue;
-  if (data.venues) {
-    // Handle array vs single object (Supabase can return either)
-    venue = Array.isArray(data.venues) ? data.venues[0] : data.venues;
-    console.log('[getEvent] Venue found:', venue);
-  } else {
-    // Fallback if venue is missing
-    console.warn('[getEvent] No venue data, using fallback');
-    venue = {
-      id: data.venue_id || '',
-      name: 'Venue TBA',
-      address: null,
-      address_line1: null,
-    };
-  }
-  
-  // Handle region
-  let region = null;
-  if (data.regions) {
-    const r = Array.isArray(data.regions) ? data.regions[0] : data.regions;
-    if (r && typeof r === 'object' && 'id' in r) {
-      region = {
+  const venue = v
+    ? {
+        id: v.id,
+        name: v.name,
+        address: v.address || v.formatted_address,
+        address_line1: v.address_line1,
+        city: v.city,
+        state: v.state,
+        region_id: v.region_id,
+        lat: v.lat,
+        lng: v.lng,
+      }
+    : { id: '', name: 'Venue TBD', address: null };
+
+  const region = r
+    ? {
         id: r.id,
         name: r.name,
-        city: r.city ?? null,
-        state: r.state ?? null,
-      };
-    }
-  }
-  
-  const address = (venue.formatted_address ?? venue.address) ?? null;
+        city: r.city,
+        state: r.state,
+      }
+    : null;
+
   return {
-    ...data,
-    venue: {
-      id: venue.id,
-      name: venue.name,
-      address,
-      address_line1: venue.address_line1 ?? null,
-      city: venue.city ?? null,
-      state: venue.state ?? null,
-      region_id: venue.region_id ?? null,
-      lat: venue.lat ?? null,
-      lng: venue.lng ?? null,
-    },
+    id: data.id,
+    title: data.title,
+    description: data.description,
+    poster_url: data.poster_url,
+    status: data.status,
+    // Map missing status/fields
+    region_id: merchant?.region_id || '',
+    merchant_id: merchant?.id || '',
+    venue_id: venue.id,
+    
+    // Mapping V1 fields Fallback
+    start_at: data.created_at, 
+    end_at: data.created_at,
+    publish_at: data.created_at,
+    age_policy: '21+',
+    refund_policy: 'flexible',
+    created_at: data.created_at,
+    updated_at: data.updated_at || data.created_at,
+    
+    venue,
     region,
   } as EventWithVenue;
 }
