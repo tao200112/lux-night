@@ -27,7 +27,7 @@ interface MerchantDetail {
     status: string;
   } | null;
   venues: Array<{ id: string; name: string; address: string | null; isActive: boolean }>;
-  events: Array<{ id: string; title: string; status: string; startAt: string; endAt: string }>;
+  events: Array<{ id: string; title: string; status: string; startAt: string | null; endAt: string | null; isV2?: boolean }>;
   members: Array<{
     id: string;
     role: string;
@@ -60,6 +60,8 @@ export default function AdminMerchantDetailPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState<string>('');
   const [statusReason, setStatusReason] = useState('');
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  
   useEffect(() => {
     fetchMerchantDetail();
   }, [merchantId]);
@@ -116,6 +118,40 @@ export default function AdminMerchantDetailPage() {
       alert(err.message);
     } finally {
       setUpdating(false);
+    }
+  };
+  
+  const handleDeleteEvent = async (eventId: string, eventTitle: string, isV2?: boolean) => {
+    if (!confirm(`确定要删除活动 "${eventTitle}" 吗？\n\n注意：如果活动已有已售出的票，将改为归档而不是删除。`)) {
+      return;
+    }
+    
+    try {
+      setDeletingEventId(eventId);
+      
+      // 根据 isV2 选择删除 API
+      const apiPath = isV2 
+        ? `/api/admin/events-v2/${eventId}`
+        : `/api/admin/events/${eventId}`;
+      
+      const response = await fetch(apiPath, {
+        method: 'DELETE',
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to delete event');
+      }
+      
+      // 刷新数据
+      await fetchMerchantDetail();
+      alert(result.message || 'Event deleted successfully');
+    } catch (err: any) {
+      console.error('[ADMIN DELETE EVENT] Error:', err);
+      alert(err.message || 'Failed to delete event');
+    } finally {
+      setDeletingEventId(null);
     }
   };
   
@@ -221,23 +257,50 @@ export default function AdminMerchantDetailPage() {
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               Events ({(merchant.events || []).length})
             </h3>
+            <div className="flex gap-2">
               <button
-                onClick={() => router.push(`/events/new?merchant_id=${merchantId}`)}
+                onClick={() => router.push(`/events-v2/new?merchant_id=${merchantId}`)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors"
               >
                 <span className="material-symbols-outlined text-sm">add</span>
-                Create Event
+                Create Event V2
               </button>
+              <button
+                onClick={() => router.push(`/events/new?merchant_id=${merchantId}`)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+                Create Event (Legacy)
+              </button>
+            </div>
           </div>
           {merchant.events && merchant.events.length > 0 ? (
             <div className="space-y-2">
               {merchant.events.map((event) => (
                 <ListItemCard
                   key={event.id}
-                  href={`/events/${event.id}`}
+                  href={event.isV2 ? `/events-v2/${event.id}/week` : `/events/${event.id}`}
                   title={event.title}
-                  subtitle={new Date(event.startAt).toLocaleDateString()}
+                  subtitle={event.startAt ? new Date(event.startAt).toLocaleDateString() : 'Weekly Schedule'}
                   status={event.status as any}
+                  rightContent={
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDeleteEvent(event.id, event.title, event.isV2);
+                      }}
+                      disabled={deletingEventId === event.id}
+                      className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete event"
+                    >
+                      {deletingEventId === event.id ? (
+                        <span className="material-symbols-outlined text-sm animate-spin">hourglass_empty</span>
+                      ) : (
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      )}
+                    </button>
+                  }
                 />
               ))}
             </div>

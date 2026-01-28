@@ -57,17 +57,25 @@ export async function GET(
     }
     
     // 获取关联数据
-    const [venuesResult, eventsResult, membersResult, ordersResult] = await Promise.all([
+    const [venuesResult, eventsResult, eventsV2Result, membersResult, ordersResult] = await Promise.all([
       // Venues
       supabase
         .from('venues')
         .select('id, name, address, is_active')
         .eq('merchant_id', id),
       
-      // Events (最近 30 天)
+      // Events (旧系统，最近 30 天)
       supabase
         .from('events')
         .select('id, title, status, start_at, end_at')
+        .eq('merchant_id', id)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      
+      // Events V2 (新系统)
+      supabase
+        .from('events_v2')
+        .select('id, title, status, created_at')
         .eq('merchant_id', id)
         .order('created_at', { ascending: false })
         .limit(10),
@@ -141,15 +149,30 @@ export async function GET(
           address: v.address,
           isActive: v.is_active,
         })),
-        events: Array.isArray(eventsResult.data) 
-          ? eventsResult.data.map((e: any) => ({
-              id: e.id,
-              title: e.title,
-              status: e.status,
-              startAt: e.start_at,
-              endAt: e.end_at,
-            }))
-          : [],
+        events: [
+          // 旧系统 events
+          ...(Array.isArray(eventsResult.data) 
+            ? eventsResult.data.map((e: any) => ({
+                id: e.id,
+                title: e.title,
+                status: e.status,
+                startAt: e.start_at,
+                endAt: e.end_at,
+                isV2: false,
+              }))
+            : []),
+          // 新系统 events_v2
+          ...(Array.isArray(eventsV2Result.data) 
+            ? eventsV2Result.data.map((e: any) => ({
+                id: e.id,
+                title: e.title,
+                status: e.status,
+                startAt: null,
+                endAt: null,
+                isV2: true,
+              }))
+            : []),
+        ],
         members: (membersResult.data || []).map((m: any) => {
           const profileData = (() => {
             if (!m.profiles) return null;

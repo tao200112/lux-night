@@ -509,3 +509,92 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = await createClient();
+    
+    // 检查 Admin 权限
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
+        { status: 401 }
+      );
+    }
+    
+    const { data: isAdmin } = await supabase.rpc('is_admin');
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
+        { status: 403 }
+      );
+    }
+    
+    const adminClient = createAdminClient();
+    
+    // 检查是否有已售出的票
+    const { count: ticketCount } = await adminClient
+      .from('tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', id)
+      .limit(1);
+    
+    if (ticketCount && ticketCount > 0) {
+      // 有已售出的票，不允许删除，改为归档
+      const { data: event, error } = await adminClient
+        .from('events')
+        .update({ status: 'archived' })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('[ADMIN EVENT DELETE API] Archive error:', error);
+        return NextResponse.json(
+          { success: false, code: 'DB_ERROR', message: error.message || 'Failed to archive event' },
+          { status: 500 }
+        );
+      }
+      
+      return NextResponse.json({
+        success: true,
+        data: {
+          id: event.id,
+          message: 'Event has sold tickets, archived instead of deleted',
+        },
+      });
+    }
+    
+    // 没有已售出的票，可以安全删除（级联删除会处理相关数据）
+    const { error: deleteError } = await adminClient
+      .from('events')
+      .delete()
+      .eq('id', id);
+    
+    if (deleteError) {
+      console.error('[ADMIN EVENT DELETE API] Delete error:', deleteError);
+      return NextResponse.json(
+        { success: false, code: 'DB_ERROR', message: deleteError.message || 'Failed to delete event' },
+        { status: 500 }
+      );
+    }
+    
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: 'Event deleted successfully',
+      },
+    });
+  } catch (error: any) {
+    console.error('[ADMIN EVENT DELETE API] Error:', error);
+    return NextResponse.json(
+      { success: false, code: 'INTERNAL_ERROR', message: error.message },
+      { status: 500 }
+    );
+  }
+}
