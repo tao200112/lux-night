@@ -11,7 +11,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-02-24.acacia',
 });
 
 /**
@@ -158,6 +158,12 @@ export async function syncEventWeekStripe(
     throw new Error(`Event week not found: ${eventWeekId}`);
   }
 
+  // Type assertion: events_v2 is a single object when using .single()
+  const event = Array.isArray(eventWeek.events_v2) ? eventWeek.events_v2[0] : eventWeek.events_v2;
+  if (!event) {
+    throw new Error(`Event not found for week ${eventWeekId}`);
+  }
+
   // 2. 获取所有 days 和 tickets
   const { data: days, error: daysError } = await supabase
     .from('event_week_days')
@@ -190,12 +196,12 @@ export async function syncEventWeekStripe(
         try {
           await syncTicketTypeStripe(
             ticket.id,
-            eventWeek.events_v2.title,
+            event.title,
             eventWeek.week_start_date,
             dayName,
             ticket.name,
             ticket.price_cents,
-            eventWeek.events_v2.merchant_id,
+            event.merchant_id,
             eventWeek.event_id,
             eventWeekId,
             day.id
