@@ -76,34 +76,38 @@ export async function requireAdmin(): Promise<AdminAuthResult | AdminAuthError> 
     console.log('[requireAdmin] STEP2: checking admin status');
     const supabaseAdmin = createAdminClient();
     
-    const [profileResult, adminUsersResult] = await Promise.all([
-      supabaseAdmin
-        .from('profiles')
-        .select('id, email, is_admin')
-        .eq('id', user.id)
-        .maybeSingle(),
-      supabaseAdmin
+    // Query admin_users (Primary Source of Truth)
+    const adminUsersPromise = supabaseAdmin
         .from('admin_users')
         .select('user_id, is_active')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .maybeSingle(),
+        .maybeSingle();
+
+    // Query profiles (Secondary: Display Info only) based on Schema 001
+    // Note: profiles table DOES NOT have 'email' or 'is_admin' columns.
+    const profilesPromise = supabaseAdmin
+        .from('profiles')
+        .select('id, display_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    const [adminUsersResult, profileResult] = await Promise.all([
+      adminUsersPromise, 
+      profilesPromise
     ]);
     
     const step2Time = Date.now() - startTime - step1Time;
     console.log('[requireAdmin] STEP2 done:', {
-      hasProfile: !!profileResult.data,
-      profileIsAdmin: profileResult.data?.is_admin,
       hasAdminUser: !!adminUsersResult.data,
+      hasProfile: !!profileResult.data,
       duration: `${step2Time}ms`,
-      profileError: profileResult.error?.message || null,
       adminUsersError: adminUsersResult.error?.message || null,
+      profileError: profileResult.error?.message || null,
     });
     
-    // 判断是否为 admin
-    const isAdmin =
-      profileResult.data?.is_admin === true ||
-      adminUsersResult.data?.is_active === true;
+    // 判断是否为 admin (依靠 admin_users 表)
+    const isAdmin = adminUsersResult.data?.is_active === true;
     
     const totalTime = Date.now() - startTime;
     console.log('[requireAdmin] COMPLETE:', {
@@ -122,10 +126,18 @@ export async function requireAdmin(): Promise<AdminAuthResult | AdminAuthError> 
       };
     }
     
+    // Construct adminProfile for backward compatibility
+    const adminProfile = {
+      id: user.id,
+      email: user.email || '',
+      is_admin: true,
+      display_name: profileResult.data?.display_name
+    };
+    
     return {
       user,
       isAdmin: true,
-      adminProfile: profileResult.data || undefined,
+      adminProfile,
     };
     
   } catch (error: any) {
