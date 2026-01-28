@@ -145,7 +145,7 @@ export async function syncEventWeekStripe(
       event_id,
       week_start_date,
       timezone,
-      events_v2!inner (
+      events_v2 (
         id,
         title,
         merchant_id
@@ -190,12 +190,12 @@ export async function syncEventWeekStripe(
         try {
           await syncTicketTypeStripe(
             ticket.id,
-            eventWeek.events_v2.title,
+            (eventWeek.events_v2 as any).title,
             eventWeek.week_start_date,
             dayName,
             ticket.name,
             ticket.price_cents,
-            eventWeek.events_v2.merchant_id,
+            (eventWeek.events_v2 as any).merchant_id,
             eventWeek.event_id,
             eventWeekId,
             day.id
