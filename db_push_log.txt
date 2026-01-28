@@ -1,0 +1,12 @@
+Initialising login role...
+Connecting to remote database...
+Skipping migration TIMEZONE_ERROR_DIAGNOSIS.md... (file name must match pattern "<timestamp>_name.sql")
+Skipping migration TIMEZONE_ERROR_FINAL_FIX.md... (file name must match pattern "<timestamp>_name.sql")
+Skipping migration find_timezone_reference.sql... (file name must match pattern "<timestamp>_name.sql")
+Skipping migration find_timezone_reference_queries.sql... (file name must match pattern "<timestamp>_name.sql")
+Skipping migration fix_merchant_insert_timezone_error.sql... (file name must match pattern "<timestamp>_name.sql")
+Found local migration files to be inserted before the last migration on remote database.
+
+Rerun the command with --include-all flag to apply these migrations:
+supabase\migrations\035_fix_rpc_ambiguous.sql
+
