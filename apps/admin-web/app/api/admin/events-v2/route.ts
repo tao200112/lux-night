@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       .select(`
         id, 
         region_id, 
-        venues(id)
+        venues:venues!venues_merchant_id_fkey(id)
       `)
       .eq('id', merchant_id)
       .single();
