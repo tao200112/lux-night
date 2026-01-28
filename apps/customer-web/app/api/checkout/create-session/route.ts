@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
         id,
         title,
         status,
-        merchants!inner(
+        merchants:merchants!events_v2_merchant_id_fkey!inner(
             id,
             region_id
         )

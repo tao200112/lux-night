@@ -46,16 +46,16 @@ export interface EventWithVenue extends Event {
 export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
   const supabase = createClient();
 
-  // Query V2 Events
+  // Query V2 Events with explicit Foreign Keys to avoid PGRST201 Ambiguity
   let query = supabase
     .from('events_v2')
     .select(`
       *,
-      merchants!inner (
+      merchant:merchants!events_v2_merchant_id_fkey (
         id,
         name,
         region_id,
-        venues (
+        venue:venues!venues_merchant_id_fkey (
           id,
           name,
           address,
@@ -67,7 +67,7 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
           lat,
           lng
         ),
-        regions (
+        region:regions!merchants_region_id_fkey (
           id,
           name,
           city,
@@ -80,7 +80,16 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
 
   if (regionId) {
     // Filter by merchant's region
-    query = query.eq('merchants.region_id', regionId);
+    // Note: Filtering on embedded resource requires !inner or correctly mapped filter
+    // 'merchants.region_id' works if alias is 'merchant'? PostgREST might expect 'merchant.region_id'.
+    // Safe bet: use the embedded resource filter syntax if possible, or dot notation.
+    // Supabase JS wrapper usually handles mapping?
+    // Actually, if I alias to 'merchant', the filter `merchants.region_id` might fail.
+    // I should use `merchant.region_id`?
+    // Let's try `merchants.region_id` first, often it targets table name or alias.
+    // Docs say: references embedded resource.
+    // If I alias, usually filter needs alias.
+    query = query.eq('merchant.region_id', regionId);
   }
 
   const { data, error } = await query;
@@ -96,9 +105,11 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
   const rows = data || [];
   return rows.map((row: any) => {
     // Flatten merchant/venue/region data
-    const merchant = row.merchants;
-    const v = merchant?.venues?.[0]; // Use first venue
-    const r = merchant?.regions; // Region from merchant
+    const merchant = row.merchant;
+    // Reverse FK usually returns array
+    const v = Array.isArray(merchant?.venue) ? merchant.venue[0] : merchant?.venue;
+    // FK usually returns object
+    const r = Array.isArray(merchant?.region) ? merchant.region[0] : merchant?.region;
 
     const venue = v
       ? {
@@ -169,11 +180,11 @@ export async function getEvent(id: string): Promise<EventWithVenue | null> {
     .from('events_v2')
     .select(`
       *,
-      merchants!inner (
+      merchant:merchants!events_v2_merchant_id_fkey (
         id,
         name,
         region_id,
-        venues (
+        venue:venues!venues_merchant_id_fkey (
           id,
           name,
           address,
@@ -185,7 +196,7 @@ export async function getEvent(id: string): Promise<EventWithVenue | null> {
           lat,
           lng
         ),
-        regions (
+        region:regions!merchants_region_id_fkey (
           id,
           name,
           city,
@@ -209,9 +220,9 @@ export async function getEvent(id: string): Promise<EventWithVenue | null> {
   }
 
   // Flatten Data
-  const merchant = data.merchants;
-  const v = merchant?.venues?.[0]; // Use first venue
-  const r = merchant?.regions;
+  const merchant = data.merchant;
+  const v = Array.isArray(merchant?.venue) ? merchant.venue[0] : merchant?.venue;
+  const r = Array.isArray(merchant?.region) ? merchant.region[0] : merchant?.region;
 
   const venue = v
     ? {
