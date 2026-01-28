@@ -6,13 +6,15 @@
 import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set');
+// 延迟初始化 Stripe，避免在构建时检查环境变量
+function getStripe(): Stripe {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is not set');
+  }
+  return new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2025-02-24.acacia',
+  });
 }
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24.acacia',
-});
 
 /**
  * 同步单个 ticket_type 的 Stripe Product/Price
@@ -53,6 +55,7 @@ export async function syncTicketTypeStripe(
 
   // 2. 创建或获取 Stripe Product
   if (!productId) {
+    const stripe = getStripe();
     const product = await stripe.products.create({
       name: `${eventTitle} - ${weekStartDate} - ${dayName} - ${ticketName}`,
       description: ticketName,
@@ -75,6 +78,7 @@ export async function syncTicketTypeStripe(
   } else {
     // 检查当前 price 的价格是否匹配
     try {
+      const stripe = getStripe();
       const existingPrice = await stripe.prices.retrieve(priceId);
       if (existingPrice.unit_amount !== priceCents) {
         needsNewPrice = true;
@@ -87,6 +91,7 @@ export async function syncTicketTypeStripe(
 
   // 4. 创建新 Price（如果需要）
   if (needsNewPrice) {
+    const stripe = getStripe();
     const price = await stripe.prices.create({
       product: productId,
       unit_amount: priceCents,
@@ -104,6 +109,7 @@ export async function syncTicketTypeStripe(
     // 可选：将旧 price 设为 inactive（如果存在）
     if (ticketType.stripe_price_id) {
       try {
+        const stripe = getStripe();
         await stripe.prices.update(ticketType.stripe_price_id, {
           active: false,
         });
