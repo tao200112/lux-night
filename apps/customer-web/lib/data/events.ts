@@ -41,6 +41,10 @@ export interface EventWithVenue extends Event {
     city?: string | null;
     state?: string | null;
   } | null;
+  merchant?: {
+    id: string;
+    name: string;
+  };
 }
 
 export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {

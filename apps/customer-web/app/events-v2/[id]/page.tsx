@@ -284,83 +284,64 @@ export default function CustomerEventV2DetailPage() {
             <div className="space-y-6">
               {enabledDays.map((day) => {
                 const dayDate = new Date(weekConfig.week_start_date);
-                // Postgres DOW: 0=Sun, 1=Mon... Week starts on Monday.
-                // Mon(1) -> offset 0
-                // Sun(0) -> offset 6
                 const offset = (day.dow === 0 ? 6 : day.dow - 1);
                 dayDate.setDate(dayDate.getDate() + offset);
-                const dayName = DAY_SHORT_NAMES[day.dow];
-                const dateStr = dayDate.toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                });
+                // Simple Date Header
+                const dateHeader = dayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
                 return (
-                  <div key={day.dow} className="bg-surface-dark rounded-lg p-4">
-                    <h2 className="text-lg font-semibold mb-4">{dateStr}</h2>
-                    <div className="text-sm text-gray-400 mb-4">
-                      {day.start_time} - {day.end_time}
-                      {day.end_next_day && ' (next day)'}
-                    </div>
+                  <div key={day.dow} className="mb-8 last:mb-20">
+                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 pl-1">
+                      {dateHeader} <span className="font-normal opacity-50 ml-2">| {day.start_time}</span>
+                    </h3>
 
                     {day.tickets.length === 0 ? (
-                      <p className="text-sm text-gray-500">No tickets available for this day</p>
+                      <p className="text-sm text-zinc-600 pl-1">No tickets available</p>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="bg-[#1A1A1A] rounded-xl overflow-hidden border border-white/5 divide-y divide-white/5">
                         {day.tickets.map((ticket) => {
                           const qty = selections[ticket.id] || 0;
                           const isAvailable = ticket.status === 'active' && !isPaused;
 
                           return (
-                            <div
-                              key={ticket.id}
-                              className="bg-surface-light rounded-lg p-4 border border-gray-700"
-                            >
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1">
-                                  <h3 className="font-medium mb-1">{ticket.name}</h3>
-                                  <div className="text-sm text-gray-400">
-                                    {ticket.category} • ${(ticket.price_cents / 100).toFixed(2)}
-                                    {ticket.min_age && ` • ${ticket.min_age}+`}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-lg font-semibold">
-                                    ${(ticket.price_cents / 100).toFixed(2)}
-                                  </div>
+                            <div key={ticket.id} className="flex items-center justify-between p-4 active:bg-white/[0.02]">
+                              {/* Left: Info */}
+                              <div className="flex-1 min-w-0 pr-4">
+                                <div className="font-medium text-white text-[15px]">{ticket.name}</div>
+                                <div className="text-[11px] text-zinc-500 mt-0.5">
+                                   {ticket.category}
+                                   {ticket.min_age ? ` • ${ticket.min_age}+` : ''}
                                 </div>
                               </div>
 
+                              {/* Mid: Price */}
+                              <div className="text-[15px] font-medium text-[rgb(212,175,55)] mr-6 min-w-[3rem] text-right">
+                                ${(ticket.price_cents / 100).toFixed(0)}
+                              </div>
+
+                              {/* Right: Controls */}
                               {isAvailable ? (
-                                <div className="flex items-center gap-3">
-                                  <button
-                                    onClick={() => updateQuantity(ticket.id, -1)}
-                                    disabled={qty === 0}
-                                    className="w-8 h-8 rounded-full bg-background-dark border border-gray-600 flex items-center justify-center disabled:opacity-50"
-                                  >
-                                    -
-                                  </button>
-                                  <span className="w-12 text-center">{qty}</span>
-                                  <button
-                                    onClick={() => updateQuantity(ticket.id, 1)}
-                                    disabled={
-                                      ticket.inventory_limit !== null &&
-                                      qty >= ticket.inventory_limit
-                                    }
-                                    className="w-8 h-8 rounded-full bg-background-dark border border-gray-600 flex items-center justify-center disabled:opacity-50"
-                                  >
-                                    +
-                                  </button>
-                                </div>
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      onClick={() => updateQuantity(ticket.id, -1)}
+                                      disabled={qty === 0}
+                                      className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white disabled:opacity-20 transition-all active:scale-95"
+                                    >
+                                      <span className="material-symbols-outlined text-[18px]">remove</span>
+                                    </button>
+                                    <span className="w-4 text-center text-[15px] font-medium tabular-nums">{qty}</span>
+                                    <button
+                                      onClick={() => updateQuantity(ticket.id, 1)}
+                                      disabled={ticket.inventory_limit !== null && qty >= ticket.inventory_limit}
+                                      className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white disabled:opacity-20 transition-all active:scale-95"
+                                    >
+                                      <span className="material-symbols-outlined text-[18px]">add</span>
+                                    </button>
+                                  </div>
                               ) : (
-                                <div className="text-sm text-gray-500">
-                                  {isPaused
-                                    ? 'Temporarily unavailable'
-                                    : ticket.status === 'sold_out'
-                                    ? 'Sold out'
-                                    : 'Not available'}
-                                </div>
+                                  <div className="text-[10px] text-zinc-500 font-bold px-2 py-1 bg-white/5 rounded uppercase tracking-wider">
+                                      {isPaused ? 'Closed' : ticket.status === 'sold_out' ? 'Sold Out' : 'N/A'}
+                                  </div>
                               )}
                             </div>
                           );

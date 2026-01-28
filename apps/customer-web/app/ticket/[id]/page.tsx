@@ -105,49 +105,43 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
             <p className="text-white/60 font-body text-sm font-medium">{ticket.venue}</p>
         </div>
 
-        {/* QR Card */}
-        <div className="relative w-full mb-12">
-            <div className={`bg-white rounded-3xl pt-10 pb-12 px-6 flex flex-col items-center shadow-2xl relative z-10 overflow-hidden transition-all duration-500 ${ticket.status === 'used' || redemptionStatus === 'redeemed' ? 'opacity-50 grayscale' : ''}`}>
-                <div className="w-full flex justify-center mb-8">
-                    <img alt="QR code" className="w-64 h-64 object-contain mix-blend-multiply" src={ticket.qrCodeUrl}/>
+        {/* QR Card - Optimized & Compact */}
+        <div className="relative w-full mb-8">
+            <div className={`bg-white rounded-2xl pt-8 pb-8 px-6 flex flex-col items-center shadow-lg relative z-10 overflow-hidden transition-all duration-500 ${ticket.status === 'used' || redemptionStatus === 'redeemed' ? 'opacity-50 grayscale' : ''}`}>
+                <div className="w-full flex justify-center mb-6">
+                    <img alt="QR code" className="w-48 h-48 object-contain mix-blend-multiply" src={ticket.qrCodeUrl}/>
                 </div>
-                <div className="flex flex-col items-center gap-1 w-full border-t border-gray-100 pt-6">
-                    <p className="text-gray-400 text-[10px] font-bold tracking-[0.25em] uppercase font-body">Ticket ID</p>
-                    <p className="text-black font-bold text-3xl tracking-[0.15em] font-mono">{ticket.id.slice(0, 8)}</p>
+                <div className="flex flex-col items-center gap-1 w-full border-t border-gray-100 pt-4">
+                    <p className="text-gray-400 text-[9px] font-bold tracking-[0.2em] uppercase font-body">Code</p>
+                    <p className="text-black font-bold text-xl tracking-[0.1em] font-mono">{ticket.id.slice(0, 8)}</p>
                 </div>
                 
                 {redemptionStatus === 'redeemed' && (
                     <div className="absolute inset-0 z-20 flex items-center justify-center">
-                        <div className="bg-black/80 backdrop-blur-sm p-4 rounded-xl border border-primary/50 text-primary font-bold text-2xl uppercase tracking-widest -rotate-12 border-4">
+                        <div className="bg-black/90 p-3 rounded-lg border-2 border-primary text-primary font-bold text-xl uppercase tracking-widest -rotate-12">
                             REDEEMED
                         </div>
                     </div>
                 )}
             </div>
             
-            <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap">
-                <div className={`border-2 px-8 py-3 rounded-full text-lg font-bold tracking-[0.2em] shadow-[0_8px_20px_rgba(0,0,0,0.6)] flex items-center gap-2 transition-colors duration-300 ${redemptionStatus === 'redeemed' ? 'bg-gray-800 border-gray-600 text-gray-400' : 'bg-background-dark border-accent-gold text-accent-gold'}`}>
-                    <span className="material-symbols-outlined filled" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                    {redemptionStatus === 'redeemed' ? 'USED' : 'ACTIVE'}
+            <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap">
+                <div className={`border px-6 py-2 rounded-full text-sm font-bold tracking-widest shadow-lg flex items-center gap-2 transition-colors duration-300 ${redemptionStatus === 'redeemed' ? 'bg-zinc-800 border-zinc-700 text-zinc-400' : 'bg-[#1A1A1A] border-white/10 text-[rgb(212,175,55)]'}`}>
+                    <span className="material-symbols-outlined text-[16px] filled">verified</span>
+                    {redemptionStatus === 'redeemed' ? 'USED' : 'VALID'}
                 </div>
             </div>
         </div>
 
-        {/* Ticket Stats */}
-        <div className="grid grid-cols-2 gap-3 w-full mb-6 mt-2">
-            <div className="glass-panel p-4 rounded-2xl flex flex-col items-start gap-2">
-                <div className="p-2 rounded-lg bg-white/5 text-accent-gold"><span className="material-symbols-outlined" style={{ fontSize: '20px' }}>diamond</span></div>
-                <div>
-                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Access Tier</p>
-                    <p className="text-white text-base font-bold">{ticket.tierName}</p>
-                </div>
+        {/* Ticket Stats - Minimalist */}
+        <div className="grid grid-cols-2 gap-3 w-full mb-6 mt-4">
+            <div className="bg-[#1A1A1A] p-3 rounded-lg border border-white/5 flex flex-col justify-center">
+                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-1">Ticket Type</p>
+                <p className="text-white text-[15px] font-medium truncate">{ticket.tierName}</p>
             </div>
-            <div className="glass-panel p-4 rounded-2xl flex flex-col items-start gap-2">
-                <div className="p-2 rounded-lg bg-white/5 text-white/80"><span className="material-symbols-outlined" style={{ fontSize: '20px' }}>schedule</span></div>
-                <div>
-                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-0.5">Entry Before</p>
-                    <p className="text-white text-base font-bold">{ticket.time}</p>
-                </div>
+            <div className="bg-[#1A1A1A] p-3 rounded-lg border border-white/5 flex flex-col justify-center">
+                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-1">Entry Before</p>
+                <p className="text-white text-[15px] font-medium">{ticket.time || 'Anytime'}</p>
             </div>
         </div>
 
