@@ -189,11 +189,17 @@ export async function PUT(
     }
 
     // 4. 同步 Stripe（为所有 active ticket_types 创建/更新 Product/Price）
+    let stripeSync: { status: string; error?: string } = { status: 'skipped' };
     try {
-      await syncEventWeekStripe(eventWeekId);
-    } catch (stripeError) {
+      if (process.env.STRIPE_SECRET_KEY) {
+          await syncEventWeekStripe(eventWeekId);
+          stripeSync = { status: 'success' };
+      } else {
+          stripeSync = { status: 'failed', error: 'Missing STRIPE_SECRET_KEY' };
+      }
+    } catch (stripeError: any) {
       console.error('Stripe sync error (non-fatal):', stripeError);
-      // 不中断保存流程，但记录错误
+      stripeSync = { status: 'failed', error: stripeError.message || String(stripeError) };
     }
 
     // 5. 返回更新后的配置
@@ -224,7 +230,8 @@ export async function PUT(
       event_week_id: finalResult[0].event_week_id,
       week_start_date: finalResult[0].week_start_date,
       days: finalResult[0].days,
-      event_status: eventData?.status || 'draft'
+      event_status: eventData?.status || 'draft',
+      stripe_sync: stripeSync
     });
   } catch (error: any) {
     console.error('Error in PUT /api/admin/events-v2/[id]/week:', error);

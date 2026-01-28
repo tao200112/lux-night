@@ -46,59 +46,100 @@ export interface EventWithVenue extends Event {
 export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
   const supabase = createClient();
 
+  // Query V2 Events
   let query = supabase
-    .from('events')
+    .from('events_v2')
     .select(`
       *,
-      venues!inner(id, name, address, address_line1, formatted_address, city, state, region_id, lat, lng),
-      regions(id, name, city, state)
+      merchants!inner (
+        id,
+        name,
+        region_id,
+        venues (
+          id,
+          name,
+          address,
+          address_line1,
+          formatted_address,
+          city,
+          state,
+          region_id,
+          lat,
+          lng
+        ),
+        regions (
+          id,
+          name,
+          city,
+          state
+        )
+      )
     `)
-    .eq('status', 'published')
-    .gte('start_at', new Date().toISOString())
-    .order('start_at', { ascending: true });
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
 
   if (regionId) {
-    query = query.eq('region_id', regionId);
+    // Filter by merchant's region
+    query = query.eq('merchants.region_id', regionId);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error('Error fetching events:', error);
+    console.error('Error fetching v2 events:', error);
     throw new Error('Failed to fetch events');
   }
 
   const rows = data || [];
-  return rows.map((row: Record<string, unknown>) => {
-    const { venues, regions, ...rest } = row;
-    const v = Array.isArray(venues) ? venues[0] : venues;
-    const vv = v && typeof v === 'object' && 'id' in v ? (v as Record<string, unknown>) : null;
-    const address = vv ? ((vv.formatted_address as string | null) || (vv.address as string | null)) ?? null : null;
-    const venue = vv
+  return rows.map((row: any) => {
+    // Flatten merchant/venue/region data
+    const merchant = row.merchants;
+    const v = merchant?.venues?.[0]; // Use first venue
+    const r = merchant?.regions; // Region from merchant
+
+    const venue = v
       ? {
-          id: (vv.id as string) ?? '',
-          name: (vv.name as string) ?? '—',
-          address,
-          address_line1: (vv.address_line1 as string | null | undefined) ?? null,
-          city: (vv.city as string | null | undefined) ?? null,
-          state: (vv.state as string | null | undefined) ?? null,
-          region_id: (vv.region_id as string | null | undefined) ?? null,
-          lat: (vv.lat as number | null | undefined) ?? null,
-          lng: (vv.lng as number | null | undefined) ?? null,
+          id: v.id,
+          name: v.name,
+          address: v.address || v.formatted_address,
+          address_line1: v.address_line1,
+          city: v.city,
+          state: v.state,
+          region_id: v.region_id,
+          lat: v.lat,
+          lng: v.lng,
         }
-      : { id: '', name: '—', address: null as string | null, address_line1: null, city: null, state: null, region_id: null, lat: null, lng: null };
-    
-    // 处理 region
-    const r = Array.isArray(regions) ? regions[0] : regions;
-    const rr = r && typeof r === 'object' && 'id' in r ? (r as Record<string, unknown>) : null;
-    const region = rr ? {
-      id: (rr.id as string) ?? '',
-      name: (rr.name as string) ?? '',
-      city: (rr.city as string | null | undefined) ?? null,
-      state: (rr.state as string | null | undefined) ?? null,
-    } : null;
-    
-    return { ...rest, venue, region } as EventWithVenue;
+      : { id: '', name: 'Venue TBD', address: null };
+
+    const region = r
+      ? {
+          id: r.id,
+          name: r.name,
+          city: r.city,
+          state: r.state,
+        }
+      : null;
+
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      poster_url: row.poster_url,
+      status: row.status,
+      // Map missing V1 fields
+      start_at: row.created_at, // Fallback
+      end_at: row.created_at,   // Fallback
+      publish_at: row.created_at,
+      age_policy: '21+', // Default
+      refund_policy: 'flexible',
+      created_at: row.created_at,
+      updated_at: row.updated_at || row.created_at,
+      venue_id: venue.id,
+      region_id: merchant?.region_id || '',
+      merchant_id: merchant?.id || '',
+      venue,
+      region,
+    } as EventWithVenue;
   });
 }
 

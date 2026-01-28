@@ -66,8 +66,8 @@ export async function GET(
       
       // Events (最近 30 天)
       supabase
-        .from('events')
-        .select('id, title, status, start_at, end_at')
+        .from('events_v2')
+        .select('id, title, status, created_at')
         .eq('merchant_id', id)
         .order('created_at', { ascending: false })
         .limit(10),
@@ -146,8 +146,8 @@ export async function GET(
               id: e.id,
               title: e.title,
               status: e.status,
-              startAt: e.start_at,
-              endAt: e.end_at,
+              startAt: e.created_at, // V2 uses weeks info, fallback to created_at for sorting/display
+              endAt: null,
             }))
           : [],
         members: (membersResult.data || []).map((m: any) => {

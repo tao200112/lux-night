@@ -30,7 +30,7 @@ function NewEventForm() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [posterUrl, setPosterUrl] = useState('');
-  const [status, setStatus] = useState<'active' | 'paused' | 'archived'>('active');
+  const [status, setStatus] = useState<'draft' | 'active' | 'paused' | 'archived'>('draft');
   
   // Context Data
   const [merchantData, setMerchantData] = useState<{
@@ -287,23 +287,7 @@ function NewEventForm() {
             ></textarea>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-[#9d9db9] uppercase tracking-wide ml-1">Status</label>
-            <div className="relative">
-              <select 
-                value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full appearance-none bg-[#111111] border border-[#262626] rounded-lg px-4 py-3.5 text-white focus:outline-none focus:border-[#1313ec] focus:ring-1 focus:ring-[#1313ec] transition-all text-base"
-              >
-                <option value="active">Active</option>
-                <option value="paused">Temporarily Closed</option>
-                <option value="archived">Archived</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#9d9db9]">
-                <span className="material-symbols-outlined text-[20px]">unfold_more</span>
-              </div>
-            </div>
-          </div>
+
         </section>
 
         <section className="pt-2">
