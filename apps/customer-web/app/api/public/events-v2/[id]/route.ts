@@ -15,18 +15,25 @@ export async function GET(
     const supabase = await createClient();
 
     // 获取活动详情（仅 active/paused）
+    // 使用直接关联 (Proposed Plan A) 避免 PGRST201
     const { data: event, error } = await supabase
       .from('events_v2')
       .select(`
         *,
-        merchants:merchants!events_v2_merchant_id_fkey!inner (
+        merchant:merchants!events_v2_merchant_id_fkey (
+          id,
+          name
+        ),
+        venue:venues!events_v2_venue_id_fkey (
           id,
           name,
-          venues:venues!venues_merchant_id_fkey!inner (
-            id,
-            name,
-            address
-          )
+          address,
+          city,
+          state
+        ),
+        region:regions!events_v2_region_id_fkey (
+          id,
+          name
         )
       `)
       .eq('id', id)
@@ -34,14 +41,15 @@ export async function GET(
       .single();
 
     if (error || !event) {
+      console.error('[CUSTOMER EVENT V2] Error:', error);
       return NextResponse.json(
         { error: 'Event not found' },
         { status: 404 }
       );
     }
 
-    // 获取第一个 venue 的地址（用于展示）
-    const venue = event.merchants?.venues?.[0];
+    // Direct venue access
+    const venue = event.venue;
     const address = venue?.address || null;
 
     return NextResponse.json({
@@ -51,8 +59,8 @@ export async function GET(
       poster_url: event.poster_url,
       status: event.status,
       merchant: {
-        id: event.merchants.id,
-        name: event.merchants.name,
+        id: event.merchant?.id,
+        name: event.merchant?.name,
       },
       venue: venue ? {
         id: venue.id,
