@@ -186,7 +186,7 @@ export async function syncEventWeekStripe(
   }
 
   // 3. 同步每个 active ticket_type
-  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   
   for (const day of days || []) {
     const dayName = dayNames[day.dow] || `Day ${day.dow}`;

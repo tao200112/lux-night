@@ -16,8 +16,8 @@ interface Event {
   id: string;
   title: string;
   description?: string;
-  start_at: string;
-  end_at: string;
+  start_at?: string;
+  end_at?: string;
   status: string;
   actual_status?: string; // 根据时间计算的状态
   poster_url?: string;
@@ -26,6 +26,7 @@ interface Event {
   sold_count?: number;
   total_count?: number;
   checkin_count?: number;
+  is_v2?: boolean;
 }
 
 export default function EventsPage() {
@@ -185,8 +186,8 @@ export default function EventsPage() {
         ) : (
           events.map((event) => {
             // 使用 actual_status 或根据时间判断
-            const isLive = event.actual_status === 'live' || (new Date(event.start_at) <= new Date() && new Date(event.end_at) >= new Date());
-            const startDate = new Date(event.start_at);
+            const isLive = event.actual_status === 'live' || (event.start_at && event.end_at ? (new Date(event.start_at) <= new Date() && new Date(event.end_at) >= new Date()) : event.status === 'active');
+            const startDate = event.start_at ? new Date(event.start_at) : null;
             const soldCount = event.sold_count || 0;
             const totalCount = event.total_count || 0;
             const soldRate = totalCount > 0 ? (soldCount / totalCount) * 100 : 0;
@@ -242,7 +243,11 @@ export default function EventsPage() {
                     <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                       <span className="material-symbols-outlined text-xs">calendar_today</span>
                       <span>
-                        {startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        {startDate ? (
+                          `${startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • ${startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                        ) : (
+                          'Recurring Event'
+                        )}
                       </span>
                       {event.venue_name && (
                         <>

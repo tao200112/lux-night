@@ -1,433 +1,582 @@
 /**
- * Admin Event Week Configuration Page
- * 本周编辑器页面（核心功能）
+ * Admin Weekly Ticket Configuration Page - Step 2
+ * 周票务配置（7天循环配置）
  */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+// import { toast } from 'sonner'; // Assuming sonner is installed or falling back to alert
 import AdminBottomNav from '@/components/admin/AdminBottomNav';
 
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const DAY_SHORT_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// --- Types ---
 
-interface TicketType {
-  id?: string;
+type TicketCategory = 'General' | 'VIP' | 'Drink' | 'Skip' | 'Custom';
+type AgeRestriction = 'ALL' | '18' | '21';
+type TicketStatus = 'active' | 'hidden' | 'sold_out';
+
+interface TicketUI {
+  id?: string; // DB ID or undefined for new
+  tempId: string; // Internal React key
   name: string;
-  category: 'entry' | 'vip' | 'drink' | 'skipline' | 'other';
-  price_cents: number;
-  currency: string;
-  min_age: number | null;
-  inventory_limit: number | null;
-  status: 'active' | 'hidden' | 'sold_out';
-  sort_order: number;
-  action?: 'upsert' | 'delete';
+  category: TicketCategory;
+  priceDollars: string; // UI input is string
+  age: AgeRestriction;
+  quantity: string; // "" = unlimited
+  status: TicketStatus;
 }
 
-interface DayConfig {
-  id: string;
-  dow: number;
+interface DayUI {
+  dow: number; // 0=Sun, 1=Mon, ..., 6=Sat
   enabled: boolean;
-  start_time: string;
-  end_time: string;
-  end_next_day: boolean;
-  tickets: TicketType[];
+  startTime: string; // "HT:mm"
+  endTime: string;   // "HT:mm"
+  endNextDay: boolean; // +1D
+  tickets: TicketUI[];
 }
 
-interface WeekConfig {
-  event_week_id: string;
-  week_start_date: string;
-  days: DayConfig[];
-}
+// --- Constants ---
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mon -> Sun
+const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export default function AdminEventWeekPage() {
-  console.log('[HIT] NEW events-v2/[id]/week');
-  console.log('[NEW V2 PAGE] AdminEventWeekPage loaded - /events-v2/[id]/week');
+const DEFAULT_TICKET_TEMPLATES: Record<TicketCategory, Partial<TicketUI>> = {
+  'General': { name: 'General Admission', priceDollars: '20.00', age: '21', status: 'active', quantity: '' },
+  'VIP': { name: 'VIP Entry', priceDollars: '40.00', age: '21', status: 'active', quantity: '100' },
+  'Drink': { name: 'Drink Ticket', priceDollars: '10.00', age: '21', status: 'active', quantity: '' },
+  'Skip': { name: 'Skip The Line', priceDollars: '30.00', age: 'ALL', status: 'active', quantity: '50' },
+  'Custom': { name: 'Special Pass', priceDollars: '0.00', age: '21', status: 'active', quantity: '' },
+};
+
+export default function WeekConfigPage() {
+  console.log('[HIT] V2 events-v2/[id]/week');
   const router = useRouter();
   const params = useParams();
   const eventId = params.id as string;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [weekConfig, setWeekConfig] = useState<WeekConfig | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-
+  const [isDirty, setIsDirty] = useState(false);
+  const [days, setDays] = useState<Record<number, DayUI>>({});
+  const [weekStartDate, setWeekStartDate] = useState<string>(''); // Store week_start_date
+  
+  // Fetch Config
   useEffect(() => {
-    fetchWeekConfig();
-  }, [eventId, selectedDate]);
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch(`/api/admin/events-v2/${eventId}/week`);
+        const json = await res.json();
+        
+        if (json.week_start_date) {
+            setWeekStartDate(json.week_start_date);
+        }
 
-  const fetchWeekConfig = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const response = await fetch(`/api/admin/events-v2/${eventId}/week?date=${dateStr}`);
-      const result = await response.json();
-
-      if (result.error) {
-        throw new Error(result.error);
+        if (!json.days) {
+          // Initialize default empty week
+          const initialDays: Record<number, DayUI> = {};
+          [0, 1, 2, 3, 4, 5, 6].forEach(dow => {
+            initialDays[dow] = {
+              dow,
+              enabled: false,
+              startTime: '22:00',
+              endTime: '02:00',
+              endNextDay: true,
+              tickets: []
+            };
+          });
+          setDays(initialDays);
+        } else {
+          // Map DB to UI
+          const loadedDays: Record<number, DayUI> = {};
+          // Initialize defined days
+          (json.days as any[]).forEach((d: any) => {
+             loadedDays[d.dow] = {
+               dow: d.dow,
+               enabled: d.enabled,
+               startTime: d.start_time,
+               endTime: d.end_time,
+               endNextDay: d.end_next_day,
+               tickets: (d.tickets || []).map((t: any) => ({
+                 id: t.id,
+                 tempId: Math.random().toString(36).substr(2, 9),
+                 name: t.name,
+                 // Map DB category to UI category
+                 category: mapDbCategoryToUi(t.category),
+                 priceDollars: (t.price_cents / 100).toFixed(2),
+                 age: t.min_age === 18 ? '18' : t.min_age === 21 ? '21' : 'ALL',
+                 quantity: t.inventory_limit === null ? '' : t.inventory_limit.toString(),
+                 status: t.status
+               }))
+             };
+          });
+          // Fill missing days
+          [0, 1, 2, 3, 4, 5, 6].forEach(dow => {
+            if (!loadedDays[dow]) {
+              loadedDays[dow] = {
+                dow,
+                enabled: false,
+                startTime: '22:00',
+                endTime: '02:00',
+                endNextDay: true,
+                tickets: []
+              };
+            }
+          });
+          setDays(loadedDays);
+        }
+      } catch (err) {
+        console.error('Fetch Error:', err);
+      } finally {
+        setLoading(false);
       }
+    };
+    fetchConfig();
+  }, [eventId]);
 
-      setWeekConfig({
-        event_week_id: result.event_week_id,
-        week_start_date: result.week_start_date,
-        days: result.days || [],
-      });
-    } catch (err: any) {
-      console.error('[ADMIN WEEK CONFIG] Error:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
+  const mapDbCategoryToUi = (dbCat: string): TicketCategory => {
+    switch (dbCat) {
+      case 'entry': return 'General';
+      case 'vip': return 'VIP';
+      case 'drink': return 'Drink';
+      case 'skipline': return 'Skip';
+      default: return 'Custom';
     }
   };
 
+  const mapUiCategoryToDb = (uiCat: TicketCategory): string => {
+    switch (uiCat) {
+      case 'General': return 'entry';
+      case 'VIP': return 'vip';
+      case 'Drink': return 'drink';
+      case 'Skip': return 'skipline';
+      default: return 'other';
+    }
+  };
+
+  // --- Actions ---
+
+  const handleDayChange = (dow: number, updates: Partial<DayUI>) => {
+    setDays(prev => ({
+      ...prev,
+      [dow]: { ...prev[dow], ...updates }
+    }));
+    setIsDirty(true);
+  };
+
+  const addTicket = (dow: number) => {
+    const newTicket: TicketUI = {
+      tempId: Math.random().toString(36).substr(2, 9),
+      category: 'General',
+      ...DEFAULT_TICKET_TEMPLATES['General'] as any
+    };
+    const day = days[dow];
+    handleDayChange(dow, { tickets: [...day.tickets, newTicket] });
+  };
+
+  const updateTicket = (dow: number, ticketIndex: number, updates: Partial<TicketUI>) => {
+    const day = days[dow];
+    const newTickets = [...day.tickets];
+    newTickets[ticketIndex] = { ...newTickets[ticketIndex], ...updates };
+    
+    // Apply template defaults if category changed
+    if (updates.category) {
+       const template = DEFAULT_TICKET_TEMPLATES[updates.category];
+       newTickets[ticketIndex] = { ...newTickets[ticketIndex], ...template, category: updates.category };
+    }
+
+    handleDayChange(dow, { tickets: newTickets });
+  };
+
+  const deleteTicket = (dow: number, ticketIndex: number) => {
+    const day = days[dow];
+    const newTickets = day.tickets.filter((_, i) => i !== ticketIndex);
+    handleDayChange(dow, { tickets: newTickets });
+  };
+
+  const duplicateTicket = (dow: number, ticketIndex: number) => {
+     const day = days[dow];
+     const source = day.tickets[ticketIndex];
+     const copy: TicketUI = {
+       ...source,
+       id: undefined, // New ID
+       tempId: Math.random().toString(36).substr(2, 9),
+       name: `${source.name} (Copy)`
+     };
+     handleDayChange(dow, { tickets: [...day.tickets, copy] });
+  };
+
+  // --- Global Toolbar Actions ---
+
+  const copyDayToAll = () => {
+    // Determine active day (assuming first visible or user selection? Let's use Monday as source or current scrolling? User spec didn't specify source. Let's assume we copy the *first enabled day* found to all others, OR simpler: Copy Monday to all.)
+    // Better UX: Which day is being edited? 
+    // Implementation: Since we don't track "focused" day, let's pick the first enabled day in DAY_ORDER.
+    const sourceDow = DAY_ORDER.find(d => days[d]?.enabled) ?? 1; // Default Mon
+    const source = days[sourceDow];
+    
+    if (!confirm(`Overwrite all days with ${DAY_LABELS[sourceDow]}'s configuration?`)) return;
+
+    const newDays = { ...days };
+    [0, 1, 2, 3, 4, 5, 6].forEach(d => {
+      if (d === sourceDow) return;
+      newDays[d] = {
+        ...newDays[d],
+        enabled: source.enabled, // Copy enabled status too? Usually yes.
+        startTime: source.startTime,
+        endTime: source.endTime,
+        endNextDay: source.endNextDay,
+        tickets: source.tickets.map(t => ({...t, id: undefined, tempId: Math.random().toString(36).substr(2,9)})) // Deep copy tickets
+      };
+    });
+    setDays(newDays);
+    setIsDirty(true);
+  };
+
+  const duplicateTicketsOnly = () => {
+    const sourceDow = DAY_ORDER.find(d => days[d]?.enabled && days[d]?.tickets.length > 0) ?? 1;
+    const source = days[sourceDow];
+    
+    if (!confirm(`Copy tickets from ${DAY_LABELS[sourceDow]} to all enabled days?`)) return;
+
+    const newDays = { ...days };
+    [0, 1, 2, 3, 4, 5, 6].forEach(d => {
+       if (d === sourceDow) return;
+       // Only copy to enabled days? Or all? "Duplicate Tickets Only" usually implies merging or overwriting tickets.
+       // Let's overwrite tickets for enabled days.
+       if (newDays[d].enabled) {
+          newDays[d].tickets = source.tickets.map(t => ({...t, id: undefined, tempId: Math.random().toString(36).substr(2,9)}));
+       }
+    });
+    setDays(newDays);
+    setIsDirty(true);
+  };
+
+  const resetToDefault = () => {
+    if (!confirm('Reset all days to default configuration?')) return;
+    const initialDays: Record<number, DayUI> = {};
+      [0, 1, 2, 3, 4, 5, 6].forEach(dow => {
+        initialDays[dow] = {
+          dow,
+          enabled: false,
+          startTime: '22:00',
+          endTime: '02:00',
+          endNextDay: true,
+          tickets: []
+        };
+      });
+      setDays(initialDays);
+      setIsDirty(true);
+  };
+
+  // --- Save ---
+
   const handleSave = async () => {
-    if (!weekConfig) return;
+    // Validation
+    for (const dow of DAY_ORDER) {
+      const day = days[dow];
+      if (day.enabled) {
+        const activeTickets = day.tickets.filter(t => t.status === 'active');
+        if (activeTickets.length === 0) {
+          alert(`${DAY_LABELS[dow]} is enabled but has no active tickets. Please add at least one active ticket.`);
+          return;
+        }
+      }
+    }
 
+    setSaving(true);
     try {
-      setSaving(true);
-      setError(null);
-
-      // Prepare payload
+      // Prepare Payload
       const daysPayload: Record<string, any> = {};
-      weekConfig.days.forEach((day) => {
-        daysPayload[day.dow.toString()] = {
+      Object.values(days).forEach(day => {
+        daysPayload[day.dow] = {
           enabled: day.enabled,
-          start_time: day.start_time,
-          end_time: day.end_time,
-          end_next_day: day.end_next_day,
-          tickets: day.tickets.map((ticket) => ({
-            ...ticket,
-            action: ticket.action || 'upsert',
-          })),
+          start_time: day.startTime,
+          end_time: day.endTime,
+          end_next_day: day.endNextDay,
+          tickets: day.tickets.map(t => ({
+            id: t.id, // Pass ID if updating
+            name: t.name,
+            category: mapUiCategoryToDb(t.category),
+            price_cents: Math.round(parseFloat(t.priceDollars) * 100),
+            min_age: t.age === 'ALL' ? null : parseInt(t.age),
+            inventory_limit: t.quantity === '' ? null : parseInt(t.quantity),
+            status: t.status,
+            action: 'upsert' // Current logic implies full replace of tickets or smart diff. V2 API handles this.
+          }))
         };
       });
 
-      const response = await fetch(`/api/admin/events-v2/${eventId}/week`, {
+      const res = await fetch(`/api/admin/events-v2/${eventId}/week`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          week_start_date: weekConfig.week_start_date,
-          days: daysPayload,
-        }),
+        body: JSON.stringify({ 
+            week_start_date: weekStartDate,
+            days: daysPayload 
+        })
       });
+      
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
 
-      const result = await response.json();
+      setIsDirty(false);
+      alert('Changes saved successfully!');
+      // Force reload to get new IDs
+      window.location.reload(); 
 
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      // Refresh config
-      await fetchWeekConfig();
-      alert('Week configuration saved successfully!');
     } catch (err: any) {
-      console.error('[ADMIN WEEK CONFIG] Save error:', err);
-      setError(err.message);
+      console.error('Save failed:', err);
+      alert('Failed to save: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const updateDay = (dow: number, updates: Partial<DayConfig>) => {
-    if (!weekConfig) return;
 
-    setWeekConfig({
-      ...weekConfig,
-      days: weekConfig.days.map((day) =>
-        day.dow === dow ? { ...day, ...updates } : day
-      ),
-    });
-  };
-
-  const updateTicket = (dow: number, ticketIndex: number, updates: Partial<TicketType>) => {
-    if (!weekConfig) return;
-
-    setWeekConfig({
-      ...weekConfig,
-      days: weekConfig.days.map((day) =>
-        day.dow === dow
-          ? {
-              ...day,
-              tickets: day.tickets.map((ticket, idx) =>
-                idx === ticketIndex ? { ...ticket, ...updates } : ticket
-              ),
-            }
-          : day
-      ),
-    });
-  };
-
-  const addTicket = (dow: number) => {
-    if (!weekConfig) return;
-
-    const newTicket: TicketType = {
-      name: 'New Ticket',
-      category: 'entry',
-      price_cents: 0,
-      currency: 'usd',
-      min_age: null,
-      inventory_limit: null,
-      status: 'active',
-      sort_order: weekConfig.days.find((d) => d.dow === dow)?.tickets.length || 0,
-      action: 'upsert',
-    };
-
-    updateDay(dow, {
-      tickets: [...(weekConfig.days.find((d) => d.dow === dow)?.tickets || []), newTicket],
-    });
-  };
-
-  const deleteTicket = (dow: number, ticketIndex: number) => {
-    if (!weekConfig) return;
-
-    const day = weekConfig.days.find((d) => d.dow === dow);
-    if (!day) return;
-
-    const ticket = day.tickets[ticketIndex];
-    if (ticket.id) {
-      // Mark for deletion
-      updateTicket(dow, ticketIndex, { action: 'delete' });
-    } else {
-      // Remove from array (new ticket)
-      updateDay(dow, {
-        tickets: day.tickets.filter((_, idx) => idx !== ticketIndex),
-      });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background-dark text-white">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="animate-pulse">Loading...</div>
-        </div>
-        <AdminBottomNav />
-      </div>
-    );
-  }
-
-  if (error || !weekConfig) {
-    return (
-      <div className="min-h-screen bg-background-dark text-white">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="text-red-400">{error || 'Failed to load week configuration'}</div>
-          <button
-            onClick={fetchWeekConfig}
-            className="mt-4 px-4 py-2 bg-primary text-black rounded-lg"
-          >
-            Retry
-          </button>
-        </div>
-        <AdminBottomNav />
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-[#101022] text-white flex items-center justify-center">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-background-dark text-white">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <Link
-            href="/events-v2"
-            className="text-primary hover:text-primary-hover mb-4 inline-block"
-          >
-            ← Back to Events
+    <div className="bg-[#f6f6f8] dark:bg-[#101022] text-slate-900 dark:text-white font-sans min-h-screen">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-[#111118]/95 backdrop-blur-md border-b border-[#343445] shadow-xl">
+        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+          <Link href="/events-v2" className="text-white flex items-center justify-center p-2 -ml-2 rounded-full hover:bg-white/10 transition">
+            <span className="material-symbols-outlined text-[24px]">arrow_back</span>
           </Link>
-          <h1 className="text-2xl font-bold">Week Configuration</h1>
-          <p className="text-gray-400 mt-2">
-            Week of {new Date(weekConfig.week_start_date).toLocaleDateString()}
+          <div className="text-white text-base font-bold tracking-tight text-center">
+            Weekly Ticket Configuration
+          </div>
+          <div className="flex flex-col items-end">
+            {isDirty && <span className="text-[10px] text-orange-400 font-medium mb-0.5 mr-1">Unsaved changes</span>}
+            <button 
+              onClick={handleSave}
+              disabled={saving || !isDirty}
+              className={`bg-[#1313ec] hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-lg shadow-blue-900/20 disabled:opacity-50 ${!isDirty && 'invisible'}`}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+        
+        <div className="px-4 pb-3">
+          <p className="text-[11px] text-[#9d9db9] leading-tight text-center max-w-md mx-auto">
+            This configuration applies continuously until you change it. Changes take effect immediately.
           </p>
         </div>
 
-        {/* Week Picker */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium mb-2">Select Week</label>
-          <input
-            type="date"
-            value={selectedDate.toISOString().split('T')[0]}
-            onChange={(e) => setSelectedDate(new Date(e.target.value))}
-            className="px-4 py-2 bg-surface-dark rounded-lg border border-gray-700"
-          />
+        {/* Toolbar */}
+        <div className="px-4 pb-3 border-t border-[#343445]/50 pt-3">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            <button onClick={copyDayToAll} className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181824] border border-[#343445] active:bg-[#1313ec]/20 transition hover:bg-white/5">
+              <span className="material-symbols-outlined text-[#1313ec] text-[18px]">calendar_view_week</span>
+              <span className="text-xs font-medium text-white whitespace-nowrap">Copy Day to All Days</span>
+            </button>
+            <button onClick={duplicateTicketsOnly} className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181824] border border-[#343445] active:bg-[#1313ec]/20 transition hover:bg-white/5">
+              <span className="material-symbols-outlined text-white text-[18px]">content_copy</span>
+              <span className="text-xs font-medium text-white whitespace-nowrap">Duplicate Tickets Only</span>
+            </button>
+            <button onClick={resetToDefault} className="flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181824] border border-[#343445] active:bg-[#1313ec]/20 transition hover:bg-white/5">
+              <span className="material-symbols-outlined text-[#9d9db9] text-[18px]">restart_alt</span>
+              <span className="text-xs font-medium text-[#9d9db9] whitespace-nowrap">Reset to Default</span>
+            </button>
+          </div>
         </div>
+      </div>
 
-        {/* Days */}
-        <div className="space-y-4 mb-6">
-          {weekConfig.days.map((day) => (
-            <div
-              key={day.dow}
-              className="bg-surface-dark rounded-lg p-4 border border-gray-700"
+      <div className="flex flex-col gap-5 p-4 pb-24 max-w-lg mx-auto">
+        {DAY_ORDER.map(dow => {
+          const day = days[dow];
+          const isClosed = !day.enabled;
+          const hasNoTickets = day.enabled && day.tickets.length === 0;
+
+          return (
+            <div 
+              key={dow} 
+              className={`bg-[#181824] rounded-xl border border-[#343445] overflow-hidden shadow-sm transition-all
+                ${isClosed ? 'opacity-50 grayscale hover:opacity-100 hover:grayscale-0' : ''}
+                ${hasNoTickets ? 'border-yellow-700/50' : ''}
+              `}
             >
               {/* Day Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-semibold">{DAY_NAMES[day.dow]}</h3>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={day.enabled}
-                      onChange={(e) => updateDay(day.dow, { enabled: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm">Enabled</span>
-                  </label>
-                </div>
-                <button
-                  onClick={() => addTicket(day.dow)}
-                  className="px-3 py-1 bg-primary text-black rounded text-sm hover:bg-primary-hover"
-                >
-                  + Add Ticket
-                </button>
-              </div>
-
-              {/* Time Range */}
-              {day.enabled && (
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Start Time</label>
-                    <input
-                      type="time"
-                      value={day.start_time}
-                      onChange={(e) => updateDay(day.dow, { start_time: e.target.value })}
-                      className="w-full px-3 py-2 bg-surface-light rounded border border-gray-600"
-                    />
+              <div className={`p-4 ${isClosed ? '' : 'border-b border-[#343445] bg-[#1c1c27]'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col">
+                    <h3 className="text-white text-lg font-bold leading-tight">{DAY_LABELS[dow]}</h3>
+                    <span className={`text-xs ${hasNoTickets ? 'text-yellow-500 font-medium flex items-center gap-1' : 'text-[#9d9db9]'}`}>
+                      {isClosed ? 'Closed' : hasNoTickets ? (
+                        <><span className="material-symbols-outlined text-[14px]">warning</span> 0 Tickets configured</>
+                      ) : (
+                        `${day.tickets.filter(t=>t.status==='active').length} Tickets Active`
+                      )}
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">End Time</label>
-                    <input
-                      type="time"
-                      value={day.end_time}
-                      onChange={(e) => updateDay(day.dow, { end_time: e.target.value })}
-                      className="w-full px-3 py-2 bg-surface-light rounded border border-gray-600"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={day.end_next_day}
-                        onChange={(e) => updateDay(day.dow, { end_next_day: e.target.checked })}
-                        className="w-4 h-4"
+                  <div className="flex items-center gap-3">
+                    {!isClosed && (
+                      <button onClick={() => addTicket(dow)} className="h-8 w-8 flex items-center justify-center rounded-full bg-[#232333] text-[#1313ec] hover:bg-[#1313ec] hover:text-white transition border border-[#343445]">
+                        <span className="material-symbols-outlined text-[20px]">add</span>
+                      </button>
+                    )}
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={day.enabled}
+                        onChange={(e) => handleDayChange(dow, { enabled: e.target.checked })}
+                        className="sr-only peer" 
                       />
-                      <span className="text-sm">End Next Day</span>
+                      <div className="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#1313ec]"></div>
                     </label>
                   </div>
                 </div>
-              )}
 
-              {/* Tickets */}
+                {/* Time Controls */}
+                {!isClosed && (
+                  <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                    <div className="relative">
+                      <span className="absolute left-2 top-1.5 text-[10px] text-[#9d9db9] uppercase font-bold tracking-wider">Start</span>
+                      <input 
+                        type="time" 
+                        value={day.startTime}
+                        onChange={(e) => handleDayChange(dow, { startTime: e.target.value })}
+                        className="w-full bg-[#232333] border border-[#343445] rounded-lg text-white text-sm px-2 pt-5 pb-1 focus:ring-1 focus:ring-[#1313ec] focus:border-[#1313ec]" 
+                      />
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1.5 text-[10px] text-[#9d9db9] uppercase font-bold tracking-wider">End</span>
+                      <input 
+                        type="time" 
+                        value={day.endTime}
+                        onChange={(e) => handleDayChange(dow, { endTime: e.target.value })}
+                        className="w-full bg-[#232333] border border-[#343445] rounded-lg text-white text-sm px-2 pt-5 pb-1 focus:ring-1 focus:ring-[#1313ec] focus:border-[#1313ec]" 
+                      />
+                    </div>
+                    <div className="flex flex-col items-center justify-center bg-[#232333] border border-[#343445] rounded-lg h-full px-2 w-[52px]" title="Ends Next Day">
+                      <span className="text-[10px] text-[#9d9db9] font-bold leading-none mb-1">+1D</span>
+                      <input 
+                        type="checkbox" 
+                        checked={day.endNextDay}
+                        onChange={(e) => handleDayChange(dow, { endNextDay: e.target.checked })}
+                        className="rounded border-[#343445] bg-transparent text-[#1313ec] focus:ring-0 w-4 h-4" 
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tickets List */}
               {day.enabled && (
-                <div className="space-y-2">
-                  {day.tickets
-                    .filter((t) => t.action !== 'delete')
-                    .map((ticket, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-surface-light rounded p-3 flex items-center gap-4"
-                      >
-                        <input
-                          type="text"
-                          value={ticket.name}
-                          onChange={(e) => updateTicket(day.dow, idx, { name: e.target.value })}
-                          placeholder="Ticket Name"
-                          className="flex-1 px-3 py-1 bg-background-dark rounded border border-gray-600"
-                        />
-                        <select
-                          value={ticket.category}
-                          onChange={(e) =>
-                            updateTicket(day.dow, idx, { category: e.target.value as any })
-                          }
-                          className="px-3 py-1 bg-background-dark rounded border border-gray-600"
-                        >
-                          <option value="entry">Entry</option>
-                          <option value="vip">VIP</option>
-                          <option value="drink">Drink</option>
-                          <option value="skipline">Skip Line</option>
-                          <option value="other">Other</option>
-                        </select>
-                        <input
-                          type="number"
-                          value={ticket.price_cents / 100}
-                          onChange={(e) =>
-                            updateTicket(day.dow, idx, {
-                              price_cents: Math.round(parseFloat(e.target.value) * 100),
-                            })
-                          }
-                          placeholder="Price ($)"
-                          className="w-24 px-3 py-1 bg-background-dark rounded border border-gray-600"
-                        />
-                        <select
-                          value={ticket.min_age || ''}
-                          onChange={(e) =>
-                            updateTicket(day.dow, idx, {
-                              min_age: e.target.value ? parseInt(e.target.value) : null,
-                            })
-                          }
-                          className="w-20 px-3 py-1 bg-background-dark rounded border border-gray-600"
-                        >
-                          <option value="">No Age</option>
-                          <option value="18">18+</option>
-                          <option value="21">21+</option>
-                        </select>
-                        <input
-                          type="number"
-                          value={ticket.inventory_limit || ''}
-                          onChange={(e) =>
-                            updateTicket(day.dow, idx, {
-                              inventory_limit: e.target.value ? parseInt(e.target.value) : null,
-                            })
-                          }
-                          placeholder="Limit"
-                          className="w-20 px-3 py-1 bg-background-dark rounded border border-gray-600"
-                        />
-                        <select
-                          value={ticket.status}
-                          onChange={(e) =>
-                            updateTicket(day.dow, idx, { status: e.target.value as any })
-                          }
-                          className="px-3 py-1 bg-background-dark rounded border border-gray-600"
-                        >
-                          <option value="active">Active</option>
-                          <option value="hidden">Hidden</option>
-                          <option value="sold_out">Sold Out</option>
-                        </select>
-                        <button
-                          onClick={() => deleteTicket(day.dow, idx)}
-                          className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ))}
-                </div>
+                hasNoTickets ? (
+                  <div className="bg-yellow-900/20 p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
+                    <span className="material-symbols-outlined text-yellow-500 text-[32px]">warning</span>
+                    <p className="text-sm text-yellow-200/80 text-center">Day is enabled but has no tickets.</p>
+                    <button onClick={() => addTicket(dow)} className="text-[#1313ec] text-sm font-bold hover:underline">Add First Ticket</button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-col divide-y divide-[#343445]">
+                      {day.tickets.map((ticket, tIdx) => (
+                        <div key={ticket.tempId} className="p-4 hover:bg-white/[0.02] transition group">
+                          <div className="flex flex-col gap-3">
+                            {/* Top Row: Category + Name */}
+                            <div className="flex gap-2">
+                              <div className="w-1/3 min-w-[90px]">
+                                <select 
+                                  value={ticket.category}
+                                  onChange={(e) => updateTicket(dow, tIdx, { category: e.target.value as TicketCategory })}
+                                  className="w-full bg-[#232333] border border-[#343445] rounded-lg text-white text-xs py-2 px-2 focus:ring-[#1313ec] focus:border-[#1313ec] appearance-none"
+                                >
+                                  <option value="General">General</option>
+                                  <option value="VIP">VIP</option>
+                                  <option value="Drink">Drink</option>
+                                  <option value="Skip">Skip Line</option>
+                                  <option value="Custom">Custom</option>
+                                </select>
+                              </div>
+                              <div className="flex-1">
+                                <input 
+                                  type="text" 
+                                  value={ticket.name}
+                                  onChange={(e) => updateTicket(dow, tIdx, { name: e.target.value })}
+                                  className="w-full bg-[#232333] border border-[#343445] rounded-lg text-white text-sm py-1.5 px-3 focus:ring-[#1313ec] focus:border-[#1313ec] font-medium" 
+                                />
+                              </div>
+                            </div>
+
+                            {/* Middle Row: Price, Age, Qty */}
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9d9db9] text-xs">$</span>
+                                <input 
+                                  type="number" 
+                                  value={ticket.priceDollars}
+                                  onChange={(e) => updateTicket(dow, tIdx, { priceDollars: e.target.value })}
+                                  className="w-full bg-[#232333] border border-[#343445] rounded-lg text-white text-sm py-1.5 pl-5 pr-2 focus:ring-[#1313ec] focus:border-[#1313ec] text-right font-mono" 
+                                />
+                              </div>
+                              <select 
+                                value={ticket.age}
+                                onChange={(e) => updateTicket(dow, tIdx, { age: e.target.value as AgeRestriction })}
+                                className="w-full bg-[#232333] border border-[#343445] rounded-lg text-white text-xs py-1.5 px-2 focus:ring-[#1313ec] focus:border-[#1313ec]"
+                              >
+                                <option value="ALL">All Ages</option>
+                                <option value="18">18+</option>
+                                <option value="21">21+</option>
+                              </select>
+                              <div className="relative">
+                                <input 
+                                  type="number" 
+                                  value={ticket.quantity}
+                                  onChange={(e) => updateTicket(dow, tIdx, { quantity: e.target.value })}
+                                  className="w-full bg-[#232333] border border-[#343445] rounded-lg text-white text-sm py-1.5 px-2 focus:ring-[#1313ec] focus:border-[#1313ec] text-center placeholder:text-xl font-mono" 
+                                  placeholder="∞" 
+                                />
+                                <span className="absolute right-1 top-0 text-[9px] text-[#9d9db9] bg-[#232333] px-1 -mt-1.5">Qty</span>
+                              </div>
+                            </div>
+                            
+                            {/* Bottom Row: Status + Actions */}
+                            <div className="flex items-center justify-between mt-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`flex h-2 w-2 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)] ${ticket.status === 'active' ? 'bg-green-500' : ticket.status === 'sold_out' ? 'bg-red-500' : 'bg-gray-500'}`}></span>
+                                <select
+                                  value={ticket.status}
+                                  onChange={(e) => updateTicket(dow, tIdx, { status: e.target.value as TicketStatus })}
+                                  className="bg-transparent text-xs font-medium text-white border-none focus:ring-0 p-0 cursor-pointer"
+                                  style={{ color: ticket.status === 'active' ? '#4ade80' : ticket.status === 'sold_out' ? '#f87171' : '#9ca3af' }}
+                                >
+                                  <option value="active">Active</option>
+                                  <option value="sold_out">Sold Out</option>
+                                  <option value="hidden">Hidden</option>
+                                </select>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => duplicateTicket(dow, tIdx)} className="p-1.5 text-[#9d9db9] hover:text-white hover:bg-white/10 rounded-md transition" title="Duplicate">
+                                  <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                                </button>
+                                <button onClick={() => deleteTicket(dow, tIdx)} className="p-1.5 text-[#9d9db9] hover:text-red-400 hover:bg-red-400/10 rounded-md transition" title="Delete">
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Add Ticket Footer Button */}
+                    <button 
+                      onClick={() => addTicket(dow)}
+                      className="w-full py-3 flex items-center justify-center gap-2 text-[#1313ec] hover:bg-[#1313ec]/5 transition border-t border-[#343445] text-sm font-bold"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">add_circle</span>
+                      Add Ticket
+                    </button>
+                  </>
+                )
               )}
             </div>
-          ))}
-        </div>
-
-        {/* Save Button */}
-        {error && (
-          <div className="mb-4 bg-red-500/20 border border-red-500 rounded-lg p-4 text-red-400">
-            {error}
-          </div>
-        )}
-
-        <div className="flex gap-4">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-6 py-3 bg-primary text-black rounded-lg hover:bg-primary-hover transition disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : 'Save Week Configuration'}
-          </button>
-        </div>
+          );
+        })}
       </div>
-      <AdminBottomNav />
     </div>
   );
 }

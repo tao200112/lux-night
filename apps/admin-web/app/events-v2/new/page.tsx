@@ -1,45 +1,86 @@
 /**
- * Admin Create Event V2 Page
- * 创建活动页面（v2）
- * 仅包含：Title, Description, Poster, Status
- * Merchant ID 从 URL 获取，禁止修改
- * Poster 仅支持上传
+ * Admin Create Event V2 Page - Step 1
+ * 创建活动基本信息（Title, Poster, Status, Context）
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import AdminBottomNav from '@/components/admin/AdminBottomNav';
-import AdminTopBar from '@/components/admin/AdminTopBar';
+
+// Helper to format address
+const formatAddress = (venue: any) => {
+  if (!venue) return 'No Venue Assigned';
+  return venue.address || venue.name || 'Unknown Location';
+};
 
 export default function NewEventV2Page() {
+  console.log('[HIT] V2 events-v2/new');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const merchantId = searchParams.get('merchant_id');
+
   const [loading, setLoading] = useState(false);
+  const [fetchingMerchant, setFetchingMerchant] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [merchantId, setMerchantId] = useState('');
+  // Data State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [posterUrl, setPosterUrl] = useState('');
   const [status, setStatus] = useState<'active' | 'paused' | 'archived'>('active');
+  
+  // Context Data
+  const [merchantData, setMerchantData] = useState<{
+    name: string;
+    venueName: string;
+    venueAddress: string;
+    timezone: string;
+  } | null>(null);
 
-  // 从 URL 参数获取 merchant_id（如果从 merchant 页面跳转过来）
+  // Drag & Drop State
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const mId = searchParams.get('merchant_id');
-    if (mId) {
-      setMerchantId(mId);
+    if (!merchantId) {
+      setFetchingMerchant(false);
+      return;
     }
-  }, []);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const fetchMerchant = async () => {
+      try {
+        const res = await fetch(`/api/admin/merchants/${merchantId}`);
+        const json = await res.json();
+        
+        if (!json.success || !json.data) {
+          throw new Error('Failed to load merchant data');
+        }
+
+        const m = json.data;
+        const venue = m.venues?.[0]; 
+        
+        setMerchantData({
+          name: m.name,
+          venueName: venue?.name || 'Main Venue',
+          venueAddress: formatAddress(venue),
+          timezone: 'America/New_York',
+        });
+      } catch (err) {
+        console.error('Error fetching merchant:', err);
+      } finally {
+        setFetchingMerchant(false);
+      }
+    };
+
+    fetchMerchant();
+  }, [merchantId]);
+
+  const handleFileSelect = async (file: File) => {
     if (!file) return;
 
-    // Validate size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('File size must be less than 5MB');
       return;
@@ -75,21 +116,33 @@ export default function NewEventV2Page() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files[0]);
+      e.dataTransfer.clearData();
+    }
+  };
+
+  const handleSubmit = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      if (!merchantId) {
-        throw new Error('Merchant ID is missing. Please create event from Merchant Detail page.');
-      }
-      if (!title) {
-        throw new Error('Title is required');
-      }
-      if (!posterUrl) {
-        throw new Error('Poster is required. Please upload an image.');
-      }
+      if (!merchantId) throw new Error('Merchant ID is missing');
+      if (!title) throw new Error('Title is required');
+      if (!posterUrl) throw new Error('Event Poster is required');
 
       const response = await fetch('/api/admin/events-v2', {
         method: 'POST',
@@ -109,173 +162,209 @@ export default function NewEventV2Page() {
         throw new Error(result.error);
       }
 
-      // Redirect to week configuration
       router.push(`/events-v2/${result.event.id}/week`);
+
     } catch (err: any) {
-      console.error('[ADMIN NEW EVENT V2] Error:', err);
+      console.error('[Create Event] Error:', err);
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
 
+  if (!merchantId) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <p className="text-red-400">Merchant ID is missing.</p>
+          <Link href="/merchants" className="text-primary hover:underline">
+            Go to Merchants
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white pb-32">
-      <AdminTopBar title="Create New Event" showBack />
-
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-500 dark:text-red-400 text-sm">
-              <p className="font-bold">Error</p>
-              {error}
+    <div className="min-h-screen bg-[#0A0A0A] text-white font-sans flex flex-col relative overflow-x-hidden selection:bg-[#1313ec]/30 selection:text-white">
+      <div className="sticky top-0 z-50 bg-[#0A0A0A]/80 backdrop-blur-md border-b border-[#262626]">
+        <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto w-full">
+          <Link 
+            href={`/merchants/${merchantId}`}
+            className="flex items-center justify-center text-[#9d9db9] active:text-white transition-colors"
+          >
+            <div className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
+              <span className="text-sm font-medium hidden sm:block">Events</span>
             </div>
-          )}
+          </Link>
+          <h2 className="text-white text-base font-bold tracking-tight">Create Event</h2>
+          <div className="w-[60px]"></div>
+        </div>
+        <div className="h-[2px] w-full bg-[#262626]">
+          <div className="h-full w-1/2 bg-[#1313ec]"></div>
+        </div>
+      </div>
 
-          {!merchantId && (
-            <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4 text-yellow-600 dark:text-yellow-400 text-sm">
-              <span className="material-symbols-outlined align-bottom mr-1">warning</span>
-              <strong>Warning:</strong> No Merchant ID found. You must access this page from a Merchant Detail page.
-            </div>
-          )}
-
-          {/* Section 1: Basic Info */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 space-y-6">
-            <h2 className="text-lg font-bold border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
-              Basic Information
-            </h2>
-            
-            <div className="md:grid md:grid-cols-2 md:gap-6 space-y-6 md:space-y-0">
-               <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
-                  Event Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
-                  placeholder="e.g. Friday Night Live"
-                  required
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
-                  Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors resize-none"
-                  rows={4}
-                  placeholder="Describe your event..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
-                  Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
-                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
-                >
-                  <option value="active">Active</option>
-                  <option value="paused">Temporarily Closed</option>
-                  <option value="archived">Archived</option>
-                </select>
-                <p className="text-xs text-slate-500 mt-1">
-                  Paused events are visible but cannot be purchased.
-                </p>
-              </div>
-
-               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-500 dark:text-slate-400">
-                  Merchant ID (Read-only)
-                </label>
-                <input
-                  type="text"
-                  value={merchantId}
-                  readOnly
-                  className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 cursor-not-allowed font-mono text-sm"
-                />
-              </div>
-            </div>
+      <main className="flex-1 flex flex-col px-4 pt-6 pb-32 space-y-8 max-w-lg mx-auto w-full">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 text-red-400 text-sm">
+            {error}
           </div>
+        )}
 
-          {/* Section 2: Visuals */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 space-y-6">
-            <h2 className="text-lg font-bold border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
-              Visuals
-            </h2>
-
-            <div>
-              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
-                Event Poster <span className="text-red-500">*</span>
-              </label>
-              
-              <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors relative">
-                {uploading ? (
-                   <div className="flex flex-col items-center gap-2">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <span className="text-sm text-slate-500">Uploading...</span>
-                   </div>
-                ) : posterUrl ? (
-                  <div className="relative w-full aspect-video md:w-64 md:aspect-[3/4] group">
-                    <img
-                      src={posterUrl}
-                      alt="Poster preview"
-                      className="w-full h-full object-cover rounded-lg shadow-md"
-                    />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                      <p className="text-white text-sm font-medium">Click "Choose File" to replace</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center pointer-events-none">
-                    <span className="material-symbols-outlined text-4xl text-slate-400 mb-2">cloud_upload</span>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                      Upload a poster image
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      JPG, PNG, WebP up to 5MB
-                    </p>
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-white/90">Event Poster <span className="text-red-500">*</span></h3>
+          <div 
+            className={`relative group cursor-pointer w-full aspect-[4/3] rounded-xl border border-dashed transition-all flex flex-col items-center justify-center gap-3 overflow-hidden
+              ${isDragging ? 'border-[#1313ec] bg-[#111111]' : 'border-[#333333] bg-[#111111] hover:bg-[#161616] hover:border-[#444444]'}
+              ${posterUrl ? 'border-solid border-[#444444]' : ''}
+            `}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {posterUrl ? (
+              <>
+                <img src={posterUrl} alt="Preview" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="text-xs font-bold px-3 py-1 bg-black/60 rounded-full border border-white/20">Change Poster</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1313ec]/20 via-transparent to-transparent"></div>
+                <div className="z-10 bg-[#1c1c1c] rounded-full p-3 border border-[#333333] group-hover:scale-110 transition-transform duration-300">
+                  {uploading ? (
+                    <div className="animate-spin h-6 w-6 border-2 border-[#9d9db9] border-t-white rounded-full"></div>
+                  ) : (
+                    <span className="material-symbols-outlined text-[#9d9db9]" style={{ fontSize: '28px' }}>add_photo_alternate</span>
+                  )}
+                </div>
+                {!uploading && (
+                  <div className="z-10 text-center px-4">
+                    <p className="text-white text-sm font-medium">Upload Poster</p>
+                    <p className="text-[#666666] text-xs mt-1">Tap to select or drag file</p>
                   </div>
                 )}
-                
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={uploading}
-                />
+              </>
+            )}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={(e) => e.target.files && handleFileSelect(e.target.files[0])}
+            />
+          </div>
+        </section>
+
+        <section className="space-y-5">
+          <h3 className="text-sm font-semibold text-white/90 flex items-center justify-between">
+            Basic Details
+            <span className="text-[10px] bg-[#1313ec]/20 text-[#1313ec] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Step 1</span>
+          </h3>
+          
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[#9d9db9] uppercase tracking-wide ml-1">Event Title <span className="text-red-500">*</span></label>
+            <input 
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-[#111111] border border-[#262626] rounded-lg px-4 py-3.5 text-white placeholder-[#444444] focus:outline-none focus:border-[#1313ec] focus:ring-1 focus:ring-[#1313ec] transition-all text-base" 
+              placeholder="e.g. Summer Bass Night" 
+              type="text"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[#9d9db9] uppercase tracking-wide ml-1">Description</label>
+            <textarea 
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full bg-[#111111] border border-[#262626] rounded-lg px-4 py-3 text-white placeholder-[#444444] focus:outline-none focus:border-[#1313ec] focus:ring-1 focus:ring-[#1313ec] transition-all text-base resize-none" 
+              placeholder="Describe the vibe, lineup, and dress code..." 
+              rows={4}
+            ></textarea>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[#9d9db9] uppercase tracking-wide ml-1">Status</label>
+            <div className="relative">
+              <select 
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="w-full appearance-none bg-[#111111] border border-[#262626] rounded-lg px-4 py-3.5 text-white focus:outline-none focus:border-[#1313ec] focus:ring-1 focus:ring-[#1313ec] transition-all text-base"
+              >
+                <option value="active">Active</option>
+                <option value="paused">Temporarily Closed</option>
+                <option value="archived">Archived</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#9d9db9]">
+                <span className="material-symbols-outlined text-[20px]">unfold_more</span>
               </div>
             </div>
           </div>
+        </section>
 
-          <div className="flex gap-4 pt-4">
-            <Link
-              href={merchantId ? `/merchants/${merchantId}` : '/events-v2'}
-              className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={loading || !merchantId || !title || !posterUrl}
-              className="flex-1 px-6 py-3 bg-primary text-slate-900 rounded-lg font-bold hover:bg-primary/90 transition shadow-lg disabled:opacity-50 disabled:shadow-none"
-            >
-              {loading ? 'Creating...' : 'Continue to Week Setup →'}
-            </button>
+        <section className="pt-2">
+          <div className="bg-[#111111] border border-[#262626] rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="material-symbols-outlined text-[#666666] text-[18px]">info</span>
+              <span className="text-xs font-bold text-[#666666] uppercase tracking-wider">Context Data</span>
+            </div>
+            
+            {fetchingMerchant ? (
+               <div className="space-y-3 animate-pulse">
+                <div className="h-4 bg-[#222] rounded w-1/3"></div>
+                <div className="h-4 bg-[#222] rounded w-2/3"></div>
+               </div>
+            ) : merchantData ? (
+              <div className="grid grid-cols-1 gap-3">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-[#666666] uppercase tracking-wider font-mono mb-0.5">Merchant</span>
+                  <span className="text-sm text-[#cccccc] font-mono truncate">{merchantData.name}</span>
+                </div>
+                <div className="h-[1px] bg-[#222222] w-full"></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-[#666666] uppercase tracking-wider font-mono mb-0.5">Venue Location</span>
+                  <span className="text-sm text-[#cccccc] font-mono truncate">
+                    {merchantData.venueAddress}
+                  </span>
+                </div>
+                <div className="h-[1px] bg-[#222222] w-full"></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-[#666666] uppercase tracking-wider font-mono mb-0.5">Timezone</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[#666666] text-[14px]">schedule</span>
+                    <span className="text-sm text-[#1313ec] font-mono">{merchantData.timezone}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+               <div className="text-red-500 text-sm">Failed to load context.</div>
+            )}
           </div>
-        </form>
+        </section>
       </main>
-      
-      <AdminBottomNav />
+
+      <footer className="fixed bottom-0 left-0 w-full z-40 bg-[#0A0A0A]/90 backdrop-blur-lg border-t border-[#262626] p-4 pb-6 safe-area-bottom">
+        <div className="max-w-lg mx-auto w-full flex gap-3">
+          <button 
+            onClick={handleSubmit}
+            disabled={loading || !title || !posterUrl}
+            className="flex-1 bg-[#1313ec] hover:bg-[#1313ec]/90 active:scale-[0.98] text-white font-bold text-base py-3.5 px-6 rounded-lg shadow-[0_0_15px_rgba(19,19,236,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:shadow-none"
+          >
+            {loading ? (
+              <span className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></span>
+            ) : (
+              <>
+                Continue
+                <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+              </>
+            )}
+          </button>
+        </div>
+      </footer>
     </div>
   );
 }

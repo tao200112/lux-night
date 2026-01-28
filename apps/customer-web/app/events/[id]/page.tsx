@@ -284,7 +284,11 @@ export default function CustomerEventV2DetailPage() {
             <div className="space-y-6">
               {enabledDays.map((day) => {
                 const dayDate = new Date(weekConfig.week_start_date);
-                dayDate.setDate(dayDate.getDate() + day.dow);
+                // Postgres DOW: 0=Sun, 1=Mon... Week starts on Monday.
+                // Mon(1) -> offset 0
+                // Sun(0) -> offset 6
+                const offset = (day.dow === 0 ? 6 : day.dow - 1);
+                dayDate.setDate(dayDate.getDate() + offset);
                 const dayName = DAY_SHORT_NAMES[day.dow];
                 const dateStr = dayDate.toLocaleDateString('en-US', {
                   weekday: 'short',
