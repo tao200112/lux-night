@@ -132,7 +132,310 @@ async function markEventProcessed(
 }
 
 /**
- * Handle checkout.session.completed event
+ * Handle checkout.session.completed event (V2 - Event Week Ticketing)
+ * 
+ * Execution order (critical for data consistency):
+ * 1. Check idempotency (query existing tickets by order_id)
+ * 2. Fetch order and order_items
+ * 3. Generate tickets payload with snapshot fields
+ * 4. Insert tickets (if fails, nothing is updated - return 500 for Stripe retry)
+ * 5. Update ticket_types_v2 inventory (if applicable)
+ * 6. Update order status to 'paid' and write Stripe fields
+ * 7. Update order status to 'fulfilled'
+ */
+async function handleCheckoutSessionCompletedV2(session: Stripe.Checkout.Session) {
+  const debugId = `webhook-v2-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  
+  // Extract metadata with detailed logging
+  const orderId = session.client_reference_id || session.metadata?.order_id;
+  const userId = session.metadata?.user_id;
+  const eventId = session.metadata?.event_id;
+  const eventWeekId = session.metadata?.event_week_id;
+  const paymentIntentId = typeof session.payment_intent === 'string' 
+    ? session.payment_intent 
+    : session.payment_intent?.id;
+
+  console.log('[STRIPE WEBHOOK V2]', {
+    debugId,
+    step: 'checkout.session.completed.v2.start',
+    sessionId: session.id,
+    orderId,
+    userId,
+    eventId,
+    eventWeekId,
+    paymentIntentId,
+    metadata: session.metadata,
+  });
+
+  if (!orderId) {
+    const error = new Error('Missing order_id in session metadata or client_reference_id');
+    console.error('[STRIPE WEBHOOK V2]', {
+      debugId,
+      step: 'checkout.session.completed.v2.error',
+      error: error.message,
+      sessionId: session.id,
+      metadata: session.metadata,
+      stack: error.stack,
+    });
+    throw error;
+  }
+
+  // Step 1: Check idempotency
+  const { data: existingTickets, error: existingTicketsError } = await supabaseAdmin
+    .from('tickets')
+    .select('id, order_id, ticket_type_id_v2')
+    .eq('order_id', orderId);
+
+  if (existingTicketsError) {
+    console.error('[STRIPE WEBHOOK V2]', {
+      debugId,
+      step: 'idempotency.check.error',
+      orderId,
+      error: existingTicketsError.message,
+    });
+  } else if (existingTickets && existingTickets.length > 0) {
+    console.log('[STRIPE WEBHOOK V2]', {
+      debugId,
+      step: 'idempotency.check.found',
+      orderId,
+      existingTicketCount: existingTickets.length,
+    });
+    // Update order status if needed (idempotent)
+    const { data: order } = await supabaseAdmin
+      .from('orders')
+      .select('id, status')
+      .eq('id', orderId)
+      .single();
+    
+    if (order && order.status !== 'fulfilled') {
+      await supabaseAdmin
+        .from('orders')
+        .update({ status: 'fulfilled' })
+        .eq('id', orderId);
+    }
+    return { orderId, skipped: true };
+  }
+
+  // Step 2: Fetch order and order_items
+  const { data: order, error: orderError } = await supabaseAdmin
+    .from('orders')
+    .select('id, user_id, status')
+    .eq('id', orderId)
+    .single();
+
+  if (orderError || !order) {
+    throw new Error(`Order not found: ${orderId}`);
+  }
+
+  if (order.status === 'fulfilled') {
+    return { orderId, skipped: true };
+  }
+
+  // Fetch order items
+  const { data: orderItems, error: orderItemsError } = await supabaseAdmin
+    .from('order_items')
+    .select('*')
+    .eq('order_id', orderId);
+
+  if (orderItemsError || !orderItems || orderItems.length === 0) {
+    throw new Error('Failed to fetch order items');
+  }
+
+  // Step 3: Generate tickets with snapshot fields
+  const tickets = [];
+  
+  // Get event_week info
+  const { data: eventWeek, error: weekError } = await supabaseAdmin
+    .from('event_weeks')
+    .select('id, week_start_date, timezone')
+    .eq('id', eventWeekId)
+    .single();
+
+  if (weekError || !eventWeek) {
+    throw new Error(`Event week not found: ${eventWeekId}`);
+  }
+
+  for (const orderItem of orderItems) {
+    // Fetch ticket_type_v2 with day info
+    const { data: ticketType, error: ticketTypeError } = await supabaseAdmin
+      .from('ticket_types_v2')
+      .select(`
+        *,
+        event_week_days!inner (
+          id,
+          dow,
+          enabled,
+          start_time,
+          end_time,
+          end_next_day
+        )
+      `)
+      .eq('id', orderItem.ticket_type_id)
+      .single();
+
+    if (ticketTypeError || !ticketType) {
+      console.error('[STRIPE WEBHOOK V2]', {
+        debugId,
+        step: 'ticket_type_v2.fetch.error',
+        ticketTypeId: orderItem.ticket_type_id,
+        error: ticketTypeError?.message,
+      });
+      continue;
+    }
+
+    const day = ticketType.event_week_days;
+    if (!day) {
+      console.error('[STRIPE WEBHOOK V2]', {
+        debugId,
+        step: 'day.not_found',
+        ticketTypeId: orderItem.ticket_type_id,
+      });
+      continue;
+    }
+
+    // Calculate validity window using RPC function
+    const { data: validityWindow, error: validityError } = await supabaseAdmin.rpc(
+      'calculate_day_validity_window',
+      {
+        p_week_start_date: eventWeek.week_start_date,
+        p_dow: day.dow,
+        p_start_time: day.start_time,
+        p_end_time: day.end_time,
+        p_end_next_day: day.end_next_day,
+        p_timezone: eventWeek.timezone,
+      }
+    );
+
+    if (validityError || !validityWindow || validityWindow.length === 0) {
+      console.error('[STRIPE WEBHOOK V2]', {
+        debugId,
+        step: 'validity_window.calc.error',
+        error: validityError?.message,
+      });
+      continue;
+    }
+
+    const { valid_start_at, valid_end_at } = validityWindow[0];
+
+    // Get event_v2 and merchant info for venue_id
+    const { data: eventV2, error: eventV2Error } = await supabaseAdmin
+      .from('events_v2')
+      .select('id, merchant_id')
+      .eq('id', eventId)
+      .single();
+
+    if (eventV2Error || !eventV2) {
+      console.error('[STRIPE WEBHOOK V2]', {
+        debugId,
+        step: 'event_v2.fetch.error',
+        eventId,
+        error: eventV2Error?.message,
+      });
+      continue;
+    }
+
+    // Get venue_id from merchant (first venue)
+    const { data: venue, error: venueError } = await supabaseAdmin
+      .from('venues')
+      .select('id')
+      .eq('merchant_id', eventV2.merchant_id)
+      .limit(1)
+      .single();
+
+    const venueId = venue?.id || null;
+
+    // Generate tickets with snapshot fields
+    for (let i = 0; i < orderItem.quantity; i++) {
+      const qrSeed = randomBytes(16).toString('hex');
+      const publicToken = randomBytes(16).toString('hex') + randomBytes(4).toString('hex');
+
+      tickets.push({
+        order_id: orderId,
+        user_id: order.user_id,
+        event_id: eventId, // Keep for compatibility, but also set event_id_v2
+        event_id_v2: eventId,
+        venue_id: venueId,
+        ticket_type_id: orderItem.ticket_type_id, // Keep for compatibility
+        ticket_type_id_v2: orderItem.ticket_type_id,
+        event_week_id: eventWeekId,
+        event_week_day_id: day.id,
+        valid_start_at: valid_start_at,
+        valid_end_at: valid_end_at,
+        ticket_name_snapshot: ticketType.name,
+        price_paid_cents_snapshot: ticketType.price_cents,
+        currency_snapshot: ticketType.currency || 'usd',
+        min_age_snapshot: ticketType.min_age,
+        policy_snapshot: {
+          category: ticketType.category,
+          inventory_limit: ticketType.inventory_limit,
+        },
+        qr_seed: qrSeed,
+        public_token: publicToken,
+        status: 'active',
+        redeem_limit: 1, // Default for v2
+        redeemed_count: 0,
+      });
+    }
+  }
+
+  if (tickets.length === 0) {
+    throw new Error('No tickets generated');
+  }
+
+  // Step 4: Insert tickets
+  const { data: insertedTickets, error: ticketsError } = await supabaseAdmin
+    .from('tickets')
+    .insert(tickets)
+    .select('id');
+
+  if (ticketsError) {
+    throw new Error(`Failed to create tickets: ${ticketsError.message}`);
+  }
+
+  // Step 5: Update ticket_types_v2 inventory (if applicable)
+  // Note: v2 doesn't track sold_count the same way, but we can update inventory_limit if needed
+  // For now, we'll skip this step as v2 uses a different inventory model
+
+  // Step 6: Update order status to 'paid'
+  const updateData: any = {
+    status: 'paid',
+  };
+
+  if (session.payment_intent) {
+    updateData.stripe_payment_intent_id =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent.id;
+  }
+
+  if (session.customer) {
+    updateData.stripe_customer_id =
+      typeof session.customer === 'string' ? session.customer : session.customer.id;
+  }
+
+  await supabaseAdmin
+    .from('orders')
+    .update(updateData)
+    .eq('id', orderId);
+
+  // Step 7: Update order status to 'fulfilled'
+  await supabaseAdmin
+    .from('orders')
+    .update({ status: 'fulfilled' })
+    .eq('id', orderId);
+
+  console.log('[STRIPE WEBHOOK V2]', {
+    debugId,
+    step: 'checkout.session.completed.v2.success',
+    orderId,
+    ticketCount: tickets.length,
+  });
+
+  return { orderId, skipped: false };
+}
+
+/**
+ * Handle checkout.session.completed event (V1 - Legacy)
  * 
  * Execution order (critical for data consistency):
  * 1. Check idempotency (query existing tickets by order_id)
@@ -863,17 +1166,25 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+        const isV2 = session.metadata?.version === 'v2';
+        
         console.log('[STRIPE WEBHOOK]', {
           debugId,
           step: 'event.handler.start',
           eventType: event.type,
           sessionId: session.id,
           orderId: session.client_reference_id || session.metadata?.order_id,
+          version: isV2 ? 'v2' : 'v1',
           paymentIntent: typeof session.payment_intent === 'string' 
             ? session.payment_intent 
             : session.payment_intent?.id,
         });
-        const result = await handleCheckoutSessionCompleted(session);
+        
+        // Route to v2 or v1 handler based on metadata.version
+        const result = isV2
+          ? await handleCheckoutSessionCompletedV2(session)
+          : await handleCheckoutSessionCompleted(session);
+        
         if (!result.skipped) {
           await markEventProcessed(event.id, result.orderId);
           console.log('[STRIPE WEBHOOK]', {
@@ -881,6 +1192,7 @@ export async function POST(req: NextRequest) {
             step: 'event.marked_processed',
             eventId: event.id,
             orderId: result.orderId,
+            version: isV2 ? 'v2' : 'v1',
           });
         } else {
           console.log('[STRIPE WEBHOOK]', {
@@ -889,6 +1201,7 @@ export async function POST(req: NextRequest) {
             eventId: event.id,
             orderId: result.orderId,
             reason: 'Order already processed',
+            version: isV2 ? 'v2' : 'v1',
           });
         }
         break;
