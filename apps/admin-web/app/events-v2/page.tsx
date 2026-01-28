@@ -18,7 +18,7 @@ interface EventV2 {
   title: string;
   description: string | null;
   poster_url: string;
-  status: 'active' | 'paused' | 'archived';
+  status: 'active' | 'paused' | 'temp_closed' | 'archived' | 'draft';
   merchant: {
     id: string;
     name: string;
@@ -32,7 +32,7 @@ export default function AdminEventsV2Page() {
   const [events, setEvents] = useState<EventV2[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'archived'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'temp_closed' | 'archived' | 'draft'>('all');
 
   useEffect(() => {
     fetchEvents();
@@ -64,10 +64,10 @@ export default function AdminEventsV2Page() {
     }
   };
 
-  const handleStatusChange = async (eventId: string, newStatus: 'active' | 'paused' | 'archived') => {
+  const handleStatusChange = async (eventId: string, newStatus: string) => {
     try {
-      const response = await fetch(`/api/admin/events-v2/${eventId}`, {
-        method: 'PUT',
+      const response = await fetch(`/api/admin/events-v2/${eventId}/status`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
@@ -126,18 +126,18 @@ export default function AdminEventsV2Page() {
         </div>
 
         {/* Filters */}
-        <div className="mb-6 flex gap-2">
-          {(['all', 'active', 'paused', 'archived'] as const).map((status) => (
+        <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
+          {(['all', 'active', 'temp_closed', 'archived', 'draft'] as const).map((status) => (
             <button
               key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-lg transition ${
+              onClick={() => setStatusFilter(status as any)}
+              className={`px-4 py-2 rounded-lg transition whitespace-nowrap ${
                 statusFilter === status
                   ? 'bg-primary text-black'
                   : 'bg-surface-dark text-white hover:bg-surface-light'
               }`}
             >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
+              {status === 'temp_closed' ? 'Temp Closed' : status.charAt(0).toUpperCase() + status.slice(1)}
             </button>
           ))}
         </div>
@@ -165,7 +165,7 @@ export default function AdminEventsV2Page() {
                     <p className="text-sm text-gray-400 line-clamp-2">{event.description}</p>
                   )}
                   <p className="text-xs text-gray-500 mt-2">
-                    Merchant: {event.merchant.name}
+                    Merchant: {event.merchant?.name || 'Unknown'}
                   </p>
                 </div>
 
@@ -174,12 +174,14 @@ export default function AdminEventsV2Page() {
                     className={`px-2 py-1 rounded text-xs ${
                       event.status === 'active'
                         ? 'bg-green-500/20 text-green-400'
-                        : event.status === 'paused'
+                        : event.status === 'temp_closed' || event.status === 'paused'
                         ? 'bg-yellow-500/20 text-yellow-400'
+                        : event.status === 'draft'
+                        ? 'bg-blue-500/20 text-blue-400'
                         : 'bg-gray-500/20 text-gray-400'
                     }`}
                   >
-                    {event.status}
+                    {event.status === 'temp_closed' ? 'Temp Closed' : event.status}
                   </span>
 
                   <div className="flex gap-2">
@@ -187,20 +189,21 @@ export default function AdminEventsV2Page() {
                       href={`/events-v2/${event.id}/week`}
                       className="px-3 py-1 bg-primary text-black rounded text-sm hover:bg-primary-hover transition"
                     >
-                      Configure Week
+                      Configure
                     </Link>
                     <select
-                      value={event.status}
+                      value={event.status === 'paused' ? 'temp_closed' : event.status}
                       onChange={(e) =>
                         handleStatusChange(
                           event.id,
-                          e.target.value as 'active' | 'paused' | 'archived'
+                          e.target.value
                         )
                       }
-                      className="px-2 py-1 bg-surface-light rounded text-sm"
+                      className="px-2 py-1 bg-surface-light rounded text-sm max-w-[100px]"
                     >
+                      <option value="draft">Draft</option>
                       <option value="active">Active</option>
-                      <option value="paused">Paused</option>
+                      <option value="temp_closed">Closed</option>
                       <option value="archived">Archived</option>
                     </select>
                   </div>
