@@ -358,7 +358,7 @@ function NewEventForm() {
               <span className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></span>
             ) : (
               <>
-                Continue
+                Save Draft & Configure
                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
               </>
             )}

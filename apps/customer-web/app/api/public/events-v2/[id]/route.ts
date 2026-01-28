@@ -30,7 +30,7 @@ export async function GET(
         )
       `)
       .eq('id', id)
-      .in('status', ['active', 'paused'])
+      .in('status', ['active', 'temp_closed', 'paused'])
       .single();
 
     if (error || !event) {

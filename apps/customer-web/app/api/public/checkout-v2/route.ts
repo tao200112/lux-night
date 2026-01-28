@@ -83,24 +83,35 @@ export async function POST(req: NextRequest) {
     const { eventId, eventWeekId, items } = validationResult.data;
 
     // 4. 获取活动（验证 status == 'active'，paused 不允许购买）
+    // 4. 获取活动（验证 status）
     const { data: event, error: eventError } = await supabase
       .from('events_v2')
       .select('id, title, status, merchant_id')
       .eq('id', eventId)
-      .eq('status', 'active') // 只允许 active，paused 被拒绝
       .single();
 
     if (eventError || !event) {
       return NextResponse.json<ApiResponse<never>>(
         {
           success: false,
-          error: {
-            code: 'EVENT_NOT_FOUND',
-            message: 'Event not found or not available for purchase',
-          },
+          error: { code: 'EVENT_NOT_FOUND', message: 'Event not found' },
         },
         { status: 404 }
       );
+    }
+
+    if (event.status !== 'active') {
+        const reason = event.status === 'temp_closed' ? 'temporarily closed' : 'not available';
+        return NextResponse.json<ApiResponse<never>>(
+          {
+            success: false,
+            error: {
+              code: 'EVENT_NOT_ACTIVE',
+              message: `Event is ${reason} and cannot accept orders.`,
+            },
+          },
+          { status: 403 }
+        );
     }
 
     // 5. 获取 event_week 和 days

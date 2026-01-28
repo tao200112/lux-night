@@ -57,10 +57,12 @@ export default function WeekConfigPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // For publish/status actions
   const [isDirty, setIsDirty] = useState(false);
   const [days, setDays] = useState<Record<number, DayUI>>({});
   const [weekStartDate, setWeekStartDate] = useState<string>(''); // Store week_start_date
-  
+  const [status, setStatus] = useState<'draft' | 'active' | 'temp_closed' | 'archived'>('draft');
+
   // Fetch Config
   useEffect(() => {
     const fetchConfig = async () => {
@@ -68,11 +70,19 @@ export default function WeekConfigPage() {
         const res = await fetch(`/api/admin/events-v2/${eventId}/week`);
         const json = await res.json();
         
+        console.log('[DEBUG] Raw Config:', json);
+
         if (json.week_start_date) {
             setWeekStartDate(json.week_start_date);
         }
+        
+        // Assume API returns event_status
+        if (json.event_status) {
+            setStatus(json.event_status);
+        }
 
         if (!json.days) {
+          console.log('[DEBUG] No days found, initializing defaults');
           // Initialize default empty week
           const initialDays: Record<number, DayUI> = {};
           [0, 1, 2, 3, 4, 5, 6].forEach(dow => {
@@ -88,26 +98,43 @@ export default function WeekConfigPage() {
           setDays(initialDays);
         } else {
           // Map DB to UI
+          console.log('[DEBUG] Days found:', json.days);
           const loadedDays: Record<number, DayUI> = {};
+          
           // Initialize defined days
           (json.days as any[]).forEach((d: any) => {
+             if (!d) return; // Guard against null days
+             console.log(`[DEBUG] Day ${d.dow} tickets raw:`, d.tickets);
+             
+             // Normalize tickets
+             const rawTickets = Array.isArray(d.tickets) ? d.tickets : [];
+             const validTickets = rawTickets.filter((t: any) => !!t);
+             const invalidCount = rawTickets.length - validTickets.length;
+             
+             if (invalidCount > 0) {
+                console.warn(`[DEBUG] Found ${invalidCount} null/undefined tickets in day ${d.dow}`);
+             }
+
              loadedDays[d.dow] = {
                dow: d.dow,
-               enabled: d.enabled,
-               startTime: d.start_time,
-               endTime: d.end_time,
-               endNextDay: d.end_next_day,
-               tickets: (d.tickets || []).map((t: any) => ({
-                 id: t.id,
-                 tempId: Math.random().toString(36).substr(2, 9),
-                 name: t.name,
-                 // Map DB category to UI category
-                 category: mapDbCategoryToUi(t.category),
-                 priceDollars: (t.price_cents / 100).toFixed(2),
-                 age: t.min_age === 18 ? '18' : t.min_age === 21 ? '21' : 'ALL',
-                 quantity: t.inventory_limit === null ? '' : t.inventory_limit.toString(),
-                 status: t.status
-               }))
+               enabled: !!d.enabled,
+               startTime: d.start_time || '22:00', // Default safety
+               endTime: d.end_time || '02:00',
+               endNextDay: !!d.end_next_day,
+               tickets: validTickets.map((t: any) => {
+                 if (!t.name) console.warn('[DEBUG] Ticket missing name:', t);
+                 return {
+                   id: t.id,
+                   tempId: Math.random().toString(36).substr(2, 9),
+                   name: t.name || '(Unnamed Ticket)', // Defensive default
+                   // Map DB category to UI category
+                   category: mapDbCategoryToUi(t.category || 'entry'),
+                   priceDollars: ((t.price_cents || 0) / 100).toFixed(2),
+                   age: t.min_age === 18 ? '18' : t.min_age === 21 ? '21' : 'ALL',
+                   quantity: t.inventory_limit === null ? '' : String(t.inventory_limit),
+                   status: t.status || 'active'
+                 };
+               })
              };
           });
           // Fill missing days
@@ -133,6 +160,60 @@ export default function WeekConfigPage() {
     };
     fetchConfig();
   }, [eventId]);
+
+  const handlePublish = async () => {
+    if (isDirty) {
+        if (!confirm('You have unsaved changes. Save them before publishing?')) return;
+        await handleSave();
+    }
+
+    setIsProcessing(true);
+    try {
+        const res = await fetch(`/api/admin/events-v2/${eventId}/publish`, { method: 'POST' });
+        const json = await res.json();
+        
+        if (json.error) {
+            let msg = json.error;
+            if (json.details && Array.isArray(json.details)) {
+                msg += '\n\n' + json.details.join('\n');
+            }
+            alert(msg);
+        } else {
+            alert('Event Published Successfully!');
+            setStatus('active');
+            window.location.reload();
+        }
+    } catch (err: any) {
+        alert('Publish failed: ' + err.message);
+    } finally {
+        setIsProcessing(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!confirm(`Are you sure you want to change status to ${newStatus}?`)) return;
+
+    setIsProcessing(true);
+    try {
+        const res = await fetch(`/api/admin/events-v2/${eventId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        const json = await res.json();
+        
+        if (json.error) {
+            alert('Update failed: ' + json.error);
+        } else {
+            setStatus(newStatus as any);
+            alert(`Status updated to ${newStatus}`);
+        }
+    } catch (err: any) {
+        alert('Status update failed: ' + err.message);
+    } finally {
+        setIsProcessing(false);
+    }
+  };
 
   const mapDbCategoryToUi = (dbCat: string): TicketCategory => {
     switch (dbCat) {
@@ -339,13 +420,69 @@ export default function WeekConfigPage() {
     <div className="bg-[#f6f6f8] dark:bg-[#101022] text-slate-900 dark:text-white font-sans min-h-screen">
       {/* Sticky Header */}
       <div className="sticky top-0 z-50 bg-[#111118]/95 backdrop-blur-md border-b border-[#343445] shadow-xl">
-        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+        <div className="flex items-center justify-between px-4 pt-3 pb-3">
           <Link href="/events-v2" className="text-white flex items-center justify-center p-2 -ml-2 rounded-full hover:bg-white/10 transition">
             <span className="material-symbols-outlined text-[24px]">arrow_back</span>
           </Link>
-          <div className="text-white text-base font-bold tracking-tight text-center">
-            Weekly Ticket Configuration
+          
+          <div className="flex flex-col items-center">
+             <div className="text-white text-base font-bold tracking-tight text-center">
+               Weekly Ticket Configuration
+             </div>
+             {/* Status Badge & Actions */}
+             <div className="flex items-center gap-3 mt-1.5">
+                <div className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                    status === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                    status === 'temp_closed' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                    status === 'archived' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                    'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                }`}>
+                    {status ? status.replace('_', ' ') : 'DRAFT'}
+                </div>
+                
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                    {status === 'draft' && (
+                        <button 
+                            onClick={handlePublish}
+                            disabled={isProcessing}
+                            className="flex items-center gap-1 bg-[#1313ec] hover:bg-[#1313ec]/80 text-white text-[10px] font-bold px-2.5 py-1 rounded border border-[#1313ec] shadow-sm transition-all active:scale-95"
+                        >
+                            <span>Publish Event</span>
+                            <span className="material-symbols-outlined text-[12px]">rocket_launch</span>
+                        </button>
+                    )}
+                    {status === 'active' && (
+                        <button 
+                             onClick={() => handleStatusChange('temp_closed')}
+                             disabled={isProcessing}
+                             className="text-[10px] font-medium bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 px-2.5 py-1 rounded border border-yellow-500/30 transition-all"
+                        >
+                            Close Temporarily
+                        </button>
+                    )}
+                    {status === 'temp_closed' && (
+                        <button 
+                             onClick={() => handleStatusChange('active')}
+                             disabled={isProcessing}
+                             className="text-[10px] font-medium bg-green-500/10 hover:bg-green-500/20 text-green-400 px-2.5 py-1 rounded border border-green-500/30 transition-all"
+                        >
+                            Re-open
+                        </button>
+                    )}
+                    {(status === 'active' || status === 'temp_closed') && (
+                        <button 
+                             onClick={() => handleStatusChange('archived')}
+                             disabled={isProcessing}
+                             className="text-[10px] font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2.5 py-1 rounded border border-red-500/30 transition-all"
+                        >
+                            Archive
+                        </button>
+                    )}
+                </div>
+             </div>
           </div>
+
           <div className="flex flex-col items-end">
             {isDirty && <span className="text-[10px] text-orange-400 font-medium mb-0.5 mr-1">Unsaved changes</span>}
             <button 
@@ -359,7 +496,7 @@ export default function WeekConfigPage() {
         </div>
         
         <div className="px-4 pb-3">
-          <p className="text-[11px] text-[#9d9db9] leading-tight text-center max-w-md mx-auto">
+          <p className="text-[11px] text-[#9d9db9] leading-tight text-center max-w-md mx-auto mt-2">
             This configuration applies continuously until you change it. Changes take effect immediately.
           </p>
         </div>

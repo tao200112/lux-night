@@ -56,10 +56,18 @@ export async function GET(
 
     const result = rpcResult[0];
 
+    // Fetch Event Status separately
+    const { data: eventData } = await supabase
+        .from('events_v2')
+        .select('status')
+        .eq('id', id)
+        .single();
+    
     return NextResponse.json({
       event_week_id: result.event_week_id,
       week_start_date: result.week_start_date,
       days: result.days,
+      event_status: eventData?.status || 'draft'
     });
   } catch (error: any) {
     console.error('Error in GET /api/admin/events-v2/[id]/week:', error);
@@ -205,10 +213,18 @@ export async function PUT(
       );
     }
 
+    // Fetch Event Status
+    const { data: eventData } = await supabase
+        .from('events_v2')
+        .select('status')
+        .eq('id', eventId)
+        .single();
+
     return NextResponse.json({
       event_week_id: finalResult[0].event_week_id,
       week_start_date: finalResult[0].week_start_date,
       days: finalResult[0].days,
+      event_status: eventData?.status || 'draft'
     });
   } catch (error: any) {
     console.error('Error in PUT /api/admin/events-v2/[id]/week:', error);

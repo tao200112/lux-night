@@ -40,7 +40,7 @@ interface EventV2 {
   title: string;
   description: string | null;
   poster_url: string;
-  status: 'active' | 'paused' | 'archived';
+  status: 'active' | 'paused' | 'temp_closed' | 'archived';
   merchant: {
     id: string;
     name: string;
@@ -133,7 +133,7 @@ export default function CustomerEventV2DetailPage() {
     if (!event || !weekConfig || totalQuantity === 0) return;
 
     // Check if event is paused
-    if (event.status === 'paused') {
+    if (event.status === 'paused' || event.status === 'temp_closed') {
       alert('This event is temporarily closed. Please check back later.');
       return;
     }
@@ -224,7 +224,7 @@ export default function CustomerEventV2DetailPage() {
     );
   }
 
-  const isPaused = event.status === 'paused';
+  const isPaused = event.status === 'paused' || event.status === 'temp_closed';
   const enabledDays = weekConfig.days.filter((day) => day.enabled);
 
   return (
@@ -284,7 +284,11 @@ export default function CustomerEventV2DetailPage() {
             <div className="space-y-6">
               {enabledDays.map((day) => {
                 const dayDate = new Date(weekConfig.week_start_date);
-                dayDate.setDate(dayDate.getDate() + day.dow);
+                // Postgres DOW: 0=Sun, 1=Mon... Week starts on Monday.
+                // Mon(1) -> offset 0
+                // Sun(0) -> offset 6
+                const offset = (day.dow === 0 ? 6 : day.dow - 1);
+                dayDate.setDate(dayDate.getDate() + offset);
                 const dayName = DAY_SHORT_NAMES[day.dow];
                 const dateStr = dayDate.toLocaleDateString('en-US', {
                   weekday: 'short',
