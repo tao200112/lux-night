@@ -75,14 +75,15 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
       redeemed_by,
       created_at,
       updated_at,
-      events!inner(
+      event:events_v2!tickets_events_v2_id_fkey (
         title,
-        start_at,
-        end_at,
         poster_url,
-        venues!inner(name, address)
+        venue:venues!events_v2_venue_id_fkey (
+          name, 
+          address
+        )
       ),
-      ticket_types!inner(name)
+      ticket_type:ticket_types_v2!tickets_ticket_types_v2_id_fkey (name)
     `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
@@ -101,19 +102,25 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
   const base = getAppBaseUrl();
   return (data || []).map((t: any) => {
     const token = t.public_token || t.qr_seed;
-    const ev = Array.isArray(t.events) ? t.events[0] : t.events;
-    const ven = ev?.venues ? (Array.isArray(ev.venues) ? ev.venues[0] : ev.venues) : null;
+    const ev = t.event; 
+    const ven = ev?.venue;
+    
+    // V2 currently doesn't store start_at in events_v2; it's computed from weeks.
+    // For MVP/Robustness, we leave date empty or show 'Recurring'.
+    const displayDate = ''; 
+    const displayTime = '';
+
     return {
       id: t.id,
       eventId: t.event_id,
       eventName: ev?.title || '—',
       venue: ven?.name || '—',
-      date: ev?.start_at ? new Date(ev.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
-      time: ev?.start_at ? new Date(ev.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
-      startAt: ev?.start_at || undefined,
+      date: displayDate,
+      time: displayTime,
+      startAt: undefined, 
       posterUrl: ev?.poster_url || null,
       status: t.status,
-      tierName: t.ticket_types?.name || '—',
+      tierName: t.ticket_type?.name || '—',
       qrToken: t.qr_seed,
       publicToken: token,
       qrCodeUrl: base ? generateQRCodeUrl(`${base}/t/${token}`) : generateQRCodeUrl(`/t/${token}`),
@@ -139,14 +146,15 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
       redeemed_by,
       created_at,
       updated_at,
-      events!inner(
+      event:events_v2!tickets_events_v2_id_fkey (
         title,
-        start_at,
-        end_at,
         poster_url,
-        venues!inner(name, address)
+        venue:venues!events_v2_venue_id_fkey (
+          name, 
+          address
+        )
       ),
-      ticket_types!inner(name)
+      ticket_type:ticket_types_v2!tickets_ticket_types_v2_id_fkey (name)
     `)
     .eq('id', id);
 
@@ -161,22 +169,25 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
     return null;
   }
 
-  // Transform data - safely access arrays
-  const eventData = Array.isArray(data.events) ? data.events[0] : data.events;
-  const venueData = eventData?.venues ? (Array.isArray(eventData.venues) ? eventData.venues[0] : eventData.venues) : null;
-  const ticketTypeData = Array.isArray(data.ticket_types) ? data.ticket_types[0] : data.ticket_types;
+  const evRaw: any = data.event;
+  const ev = Array.isArray(evRaw) ? evRaw[0] : evRaw;
+  const venRaw = ev?.venue;
+  const ven = Array.isArray(venRaw) ? venRaw[0] : venRaw;
+  const ttRaw: any = data.ticket_type;
+  const ticketTypeData = Array.isArray(ttRaw) ? ttRaw[0] : ttRaw;
 
   const token = data.public_token || data.qr_seed;
   const base = getAppBaseUrl();
+
   return {
     id: data.id,
     eventId: data.event_id,
-    eventName: eventData?.title || 'Unknown Event',
-    venue: venueData?.name || 'Unknown Venue',
-    date: eventData?.start_at ? new Date(eventData.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
-    time: eventData?.start_at ? new Date(eventData.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
-    startAt: eventData?.start_at || undefined,
-    posterUrl: eventData?.poster_url || null,
+    eventName: ev?.title || 'Unknown Event',
+    venue: ven?.name || 'Unknown Venue',
+    date: '',
+    time: '',
+    startAt: undefined,
+    posterUrl: ev?.poster_url || null,
     status: data.status,
     tierName: ticketTypeData?.name || 'Unknown',
     qrToken: data.qr_seed,
