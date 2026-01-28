@@ -225,7 +225,24 @@ export default function CustomerEventV2DetailPage() {
   }
 
   const isPaused = event.status === 'paused' || event.status === 'temp_closed';
-  const enabledDays = weekConfig.days.filter((day) => day.enabled);
+  
+  // Filter days: Only show future days (or active today)
+  // Assumption: week_start_date is YYYY-MM-DD local to venue. 
+  // We approximate using browser time.
+  const enabledDays = weekConfig.days.filter((day) => {
+     if (!day.enabled) return false;
+     
+     // Construct approx End Time for this day
+     const d = new Date(weekConfig.week_start_date + 'T00:00:00');
+     const offset = (day.dow === 0 ? 6 : day.dow - 1); // Mon=0 .. Sun=6
+     d.setDate(d.getDate() + offset);
+     
+     const [h, m] = day.end_time.split(':');
+     d.setHours(parseInt(h), parseInt(m));
+     if (day.end_next_day) d.setDate(d.getDate() + 1);
+
+     return d > new Date();
+  });
 
   return (
     <div className="relative w-full min-h-screen flex flex-col pb-32 bg-background-dark text-white max-w-md mx-auto">

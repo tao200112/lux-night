@@ -106,32 +106,50 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* QR Card - Optimized & Compact */}
-        <div className="relative w-full mb-8">
-            <div className={`bg-white rounded-2xl pt-8 pb-8 px-6 flex flex-col items-center shadow-lg relative z-10 overflow-hidden transition-all duration-500 ${ticket.status === 'used' || redemptionStatus === 'redeemed' ? 'opacity-50 grayscale' : ''}`}>
-                <div className="w-full flex justify-center mb-6">
-                    <img alt="QR code" className="w-48 h-48 object-contain mix-blend-multiply" src={ticket.qrCodeUrl}/>
-                </div>
-                <div className="flex flex-col items-center gap-1 w-full border-t border-gray-100 pt-4">
-                    <p className="text-gray-400 text-[9px] font-bold tracking-[0.2em] uppercase font-body">Code</p>
-                    <p className="text-black font-bold text-xl tracking-[0.1em] font-mono">{ticket.id.slice(0, 8)}</p>
-                </div>
-                
-                {redemptionStatus === 'redeemed' && (
-                    <div className="absolute inset-0 z-20 flex items-center justify-center">
-                        <div className="bg-black/90 p-3 rounded-lg border-2 border-primary text-primary font-bold text-xl uppercase tracking-widest -rotate-12">
-                            REDEEMED
-                        </div>
-                    </div>
-                )}
-            </div>
-            
-            <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap">
-                <div className={`border px-6 py-2 rounded-full text-sm font-bold tracking-widest shadow-lg flex items-center gap-2 transition-colors duration-300 ${redemptionStatus === 'redeemed' ? 'bg-zinc-800 border-zinc-700 text-zinc-400' : 'bg-[#1A1A1A] border-white/10 text-[rgb(212,175,55)]'}`}>
-                    <span className="material-symbols-outlined text-[16px] filled">verified</span>
-                    {redemptionStatus === 'redeemed' ? 'USED' : 'VALID'}
-                </div>
-            </div>
-        </div>
+        {(() => {
+           const isExpired = ticket.validEndAt && new Date(ticket.validEndAt) <= new Date();
+           // Also treat as used if redeemed
+           const isInactive = ticket.status === 'used' || redemptionStatus === 'redeemed' || isExpired;
+           
+           return (
+             <div className="relative w-full mb-8">
+                 <div className={`bg-white rounded-2xl pt-8 pb-8 px-6 flex flex-col items-center shadow-lg relative z-10 overflow-hidden transition-all duration-500 ${isInactive ? 'opacity-50 grayscale' : ''}`}>
+                     <div className="w-full flex justify-center mb-6">
+                         <img alt="QR code" className="w-48 h-48 object-contain mix-blend-multiply" src={ticket.qrCodeUrl}/>
+                     </div>
+                     <div className="flex flex-col items-center gap-1 w-full border-t border-gray-100 pt-4">
+                         <p className="text-gray-400 text-[9px] font-bold tracking-[0.2em] uppercase font-body">Code</p>
+                         <p className="text-black font-bold text-xl tracking-[0.1em] font-mono">{ticket.id.slice(0, 8)}</p>
+                     </div>
+                     
+                     {redemptionStatus === 'redeemed' && (
+                         <div className="absolute inset-0 z-20 flex items-center justify-center">
+                             <div className="bg-black/90 p-3 rounded-lg border-2 border-primary text-primary font-bold text-xl uppercase tracking-widest -rotate-12">
+                                 REDEEMED
+                             </div>
+                         </div>
+                     )}
+                     
+                     {isExpired && redemptionStatus !== 'redeemed' && (
+                         <div className="absolute inset-0 z-20 flex items-center justify-center">
+                             <div className="bg-zinc-800/90 p-3 rounded-lg border-2 border-zinc-500 text-zinc-300 font-bold text-xl uppercase tracking-widest -rotate-12">
+                                 EXPIRED
+                             </div>
+                         </div>
+                     )}
+                 </div>
+                 
+                 <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap">
+                     <div className={`border px-6 py-2 rounded-full text-sm font-bold tracking-widest shadow-lg flex items-center gap-2 transition-colors duration-300 ${redemptionStatus === 'redeemed' ? 'bg-zinc-800 border-zinc-700 text-zinc-400' : isExpired ? 'bg-zinc-900 border-zinc-700 text-red-400' : 'bg-[#1A1A1A] border-white/10 text-[rgb(212,175,55)]'}`}>
+                         <span className="material-symbols-outlined text-[16px] filled">
+                            {redemptionStatus === 'redeemed' ? 'verified' : isExpired ? 'event_busy' : 'verified'}
+                         </span>
+                         {redemptionStatus === 'redeemed' ? 'USED' : isExpired ? 'EXPIRED' : 'VALID'}
+                     </div>
+                 </div>
+             </div>
+           );
+        })()}
 
         {/* Ticket Stats - Minimalist */}
         <div className="grid grid-cols-2 gap-3 w-full mb-6 mt-4">

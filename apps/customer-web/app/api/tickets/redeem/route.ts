@@ -36,10 +36,21 @@ export async function POST(req: NextRequest) {
     }
     const admin = createAdminClient(url, key, { auth: { persistSession: false } });
 
-    // 1) 按 public_token 查票，并拿到 event.merchant_id
+    // 1) 按 public_token 查票，并拿到 valid_*, events_v2.merchant_id
+    // 注意：需确保 tickets.event_id 或 tickets.event_id_v2 关联了 events_v2
     const { data: ticket, error: ticketErr } = await admin
       .from('tickets')
-      .select('id, status, redeemed_at, redeemed_by, event_id, events!inner(merchant_id)')
+      .select(`
+        id, 
+        status, 
+        redeemed_at, 
+        redeemed_by, 
+        valid_start_at, 
+        valid_end_at,
+        event:events_v2!tickets_events_v2_id_fkey (
+          merchant_id
+        )
+      `)
       .eq('public_token', token)
       .maybeSingle();
 
@@ -47,21 +58,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    const ev = (ticket as any).events;
-    const event = Array.isArray(ev) ? ev[0] : ev;
-    const merchantId = event?.merchant_id as string | undefined;
+    // Adapt to PostgREST response (obj or array)
+    const evRaw = (ticket as any).event;
+    const eventV2 = Array.isArray(evRaw) ? evRaw[0] : evRaw;
+    const merchantId = eventV2?.merchant_id as string | undefined;
+
     if (!merchantId) {
-      return NextResponse.json({ error: 'Invalid ticket data' }, { status: 500 });
+      // Fallback: Try looking up by legacy event logic if migration incomplete, or error out
+      // For V2 Closed Loop, we expect V2 relation.
+      console.error('[redeem] Ticket missing linked merchant (V2). Ticket ID:', ticket.id);
+      return NextResponse.json({ error: 'Invalid ticket data (Merchant link missing)' }, { status: 500 });
     }
 
     // 2) 权限：admin_users / profiles.is_admin / merchant_members(staff|manager|owner|admin)
     const [adminRow, profileRow, memberRow] = await Promise.all([
       admin.from('admin_users').select('user_id').eq('user_id', user.id).eq('is_active', true).maybeSingle(),
-      admin.from('profiles').select('is_admin').eq('id', user.id).maybeSingle(),
+      // Robust profile check (avoid 500 if profile missing)
+      admin.from('profiles').select('id').eq('id', user.id).maybeSingle(),
       admin.from('merchant_members').select('id').eq('user_id', user.id).eq('merchant_id', merchantId).eq('is_active', true).in('role', ['staff', 'manager', 'owner', 'admin']).maybeSingle(),
     ]);
 
-    const isStaff = !!(adminRow || (profileRow as any)?.is_admin === true || memberRow);
+    // Note: profileRow logic for admin might need specific field like 'is_admin' if it exists, or rely on admin_users table (Best Practice)
+    // As per previous instruction, rely on admin_users primarily.
+    const isAdmin = !!adminRow; 
+    const isStaff = isAdmin || !!memberRow;
+
     if (!isStaff) {
       return NextResponse.json({ error: 'Only staff can redeem tickets', code: 'FORBIDDEN' }, { status: 403 });
     }
@@ -71,12 +92,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         alreadyRedeemed: true,
         ticket: {
-          id: (ticket as any).id,
+          id: ticket.id,
           status: 'used',
-          redeemed_at: (ticket as any).redeemed_at,
-          redeemed_by: (ticket as any).redeemed_by,
+          redeemed_at: ticket.redeemed_at,
+          redeemed_by: ticket.redeemed_by,
         },
       });
+    }
+
+    // 3.5) Validity Window Check
+    if (ticket.valid_start_at && ticket.valid_end_at) {
+       const now = new Date();
+       const startAt = new Date(ticket.valid_start_at);
+       const endAt = new Date(ticket.valid_end_at);
+       
+       const earlyMins = parseInt(process.env.REDEEM_EARLY_MINUTES || '0', 10);
+       const lateMins = parseInt(process.env.REDEEM_LATE_MINUTES || '30', 10); // Standard 30m grace
+
+       const redeemStart = new Date(startAt.getTime() - earlyMins * 60000);
+       const redeemEnd = new Date(endAt.getTime() + lateMins * 60000);
+
+       if (now < redeemStart) {
+         return NextResponse.json({ 
+           error: 'Ticket not yet valid', 
+           code: 'TOO_EARLY',
+           validFrom: redeemStart.toISOString() 
+         }, { status: 400 });
+       }
+
+       if (now > redeemEnd) {
+         return NextResponse.json({ 
+           error: 'Ticket expired', 
+           code: 'EXPIRED',
+           expiredAt: redeemEnd.toISOString() 
+         }, { status: 400 });
+       }
     }
 
     // 4) 非 active（如 refunded/void/expired）不执行核销
@@ -129,3 +179,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 });
   }
 }
+

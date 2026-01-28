@@ -108,7 +108,6 @@ export default function WalletPage() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 flex flex-col gap-6 px-6 py-2 overflow-y-auto no-scrollbar pb-24">
         {tickets.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 px-4 text-center rounded-3xl border border-white/5 bg-white/[0.02] mt-10">
@@ -123,64 +122,94 @@ export default function WalletPage() {
                 </Link>
             </div>
         ) : (
-            tickets.map((ticket) => {
-              const isToday = ticket.startAt && new Date(ticket.startAt).toDateString() === new Date().toDateString();
-              const isUsedOrRefunded = ticket.status === 'used' || ticket.status === 'refunded';
-              return (
-                <Link href={`/ticket/${ticket.id}`} key={ticket.id} className="block group">
-                  <div
-                    className={`relative w-full flex flex-row h-48 rounded-2xl overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] transition-transform hover:scale-[1.02] active:scale-[0.98] ${isUsedOrRefunded ? 'opacity-85' : ''}`}
-                  >
-                    {/* Ticket Left Side：商家海报作背景 */}
-                    <div className="relative flex-grow flex flex-col justify-end p-5 bg-[#1E2224]">
-                      {ticket.posterUrl && (
-                        <div
-                          className={`absolute inset-0 bg-cover bg-center z-0 ${isUsedOrRefunded ? 'opacity-40 grayscale' : 'opacity-60 mix-blend-overlay'}`}
-                          style={{ backgroundImage: `url('${ticket.posterUrl}')` }}
-                          aria-hidden
-                        />
-                      )}
+            <>
+            {(() => {
+                // Logic to separate Active vs Expired
+                const now = new Date();
+                let displayTickets = tickets;
+                let expiredList: Ticket[] = [];
+
+                if (activeTab === 'active') {
+                   displayTickets = tickets.filter(t => !t.validEndAt || new Date(t.validEndAt) > now);
+                   expiredList = tickets.filter(t => t.validEndAt && new Date(t.validEndAt) <= now);
+                }
+
+                // Helper to render card
+                const renderCard = (ticket: Ticket, isExpired = false) => {
+                  const isToday = ticket.startAt && new Date(ticket.startAt).toDateString() === new Date().toDateString();
+                  const isUsedOrRefunded = ticket.status === 'used' || ticket.status === 'refunded' || isExpired;
+                  
+                  return (
+                    <Link href={`/ticket/${ticket.id}`} key={ticket.id} className="block group mb-4 last:mb-0">
                       <div
-                        className={`absolute inset-0 z-0 ${isUsedOrRefunded ? 'bg-gradient-to-t from-[#121416] via-[#121416]/90 to-[#121416]/60' : 'bg-gradient-to-t from-[#121416] via-[#121416]/80 to-transparent'}`}
-                      />
-                      <div className="relative z-10 w-full">
-                        {isToday && !isUsedOrRefunded && (
-                          <div className="flex justify-between items-start mb-auto absolute top-0 left-0 right-0 -mt-1">
-                            <span className="px-3 py-1 rounded-full bg-lux-gold text-lux-dark text-xs font-bold tracking-wider uppercase shadow-lg shadow-lux-gold/20">Tonight</span>
+                        className={`relative w-full flex flex-row h-40 rounded-xl overflow-hidden shadow-lg transition-transform hover:scale-[1.01] active:scale-[0.99] ${isUsedOrRefunded ? 'opacity-60 grayscale-[0.8]' : ''}`}
+                      >
+                        {/* Ticket Left Side */}
+                        <div className="relative flex-grow flex flex-col justify-end p-4 bg-[#1E2224]">
+                          {ticket.posterUrl && (
+                            <div
+                              className={`absolute inset-0 bg-cover bg-center z-0 ${isUsedOrRefunded ? 'opacity-30' : 'opacity-50 mix-blend-overlay'}`}
+                              style={{ backgroundImage: `url('${ticket.posterUrl}')` }}
+                              aria-hidden
+                            />
+                          )}
+                          <div className={`absolute inset-0 z-0 ${isUsedOrRefunded ? 'bg-[#121416]/90' : 'bg-gradient-to-t from-[#121416] via-[#121416]/80 to-transparent'}`} />
+                          
+                          <div className="relative z-10 w-full">
+                            {isToday && !isUsedOrRefunded && (
+                              <span className="inline-block px-2 py-0.5 mb-2 rounded bg-lux-gold text-lux-dark text-[10px] font-bold uppercase tracking-wider">Tonight</span>
+                            )}
+                            {isExpired && (
+                              <span className="inline-block px-2 py-0.5 mb-2 rounded bg-zinc-700 text-white/70 text-[10px] font-bold uppercase tracking-wider">Expired</span>
+                            )}
+
+                            <h3 className="font-display text-lg font-bold text-white leading-tight mb-1 truncate">{ticket.eventName}</h3>
+                            <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium mb-1">
+                              <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                              <span>{ticket.date} • {ticket.time}</span>
+                            </div>
+                            <div className="text-[10px] text-gray-500 uppercase tracking-wider truncate">{ticket.venue}</div>
                           </div>
-                        )}
-                        <h3 className="font-display text-2xl font-bold text-white leading-tight mb-1 tracking-tight">{ticket.eventName}</h3>
-                        <div className="flex items-center gap-2 text-gray-300 text-sm font-medium">
-                          <span className={`material-symbols-outlined text-[18px] ${isUsedOrRefunded ? 'text-gray-500' : 'text-lux-gold'}`}>calendar_today</span>
-                          <span>{ticket.date} • {ticket.time}</span>
                         </div>
-                        <div className="mt-2 text-xs text-gray-500 uppercase tracking-widest font-semibold">{ticket.venue}</div>
+
+                        {/* Perforation */}
+                        <div className="relative w-[1px] bg-[#1E2224] flex flex-col items-center justify-center z-20">
+                          <div className="dashed-line absolute top-1 bottom-1" />
+                          <div className="absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full bg-background-dark" />
+                          <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 rounded-full bg-background-dark" />
+                        </div>
+
+                        {/* Ticket Right Side */}
+                        <div className={`relative w-20 min-w-[80px] flex flex-col items-center justify-center p-2 border-l border-white/5 ${isUsedOrRefunded ? 'bg-[#15181A]' : 'bg-[#191D1F]'}`}>
+                           {/* Simplified QR placeholder */}
+                           <div className={`w-12 h-12 rounded bg-white p-0.5 mb-1 ${isUsedOrRefunded ? 'opacity-30' : ''}`}>
+                              <img src={ticket.qrCodeUrl} className="w-full h-full object-contain mix-blend-multiply"/>
+                           </div>
+                           <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider writing-vertical-lr text-center">
+                              {isExpired ? 'EXPIRED' : isUsedOrRefunded ? ticket.status : 'SCAN'}
+                           </span>
+                        </div>
                       </div>
-                    </div>
-                    {/* Perforation */}
-                    <div className="relative w-[1px] bg-[#1E2224] flex flex-col items-center justify-center z-20">
-                      <div className="dashed-line absolute top-2 bottom-2" />
-                      <div className="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-background-dark" />
-                      <div className="absolute -bottom-3 -left-3 w-6 h-6 rounded-full bg-background-dark" />
-                    </div>
-                    {/* Ticket Right Side (QR Stub) */}
-                    <div className={`relative w-24 min-w-[96px] flex flex-col items-center justify-center p-2 border-l border-white/5 ${isUsedOrRefunded ? 'bg-[#15181A]' : 'bg-[#191D1F]'}`}>
-                      <div className={`w-16 h-16 rounded-lg p-1 mb-2 shadow-inner ${isUsedOrRefunded ? 'bg-white/10 flex items-center justify-center border border-white/10' : 'bg-white'}`}>
-                        {isUsedOrRefunded ? (
-                          <span className="material-symbols-outlined text-white/50 text-3xl">qr_code_2</span>
-                        ) : (
-                          <img alt="QR Code" className="w-full h-full object-contain opacity-90" src={ticket.qrCodeUrl} />
-                        )}
+                    </Link>
+                  );
+                };
+
+                return (
+                  <>
+                    {displayTickets.map(t => renderCard(t, false))}
+                    
+                    {expiredList.length > 0 && (
+                      <div className="mt-8 pt-6 border-t border-white/5">
+                        <h4 className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-4 pl-2">Past & Expired</h4>
+                        {expiredList.map(t => renderCard(t, true))}
                       </div>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold text-center">
-                        {isUsedOrRefunded ? <>View<br />Info</> : <>Scan<br />Entry</>}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })
-        )}
+                    )}
+                  </>
+                );
+            })()}
+            </>
+        )
+        }
       </div>
 
       {/* Bottom Tab Bar - Always visible */}
