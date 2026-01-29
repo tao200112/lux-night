@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
        const endAt = new Date(ticket.valid_end_at);
        
        const earlyMins = parseInt(process.env.REDEEM_EARLY_MINUTES || '0', 10);
-       const lateMins = parseInt(process.env.REDEEM_LATE_MINUTES || '30', 10); // Standard 30m grace
+       const lateMins = parseInt(process.env.REDEEM_LATE_MINUTES || '30', 10);
 
        const redeemStart = new Date(startAt.getTime() - earlyMins * 60000);
        const redeemEnd = new Date(endAt.getTime() + lateMins * 60000);
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
            error: 'Ticket not yet valid', 
            code: 'TOO_EARLY',
            validFrom: redeemStart.toISOString() 
-         }, { status: 400 });
+         }, { status: 422 });
        }
 
        if (now > redeemEnd) {
@@ -125,28 +125,89 @@ export async function POST(req: NextRequest) {
            error: 'Ticket expired', 
            code: 'EXPIRED',
            expiredAt: redeemEnd.toISOString() 
-         }, { status: 400 });
+         }, { status: 422 });
        }
     }
 
     // 4) 非 active（如 refunded/void/expired）不执行核销
     if ((ticket as any).status !== 'active') {
-      return NextResponse.json({ error: `Ticket cannot be redeemed (status: ${(ticket as any).status})` }, { status: 400 });
+       return NextResponse.json({ 
+           error: `Ticket cannot be redeemed (status: ${(ticket as any).status})`,
+           code: 'STATUS_INVALID'
+       }, { status: 409 });
     }
 
-    // 5) 原子更新：仅当 status='active' 时更新，保证并发下只成功一次
+    // Check Limit
+    const currentCount = (ticket as any).redeemed_count || 0;
+    const limit = (ticket as any).redeem_limit || 1;
+    if (currentCount >= limit) {
+        return NextResponse.json({ 
+            error: 'Redeem limit reached', 
+            code: 'LIMIT_REACHED' 
+        }, { status: 409 });
+    }
+
+    // 5) 原子更新
+    const newCount = currentCount + 1;
+    const newStatus = newCount >= limit ? 'used' : 'active';
+    
+    // We assume 'redeem_method' is passed in body if needed, but schema might not have it column.
+    // So we just update standard fields.
+
     const { data: updated, error: updateErr } = await admin
       .from('tickets')
       .update({
-        status: 'used',
+        status: newStatus,
+        redeemed_count: newCount,
         redeemed_at: new Date().toISOString(),
         redeemed_by: user.id,
         updated_at: new Date().toISOString(),
       })
       .eq('public_token', token)
-      .eq('status', 'active')
-      .select('id, status, redeemed_at, redeemed_by')
+      .eq('status', 'active') // Optimistic lock
+      .select('id, status, redeemed_count, redeem_limit, redeemed_at, redeemed_by')
       .maybeSingle();
+
+    if (updateErr) {
+      console.error('[tickets/redeem] update error', updateErr);
+      return NextResponse.json({ error: 'Redemption failed' }, { status: 500 });
+    }
+
+    // 并发下可能已被其他请求核销
+    if (!updated) {
+        // ... refetch logic ... 
+      const { data: refetch } = await admin
+        .from('tickets')
+        .select('id, status, redeemed_at, redeemed_by, redeemed_count, redeem_limit')
+        .eq('public_token', token)
+        .maybeSingle();
+        
+      // Check if it was because of Limit Reached or Status Change
+      if (refetch && refetch.redeemed_count >= (refetch.redeem_limit || 1)) {
+          return NextResponse.json({
+            alreadyRedeemed: true,
+            code: 'LIMIT_REACHED',
+            ticket: refetch
+          }, { status: 409 });
+      }
+      
+      return NextResponse.json({
+        alreadyRedeemed: true,
+        ticket: refetch
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      ticket: {
+        id: updated!.id,
+        status: updated!.status,
+        redeemed_at: updated!.redeemed_at,
+        redeemed_by: updated!.redeemed_by,
+        redeemed_count: updated!.redeemed_count,
+        redeem_limit: updated!.redeem_limit
+      },
+    });
 
     if (updateErr) {
       console.error('[tickets/redeem] update error', updateErr);

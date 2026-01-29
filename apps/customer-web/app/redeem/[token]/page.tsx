@@ -8,7 +8,13 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
   const [token, setToken] = useState<string>('');
   const [count, setCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [redeemed, setRedeemed] = useState<{ redeemedAt: string; redeemedBy?: string; already?: boolean } | null>(null);
+  const [redeemed, setRedeemed] = useState<{ 
+     redeemedAt: string; 
+     redeemedBy?: string; 
+     already?: boolean;
+     count?: number;
+     limit?: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<{ eventName?: string; venueName?: string; status?: string } | null>(null);
 
@@ -40,36 +46,68 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
     fetch('/api/tickets/redeem', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ token, redeem_method: 'tap' }),
     })
       .then(async (r) => {
         const j = await r.json().catch(() => ({}));
         if (!r.ok) {
-          if (j.alreadyRedeemed) {
-            setRedeemed({
-              redeemedAt: j.ticket?.redeemed_at || new Date().toISOString(),
-              redeemedBy: j.ticket?.redeemed_by,
-              already: true,
-            });
-            return;
+          // Status Handling
+          if (r.status === 401 || r.status === 403) {
+             setError('权限不足：仅限工作人员登录后核销');
+             setCount(0);
+             return;
           }
-          if (r.status === 403) {
-            setError('Only staff can redeem. Please log in with a staff account.');
-            setCount(0);
-            return;
+          
+          let msg = '核销失败';
+          const code = j.code;
+          
+          switch (code) {
+             case 'TOO_EARLY':
+                msg = `未到核销时间 (开始: ${j.validFrom ? new Date(j.validFrom).toLocaleTimeString() : 'N/A'})`;
+                break;
+             case 'EXPIRED':
+                msg = `票据已过期 (结束: ${j.expiredAt ? new Date(j.expiredAt).toLocaleDateString() : 'N/A'})`;
+                break;
+             case 'LIMIT_REACHED':
+                msg = `核销次数已用完 (${j.redeemedCount}/${j.redeemLimit})`;
+                break;
+             case 'STATUS_INVALID':
+                msg = `票据状态无效 (${j.status})`;
+                break;
+             default:
+                msg = j.error || `Error: ${r.status}`;
           }
-          setError(j.error || 'Redemption failed');
+
+          // Special case: Limit Reached might return 409 with ticket data
+          if (code === 'LIMIT_REACHED' && j.ticket) {
+             setRedeemed({
+                redeemedAt: j.ticket.redeemed_at,
+                redeemedBy: j.ticket.redeemed_by,
+                already: true,
+                count: j.ticket.redeemed_count,
+                limit: j.ticket.redeem_limit
+             });
+             setError(msg); // Show error too? Or just show status?
+             // Usually if limit reached, we want to show it as "Done/Used".
+             return;
+          }
+          
+          setError(msg);
           setCount(0);
           return;
         }
+
+        // Success
         setRedeemed({
           redeemedAt: j.ticket?.redeemed_at || new Date().toISOString(),
           redeemedBy: j.ticket?.redeemed_by,
           already: !!j.alreadyRedeemed,
+          count: j.ticket?.redeemed_count,
+          limit: j.ticket?.redeem_limit
         });
       })
       .catch(() => {
-        setError('Network error');
+        setError('网络错误，请重试');
         setCount(0);
       })
       .finally(() => setSubmitting(false));
@@ -86,8 +124,12 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
       </div>
     );
   }
-
-  const done = !!redeemed;
+  
+  // Logic to show "Redeemed Count" if multi-use
+  // Using info from Public API if available, or just default
+  // Actually public API returns limit/count. But we didn't store it in 'info'.
+  // We can update 'info' state or just use 'redeemed' state if done.
+  const isMultiUse = (redeemed?.limit || 1) > 1;
 
   return (
     <div className="bg-background-dark text-white min-h-screen flex flex-col font-display max-w-md mx-auto">
@@ -103,41 +145,51 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
         {info?.eventName && (
           <p className="text-white/60 text-sm mt-0.5">{info.eventName} · {info.venueName}</p>
         )}
+        {info?.status === 'expired' && (
+           <span className="inline-block px-2 py-0.5 mt-2 rounded bg-zinc-700 text-white/70 text-xs font-bold uppercase">Expired</span>
+        )}
       </header>
 
       <main className="flex-1 px-5 pb-24">
         {/* (a) Redeem Ticket */}
         <section className="mb-8">
-          <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Staff only</p>
-          <p className="text-white/70 text-sm mb-4">
-            Only staff can redeem. You must be logged in with a staff or admin account. Permission is enforced by the server.
-          </p>
-          {!done ? (
+          <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Staff Operation</p>
+          
+          {!redeemed ? (
             <>
               <button
                 onClick={handleTap}
                 onBlur={resetCount}
                 disabled={submitting}
-                className="w-full bg-primary hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60 text-white font-bold py-6 rounded-2xl text-center transition-all"
+                className={`w-full font-bold py-6 rounded-2xl text-center transition-all shadow-lg ${
+                   count > 0 ? 'bg-lux-gold text-black scale-[1.02]' : 'bg-primary text-white hover:bg-primary/90'
+                } disabled:opacity-60 disabled:scale-100`}
               >
                 {submitting
-                  ? 'Redeeming…'
-                  : `Tap 3 times to Redeem  ${count}/3`}
+                  ? 'Processing...'
+                  : count === 0 ? 'Tap 3 times to Redeem' 
+                  : `Tap Again (${count}/3)`}
               </button>
               {error && (
-                <p className="mt-3 text-alert-red text-sm">{error}</p>
+                <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
+                    <p className="text-alert-red text-sm font-bold">{error}</p>
+                </div>
               )}
             </>
           ) : (
             <div className="rounded-2xl border border-amber-500/50 bg-amber-500/10 p-6 text-center">
               <span className="material-symbols-outlined text-4xl text-amber-400 mb-2">check_circle</span>
               <p className="font-bold text-amber-200">
-                {redeemed?.already ? 'Ticket already redeemed' : 'Redeemed successfully'}
+                {redeemed.already ? 'Ticket Used / Limit Reached' : 'Success'}
               </p>
-              {redeemed?.redeemedAt && (
+              {isMultiUse && (
+                 <p className="text-xl font-bold bg-black/20 rounded-lg py-2 mt-2">
+                    {redeemed.count} / {redeemed.limit}
+                 </p>
+              )}
+              {redeemed.redeemedAt && (
                 <p className="text-white/70 text-sm mt-2">
-                  Redeemed: {new Date(redeemed.redeemedAt).toLocaleString()}
-                  {redeemed.redeemedBy && ' (by staff)'}
+                  Time: {new Date(redeemed.redeemedAt).toLocaleTimeString()}
                 </p>
               )}
             </div>
