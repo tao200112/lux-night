@@ -23,6 +23,7 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
     validStartAt?: string;
     validEndAt?: string;
     timezone?: string;
+    testConfig?: { isTestMode: boolean; earlyMinutes: number; lateMinutes: number };
   } | null>(null);
 
   useEffect(() => {
@@ -45,8 +46,7 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
                  status: d.ticket.status,
                  validStartAt: d.ticket.validStartAt,
                  validEndAt: d.ticket.validEndAt,
-                 // Assuming Backend returns mostly NY/UTC normalized times. 
-                 // We will format in Local or NY Time.
+                 testConfig: d.meta?.testConfig
              });
           }
       })
@@ -56,9 +56,6 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
   // Helper to format window
   const formatTicketWindow = (start?: string, end?: string) => {
       if (!start || !end) return 'Check details';
-      // Use Local Time for now, or use timezone if provided. 
-      // User requested "Jan 28 4:00 PM – Jan 29 2:00 AM (ET)".
-      // Javascript Intl is good for this.
       const opts: Intl.DateTimeFormatOptions = {
           month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
           timeZone: 'America/New_York', // Forced per requirements
@@ -66,7 +63,7 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
       };
       
       const s = new Date(start).toLocaleString('en-US', opts);
-      const e = new Date(end).toLocaleString('en-US', { ...opts, timeZoneName: undefined }); // Don't repeat TZ
+      const e = new Date(end).toLocaleString('en-US', { ...opts, timeZoneName: undefined }); 
       return `${s} – ${e}`;
   };
 
@@ -176,6 +173,11 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
           <span className="material-symbols-outlined">arrow_back_ios_new</span>
           Back
         </button>
+        {info?.testConfig?.isTestMode && (
+          <div className="mx-4 mt-2 px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded text-xs text-blue-200 text-center">
+            🧪 测试模式：允许提前 {info.testConfig.earlyMinutes} 分钟核销
+          </div>
+        )}
         <h1 className="text-lg font-bold mt-2">Redeem Ticket</h1>
         {info?.eventName && (
           <p className="text-white/60 text-sm mt-0.5">{info.eventName} · {info.venueName}</p>

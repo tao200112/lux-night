@@ -317,6 +317,17 @@ async function handleCheckoutSessionCompletedV2(session: Stripe.Checkout.Session
 
     const { valid_start_at, valid_end_at } = validityWindow[0];
 
+    console.log('[STRIPE WEBHOOK V2] Calculated Validity:', {
+       debugId,
+       weekStartDate: eventWeek.week_start_date,
+       timezone: eventWeek.timezone,
+       dayDow: day.dow,
+       startTime: day.start_time,
+       endTime: day.end_time,
+       resultStart: valid_start_at,
+       resultEnd: valid_end_at
+    });
+
     // Get event_v2 and merchant info for venue_id
     const { data: eventV2, error: eventV2Error } = await supabaseAdmin
       .from('events_v2')

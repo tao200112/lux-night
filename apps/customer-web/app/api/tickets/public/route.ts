@@ -82,9 +82,12 @@ export async function GET(req: NextRequest) {
       computedStatus = 'expired';
   }
 
+  const earlyMins = parseInt(process.env.REDEEM_EARLY_MINUTES || '0', 10);
+  const lateMins = parseInt(process.env.REDEEM_LATE_MINUTES || '30', 10);
+
   return NextResponse.json({
     ticket: {
-      id: ticket.id, // ID is needed for tracking
+      id: ticket.id,
       status: computedStatus, 
       db_status: ticket.status,
       eventName: ev?.title || 'Unknown Event',
@@ -96,6 +99,15 @@ export async function GET(req: NextRequest) {
       redeemLimit: ticket.redeem_limit,
       posterUrl: ev?.poster_url || null,
       token: ticket.public_token
+    },
+    meta: {
+      serverTime: now.toISOString(),
+      timezone: 'America/New_York', // Fixed for display
+      testConfig: {
+         earlyMinutes: earlyMins,
+         lateMinutes: lateMins,
+         isTestMode: earlyMins > 0
+      }
     }
   });
 }
