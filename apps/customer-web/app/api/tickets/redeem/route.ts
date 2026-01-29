@@ -209,32 +209,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (updateErr) {
-      console.error('[tickets/redeem] update error', updateErr);
-      return NextResponse.json({ error: 'Redemption failed' }, { status: 500 });
-    }
 
-    // 并发下可能已被其他请求核销，此时 updated 为空，再查一次按“已核销”返回
-    if (!updated) {
-      const { data: refetch } = await admin
-        .from('tickets')
-        .select('id, status, redeemed_at, redeemed_by')
-        .eq('public_token', token)
-        .maybeSingle();
-      return NextResponse.json({
-        alreadyRedeemed: true,
-        ticket: refetch ? { id: refetch.id, status: refetch.status, redeemed_at: refetch.redeemed_at, redeemed_by: refetch.redeemed_by } : undefined,
-      });
-    }
-
-    return NextResponse.json({
-      ticket: {
-        id: updated.id,
-        status: updated.status,
-        redeemed_at: updated.redeemed_at,
-        redeemed_by: updated.redeemed_by,
-      },
-    });
   } catch (e: any) {
     console.error('[tickets/redeem]', e);
     return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 });
