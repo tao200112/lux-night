@@ -112,19 +112,48 @@ export async function POST(req: NextRequest) {
        const redeemStart = new Date(startAt.getTime() - earlyMins * 60000);
        const redeemEnd = new Date(endAt.getTime() + lateMins * 60000);
 
+       // Debug Log (Chinese comments for observability)
+       console.log('[Redeem Debug] Time Check:', {
+          token: token.slice(0, 8) + '...',
+          ticketId: ticket.id,
+          now_utc: now.toISOString(),
+          now_epoch: now.getTime(),
+          valid_start_at_utc: ticket.valid_start_at,
+          valid_end_at_utc: ticket.valid_end_at,
+          redeemable_from_utc: redeemStart.toISOString(),
+          redeemable_to_utc: redeemEnd.toISOString(),
+          config: { earlyMins, lateMins }
+       });
+
+       // 检查是否早于窗口
        if (now < redeemStart) {
          return NextResponse.json({ 
            error: 'Ticket not yet valid', 
            code: 'TOO_EARLY',
-           validFrom: redeemStart.toISOString() 
+           message: '未到核销时间',
+           validFrom: redeemStart.toISOString(),
+           debugInfo: {
+             serverNow: now.toISOString(),
+             startsAt: ticket.valid_start_at,
+             endsAt: ticket.valid_end_at,
+             timezone: 'America/New_York' // Hint for Frontend, strictly strictly derived from venue ideally
+           }
          }, { status: 422 });
        }
 
+       // 检查是否晚于窗口
        if (now > redeemEnd) {
          return NextResponse.json({ 
            error: 'Ticket expired', 
            code: 'EXPIRED',
-           expiredAt: redeemEnd.toISOString() 
+           message: '票据已过期',
+           expiredAt: redeemEnd.toISOString(),
+           debugInfo: {
+             serverNow: now.toISOString(),
+             startsAt: ticket.valid_start_at,
+             endsAt: ticket.valid_end_at,
+             timezone: 'America/New_York'
+           }
          }, { status: 422 });
        }
     }
