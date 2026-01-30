@@ -98,3 +98,19 @@ export interface PlaceDetailsResponse {
   lat: number;
   lng: number;
 }
+
+export type DropStatus = 'draft' | 'published';
+
+export interface Drop {
+  id: string;
+  region_id: string;
+  title: string;
+  content: string;
+  poster_url: string | null;
+  status: DropStatus;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joins
+  region?: Region;
+}

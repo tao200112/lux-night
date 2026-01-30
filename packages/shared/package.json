@@ -11,6 +11,7 @@
     "./constants": "./src/constants.ts",
     "./data/profile": "./src/data/profile.ts",
     "./data/regions": "./src/data/regions.ts",
+    "./data/drops": "./src/data/drops.ts",
     "./utils/qr": "./src/utils/qr.ts",
     "./auth": "./src/auth/index.ts"
   },

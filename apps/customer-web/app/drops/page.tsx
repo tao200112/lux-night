@@ -5,16 +5,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getDropsByRegion } from '@/lib/data/events';
-import type { EventWithVenue } from '@/lib/data/events';
+import { getPublishedDrops } from '@lux-night/shared/data/drops';
+import type { Drop } from '@lux-night/shared/types';
 import BottomTabBar from '@/components/ui/BottomTabBar';
-import EventGlassCard from '@/components/EventGlassCard';
 
 export default function DropsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { region } = useRegion();
-  const [items, setItems] = useState<EventWithVenue[]>([]);
+  const [items, setItems] = useState<Drop[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,9 +28,15 @@ export default function DropsPage() {
     let cancelled = false;
     setError(null);
     setLoading(true);
-    getDropsByRegion(region.id)
+    // Use Shared Data Function
+    getPublishedDrops(region.id)
       .then((d) => { if (!cancelled) setItems(d); })
-      .catch((e) => { if (!cancelled) setError(e?.message || 'Failed to load'); })
+      .catch((e) => { 
+          if (!cancelled) {
+              console.error(e);
+              setError('Failed to load drops');
+          } 
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [region?.id]);
@@ -68,7 +73,7 @@ export default function DropsPage() {
         {region && loading && (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 rounded-2xl bg-white/5 animate-pulse" />
+              <div key={i} className="h-48 rounded-2xl bg-white/5 animate-pulse" />
             ))}
           </div>
         )}
@@ -90,9 +95,26 @@ export default function DropsPage() {
         )}
 
         {region && !loading && !error && items.length > 0 && (
-          <div className="space-y-3">
-            {items.map((event) => (
-              <EventGlassCard key={event.id} event={event} />
+          <div className="space-y-6">
+            {items.map((drop) => (
+              <div key={drop.id} className="group relative overflow-hidden rounded-2xl bg-white/[0.05] border border-white/10">
+                 {/* Poster */}
+                 {drop.poster_url && (
+                     <div className="aspect-[4/5] w-full overflow-hidden">
+                         <img src={drop.poster_url} alt={drop.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                     </div>
+                 )}
+                 {/* Content Overlay/Body */}
+                 <div className="p-4">
+                     <div className="flex justify-between items-start mb-2">
+                         <h3 className="text-lg font-bold text-white">{drop.title}</h3>
+                         <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/50">
+                             {new Date(drop.published_at || drop.created_at).toLocaleDateString()}
+                         </span>
+                     </div>
+                     <p className="text-sm text-white/70 line-clamp-3 whitespace-pre-wrap">{drop.content}</p>
+                 </div>
+              </div>
             ))}
           </div>
         )}
@@ -102,3 +124,4 @@ export default function DropsPage() {
     </div>
   );
 }
+
