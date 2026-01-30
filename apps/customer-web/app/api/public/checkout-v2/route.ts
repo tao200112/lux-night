@@ -298,22 +298,34 @@ export async function POST(req: NextRequest) {
       };
     }));
 
+    // Insert with potential new columns
     const { error: orderItemsError } = await supabase
       .from('order_items')
       .insert(orderItems);
 
     if (orderItemsError) {
-      await supabase.from('orders').delete().eq('id', order.id);
-      return NextResponse.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: {
-            code: 'ORDER_ITEMS_CREATE_FAILED',
-            message: 'Failed to create order items',
-          },
-        },
-        { status: 500 }
-      );
+       console.error('Failed to insert orderItems with validity fields, retrying without them...', orderItemsError);
+       // Fallback: Remove new fields (if DB migration failed)
+       const legacyItems = orderItems.map(({ event_week_day_id, valid_start_at, valid_end_at, ...rest }) => rest);
+       
+       const { error: legacyError } = await supabase
+         .from('order_items')
+         .insert(legacyItems);
+         
+       if (legacyError) {
+          console.error('Legacy insert also failed', legacyError);
+          await supabase.from('orders').delete().eq('id', order.id);
+          return NextResponse.json<ApiResponse<never>>(
+            {
+              success: false,
+              error: {
+                code: 'ORDER_ITEMS_CREATE_FAILED',
+                message: 'Failed to create order items',
+              },
+            },
+            { status: 500 }
+          );
+       }
     }
 
     // 10. 创建 Stripe checkout session
