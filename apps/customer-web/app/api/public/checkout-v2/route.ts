@@ -285,6 +285,12 @@ export async function POST(req: NextRequest) {
           throw new Error('Failed to calculate validity');
       }
 
+      // Check if event time has passed
+      const validEndAt = new Date(validity[0].valid_end_at);
+      if (validEndAt < new Date()) {
+          throw new Error('This ticket type is for a past event and cannot be purchased.');
+      }
+
       return {
         order_id: order.id,
         event_id: eventId, 
