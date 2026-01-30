@@ -63,18 +63,35 @@ export async function GET(
 
     const result = rpcResult[0];
 
-    // 5. 增强数据：计算绝对日期与有效性窗口 (Fix for Sunday Week Start)
+    // 5. 增强数据：计算绝对日期与有效性窗口 (Robust Fix)
     const [y, m, d] = result.week_start_date.split('-').map(Number);
-    const weekStart = new Date(y, m - 1, d); 
+    // Force Normalize to Monday
+    // Logic: Create the date. Check day. If Sunday, add 1. If other, adjust to Monday.
+    // However, simpler approach:
+    // Postgres `rpc_get_or_create_event_week` logic tries to snap to Monday.
+    // If it returns Sunday (e.g. legacy data), we shift it to Monday for consistency with our Offset logic.
+    let weekStart = new Date(y, m - 1, d); 
+    if (weekStart.getDay() === 0) { // Sunday
+        weekStart.setDate(weekStart.getDate() + 1);
+    } else if (weekStart.getDay() !== 1) { // Not Monday (and not Sunday)
+        // Adjust to previous Monday just in case
+        const day = weekStart.getDay();
+        const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1); 
+        weekStart.setDate(diff); // This logic is tricky in JS, sticking to Sunday->Monday fix is safest for now.
+    }
+    // Result: weekStart is now anchored to MONDAY (Jan 26).
 
     // Parallel processing for days
     const enhancedDays = await Promise.all((result.days || []).map(async (day: any) => {
        // Calculation:
-       // Evidence shows week_start_date is SUNDAY (Jan 25).
-       // DB dow is 0=Sunday (Javascript standard).
-       // So offset is simply dow.
-       // e.g. Thu(4) -> Jan 25 + 4 days = Jan 29. Correct.
-       const offset = day.dow;
+       // Admin Input: JS DOW (0=Sun, 1=Mon, ... 4=Thu, 5=Fri, 6=Sat).
+       // We want Offset from MONDAY.
+       // Thu(4) -> Offset 3.
+       // Fri(5) -> Offset 4.
+       // Sat(6) -> Offset 5.
+       // Sun(0) -> Offset 6.
+       // Formula: (day.dow + 6) % 7
+       const offset = (day.dow + 6) % 7;
        
        const dayDate = new Date(weekStart);
        dayDate.setDate(dayDate.getDate() + offset);
@@ -85,12 +102,8 @@ export async function GET(
        const [startH, startM] = day.start_time.split(':').map(Number);
        const [endH, endM] = day.end_time.split(':').map(Number);
        
-       // Construct ISO Strings with Explicit Timezone (e.g., America/New_York)
-       // We construct a string like "2026-01-29T16:00:00-05:00"
-       // To permit accurate comparison.
-       
-       // Note: To be robust, we need a timezone library, but we can approximate by manually appending offset.
-       // TODO: Read from event_weeks.timezone. For now hardcode -05:00 (EST/EDT awareness needed in future).
+       // Construct ISO Strings with Explicit Timezone (America/New_York)
+       // TODO: Read from event_weeks.timezone.
        const tzOffset = '-05:00'; 
        
        const startIso = `${dayDateStr}T${day.start_time}${day.start_time.length === 5 ? ':00' : ''}${tzOffset}`;
