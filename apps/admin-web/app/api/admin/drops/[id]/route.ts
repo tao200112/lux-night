@@ -13,8 +13,11 @@ const updateDropSchema = z.object({
   published_at: z.string().optional().nullable()
 });
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+
+export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
+    const params = await props.params;
+    const { id } = params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -22,7 +25,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const { data: isAdmin } = await supabase.rpc('is_admin');
     if (!isAdmin) return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
 
-    const { id } = await params;
     const body = await req.json();
     const validation = updateDropSchema.safeParse(body);
     
@@ -36,10 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     let updates: any = { ...validation.data };
     if (validation.data.status === 'published' && !validation.data.published_at) {
         // If switching to published and no date provided, set now.
-        // We should check if it was already published to avoid overwriting?
-        // Simple logic: if payload status is published, use supplied date or now.
         updates.published_at = new Date().toISOString();
-        // If user explicitly sent null/undefined, validation handles it, but here we enforce logic.
     } 
     // If status is draft, clear published_at?
     if (validation.data.status === 'draft') {
@@ -55,8 +54,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
+    const params = await props.params;
+    const { id } = params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -64,7 +65,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const { data: isAdmin } = await supabase.rpc('is_admin');
     if (!isAdmin) return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
 
-    const { id } = await params;
     const admin = createAdminClient();
     const { error } = await admin.from('drops').delete().eq('id', id);
     if (error) throw error;
@@ -74,3 +74,4 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
 }
+
