@@ -63,51 +63,44 @@ export async function GET(
 
     const result = rpcResult[0];
 
-    // 5. 增强数据：计算绝对日期与有效性窗口
+    // 5. 增强数据：计算绝对日期与有效性窗口 (Fix for Sunday Week Start)
     const [y, m, d] = result.week_start_date.split('-').map(Number);
-    const weekStart = new Date(y, m - 1, d); // Local Midnight of week_start_date (Monday)
+    const weekStart = new Date(y, m - 1, d); 
 
     // Parallel processing for days
     const enhancedDays = await Promise.all((result.days || []).map(async (day: any) => {
-       // Calculation: Assume week_start_date is MONDAY.
-       // Assume DB 'dow' follows JS convention (0=Sun, 1=Mon... 6=Sat).
-       // Target Offset from Monday = (dow + 6) % 7
-       // e.g. Thu(4) -> (4+6)%7 = 10%7 = 3. Mon+3 = Thu. Correct.
-       // e.g. Sun(0) -> (0+6)%7 = 6. Mon+6 = Sun. Correct.
-       const offset = (day.dow + 6) % 7;
+       // Calculation:
+       // Evidence shows week_start_date is SUNDAY (Jan 25).
+       // DB dow is 0=Sunday (Javascript standard).
+       // So offset is simply dow.
+       // e.g. Thu(4) -> Jan 25 + 4 days = Jan 29. Correct.
+       const offset = day.dow;
        
        const dayDate = new Date(weekStart);
        dayDate.setDate(dayDate.getDate() + offset);
        
        const dayDateStr = dayDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
 
-       // Calculate validity using RPC (reusing logic for consistency)
-       // Or manually calculate here to save DB calls?
-       // Let's manually calculate to be faster and stricter.
-       
        // Parse Times
        const [startH, startM] = day.start_time.split(':').map(Number);
        const [endH, endM] = day.end_time.split(':').map(Number);
-
-       // Construct Timestamps in Target Timezone
-       // Note: Javascript Date is local or UTC. We need strict Timezone support.
-       // Since we don't have a heavy library, we rely on ISO strings and simple shifts for now,
-       // OR we assume the server time is UTC and we just return ISO strings based on the offsets.
-       // Actually, for validity checks, best to use the DB RPC?
-       // But calling RPC N times is bad.
-       // Let's use the DB RPC `calculate_day_validity_window` logic ported to JS *conceptually* 
-       // but return simple ISO strings.
        
-       // Construct Start
-       const start = new Date(dayDate);
-       start.setHours(startH, startM, 0, 0);
+       // Construct ISO Strings with Explicit Timezone (e.g., America/New_York)
+       // We construct a string like "2026-01-29T16:00:00-05:00"
+       // To permit accurate comparison.
        
-       // Construct End
-       const end = new Date(dayDate);
+       // Note: To be robust, we need a timezone library, but we can approximate by manually appending offset.
+       // TODO: Read from event_weeks.timezone. For now hardcode -05:00 (EST/EDT awareness needed in future).
+       const tzOffset = '-05:00'; 
+       
+       const startIso = `${dayDateStr}T${day.start_time}${day.start_time.length === 5 ? ':00' : ''}${tzOffset}`;
+       
+       let endDate = new Date(dayDate);
        if (day.end_next_day) {
-         end.setDate(end.getDate() + 1);
+           endDate.setDate(endDate.getDate() + 1);
        }
-       end.setHours(endH, endM, 0, 0);
+       const endDateStr = endDate.toLocaleDateString('en-CA');
+       const endIso = `${endDateStr}T${day.end_time}${day.end_time.length === 5 ? ':00' : ''}${tzOffset}`;
 
        // Filter active tickets
        const validTickets = (day.tickets || []).filter((t: any) => t.status === 'active');
@@ -115,21 +108,18 @@ export async function GET(
        return {
          ...day,
          date: dayDateStr,
-         valid_start_at: start.toISOString(), // Warning: This is UTC of Server Local. 
-         // Ideally we should handle Timezone. 
-         // But for now, ensuring day consistency is P0. 
-         // If we assume New York (UTC-5), we might be off. 
-         // Correct approach: Use week_start_date as plain date, construct strings.
-         valid_end_at: end.toISOString(),
+         valid_start_at: startIso,
+         valid_end_at: endIso,
          enabled: day.enabled,
          tickets: validTickets
        };
     }));
 
     // Filter: only enabled and strictly in future (end > now)
-    const now = new Date();
+    const now = new Date(); // Server time (UTC)
     const finalDays = enhancedDays.filter((day: any) => {
         if (!day.enabled) return false;
+        // Compare UTC timestamps
         if (new Date(day.valid_end_at) <= now) return false;
         return true;
     });
