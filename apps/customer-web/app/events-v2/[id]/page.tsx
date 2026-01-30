@@ -33,6 +33,9 @@ interface DayConfig {
   end_time: string;
   end_next_day: boolean;
   tickets: TicketType[];
+  date: string;
+  valid_start_at: string;
+  valid_end_at: string;
 }
 
 interface EventV2 {
@@ -229,25 +232,9 @@ export default function CustomerEventV2DetailPage() {
   // Filter days: Only show future days (or active today)
   // Assumption: week_start_date is YYYY-MM-DD local to venue. 
   // We approximate using browser time.
-  // Filter days: Only show future days (or active today)
-  // Assumption: week_start_date is YYYY-MM-DD local to venue. 
-  // We approximate using browser time.
-  const enabledDays = weekConfig.days.filter((day) => {
-     if (!day.enabled) return false;
-     
-     // Construct approx End Time for this day
-     // Week Start is Monday. Dow 0=Monday.
-     const d = new Date(weekConfig.week_start_date + 'T00:00:00');
-     const offset = day.dow; // DB: 0=Mon, 1=Tue...6=Sun
-     d.setDate(d.getDate() + offset);
-     
-     const [h, m] = day.end_time.split(':');
-     d.setHours(parseInt(h), parseInt(m));
-     if (day.end_next_day) d.setDate(d.getDate() + 1);
-
-     // Strict comparison: End time must be in the future
-     return d > new Date();
-  });
+  // Filter days: API already filters enabled and past days.
+  // We double check here or just use it.
+  const enabledDays = weekConfig?.days || [];
 
   return (
     <div className="relative w-full min-h-screen flex flex-col pb-32 bg-background-dark text-white max-w-md mx-auto">
@@ -305,9 +292,12 @@ export default function CustomerEventV2DetailPage() {
           ) : (
             <div className="space-y-6">
               {enabledDays.map((day) => {
-                const dayDate = new Date(weekConfig.week_start_date + 'T00:00:00');
-                const offset = day.dow;
-                dayDate.setDate(dayDate.getDate() + offset);
+                // Use date from API directly.
+                // Note: 'date' is YYYY-MM-DD.
+                // We split and construct local date to avoid timezone shifts in formatting.
+                const [y, m, d] = day.date.split('-').map(Number);
+                const dayDate = new Date(y, m - 1, d);
+                
                 // Simple Date Header
                 const dateHeader = dayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
