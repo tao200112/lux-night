@@ -270,25 +270,39 @@ export async function POST(req: NextRequest) {
       
       if (!dayConfig) throw new Error('Missing day config');
 
-      // Calculate Validity using RPC
-      const { data: validity, error: valError } = await supabase.rpc('calculate_day_validity_window', {
-          p_week_start_date: eventWeek.week_start_date,
-          p_dow: dayConfig.dow,
-          p_start_time: dayConfig.start_time,
-          p_end_time: dayConfig.end_time,
-          p_end_next_day: dayConfig.end_next_day,
-          p_timezone: eventWeek.timezone
-      });
-
-      if (valError || !validity || validity.length === 0) {
-          console.error('Validity Calc Error', valError);
-          throw new Error('Failed to calculate validity');
+      // Calculate Validity Manually (to match Week API logic and fix DOW/Offset issues)
+      // 1. Normalize Week Start to Monday
+      const [y, m, d] = eventWeek.week_start_date.split('-').map(Number);
+      let weekStart = new Date(y, m - 1, d);
+      if (weekStart.getDay() === 0) { weekStart.setDate(weekStart.getDate() + 1); }
+      else if (weekStart.getDay() !== 1) { 
+          const day = weekStart.getDay();
+          const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1); 
+          weekStart.setDate(diff);
       }
+      
+      // 2. Calculate Correct Offset (JS DOW -> Mon-based Offset)
+      const offset = (dayConfig.dow + 6) % 7;
+      
+      // 3. Get Target Date
+      const targetDate = new Date(weekStart);
+      targetDate.setDate(targetDate.getDate() + offset);
+      const targetDateStr = targetDate.toLocaleDateString('en-CA');
 
-      // Check if event time has passed
-      const validEndAt = new Date(validity[0].valid_end_at);
-      if (validEndAt < new Date()) {
-          throw new Error('This ticket type is for a past event and cannot be purchased.');
+      // 4. Construct Timestamps
+      const tzOffset = '-05:00'; // Hardcoded for now, same as Week API
+      const valid_start_at = `${targetDateStr}T${dayConfig.start_time}${dayConfig.start_time.length === 5 ? ':00' : ''}${tzOffset}`;
+      
+      let endDate = new Date(targetDate);
+      if (dayConfig.end_next_day) {
+          endDate.setDate(endDate.getDate() + 1);
+      }
+      const endDateStr = endDate.toLocaleDateString('en-CA');
+      const valid_end_at = `${endDateStr}T${dayConfig.end_time}${dayConfig.end_time.length === 5 ? ':00' : ''}${tzOffset}`;
+
+      // 5. Past Check
+      if (new Date(valid_end_at) < new Date()) {
+           throw new Error('This ticket type is for a past event and cannot be purchased.');
       }
 
       return {
@@ -299,8 +313,8 @@ export async function POST(req: NextRequest) {
         unit_price_cents: ticketType.price_cents,
         // New Snapshot Fields
         event_week_day_id: item.eventWeekDayId,
-        valid_start_at: validity[0].valid_start_at, 
-        valid_end_at: validity[0].valid_end_at
+        valid_start_at: valid_start_at, 
+        valid_end_at: valid_end_at
       };
     }));
 
