@@ -105,6 +105,7 @@ export interface Drop {
   id: string;
   region_id: string;
   title: string;
+  subtitle?: string | null;
   content: string;
   poster_url: string | null;
   status: DropStatus;

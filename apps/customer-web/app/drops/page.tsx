@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -8,6 +6,7 @@ import Link from 'next/link';
 import { getPublishedDrops } from '@lux-night/shared/data/drops';
 import type { Drop } from '@lux-night/shared/types';
 import BottomTabBar from '@/components/ui/BottomTabBar';
+import DropsList from './components/DropsList';
 
 export default function DropsPage() {
   const router = useRouter();
@@ -53,69 +52,43 @@ export default function DropsPage() {
 
   return (
     <div className="min-h-screen max-w-md mx-auto flex flex-col bg-background-dark text-white pb-24">
-      <header className="sticky top-0 z-10 px-6 py-4 bg-background-dark/95 backdrop-blur-md border-b border-white/5">
-        <h1 className="text-xl font-bold tracking-tight">Drops</h1>
-        {region && <p className="text-white/50 text-sm mt-1">{region.name}</p>}
+      <header className="sticky top-0 z-20 px-6 py-4 bg-background-dark/80 backdrop-blur-xl border-b border-white/5 transition-all">
+        <div className="flex flex-col">
+            <h1 className="text-xl font-bold tracking-tight text-white/90">Drops</h1>
+            {region && (
+                <div className="flex items-center gap-1 text-white/40 mt-0.5">
+                    <span className="material-symbols-outlined text-[14px]">location_on</span>
+                    <p className="text-xs font-medium uppercase tracking-wide">{region.name}</p>
+                </div>
+            )}
+        </div>
       </header>
 
-      <main className="flex-1 px-6 py-6">
-        {!region && (
-          <div className="mx-0 p-6 rounded-xl bg-white/[0.05] backdrop-blur-md border border-[rgba(212,175,55,0.22)] text-center">
-            <span className="material-symbols-outlined text-5xl text-white/30 mb-4">location_off</span>
-            <h3 className="text-lg font-bold text-white mb-2">Choose your region</h3>
-            <p className="text-white/50 text-sm mb-5">Select a region on Home to see drops in your area.</p>
-            <Link href="/" className="inline-flex px-5 py-3 rounded-xl bg-primary text-background-dark font-bold text-sm hover:opacity-90 transition-opacity">
-              Go to Home
+      <main className="flex-1 px-4 py-6">
+        {!region ? (
+          <div className="mx-0 p-8 rounded-2xl bg-white/[0.05] backdrop-blur-md border border-[rgba(212,175,55,0.22)] text-center shadow-2xl">
+            <div className="bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <span className="material-symbols-outlined text-3xl text-primary font-light">location_off</span>
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Location Required</h3>
+            <p className="text-white/50 text-sm mb-8 leading-relaxed">
+                Please select your city to see exclusive drops and events near you.
+            </p>
+            <Link href="/" className="inline-flex w-full justify-center px-5 py-3 rounded-xl bg-primary text-background-dark font-bold text-sm hover:opacity-90 active:scale-95 transition-all">
+              Select Region
             </Link>
           </div>
-        )}
-
-        {region && loading && (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 rounded-2xl bg-white/5 animate-pulse" />
-            ))}
-          </div>
+        ) : (
+             <DropsList drops={items} isLoading={loading} regionName={region.name} />
         )}
 
         {region && !loading && error && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <span className="material-symbols-outlined text-5xl text-red-400/80 mb-4">error</span>
-            <p className="text-white/80 mb-4">{error}</p>
-            <button onClick={() => window.location.reload()} className="px-5 py-3 rounded-xl bg-white/10 text-white font-medium">Try again</button>
-          </div>
-        )}
-
-        {region && !loading && !error && items.length === 0 && (
-          <div className="p-6 rounded-xl bg-white/[0.05] backdrop-blur-md border border-[rgba(212,175,55,0.22)] text-center">
-            <span className="material-symbols-outlined text-5xl text-white/30 mb-4">inventory_2</span>
-            <h3 className="text-lg font-bold text-white mb-2">No drops in {region.name}</h3>
-            <p className="text-white/50 text-sm">Check back later for new drops.</p>
-          </div>
-        )}
-
-        {region && !loading && !error && items.length > 0 && (
-          <div className="space-y-6">
-            {items.map((drop) => (
-              <div key={drop.id} className="group relative overflow-hidden rounded-2xl bg-white/[0.05] border border-white/10">
-                 {/* Poster */}
-                 {drop.poster_url && (
-                     <div className="aspect-[4/5] w-full overflow-hidden">
-                         <img src={drop.poster_url} alt={drop.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                     </div>
-                 )}
-                 {/* Content Overlay/Body */}
-                 <div className="p-4">
-                     <div className="flex justify-between items-start mb-2">
-                         <h3 className="text-lg font-bold text-white">{drop.title}</h3>
-                         <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/50">
-                             {new Date(drop.published_at || drop.created_at).toLocaleDateString()}
-                         </span>
-                     </div>
-                     <p className="text-sm text-white/70 line-clamp-3 whitespace-pre-wrap">{drop.content}</p>
-                 </div>
-              </div>
-            ))}
+            <span className="material-symbols-outlined text-4xl text-red-400/80 mb-4">error_outline</span>
+            <p className="text-white/70 mb-6 text-sm">{error}</p>
+            <button onClick={() => window.location.reload()} className="px-6 py-2 rounded-full bg-white/10 text-white font-medium hover:bg-white/20 transition-colors text-sm">
+                Try again
+            </button>
           </div>
         )}
       </main>

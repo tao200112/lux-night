@@ -7,6 +7,7 @@ import { z } from 'zod';
 const createDropSchema = z.object({
   region_id: z.string().uuid(),
   title: z.string().min(1, 'Title is required'),
+  subtitle: z.string().optional().nullable(),
   content: z.string().min(1, 'Content is required'),
   poster_url: z.string().optional().nullable(),
   status: z.enum(['draft', 'published']).default('draft'),

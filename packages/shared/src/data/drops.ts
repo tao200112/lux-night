@@ -17,3 +17,21 @@ export async function getPublishedDrops(regionId: string, appType: AppType = 'cu
   }
   return (data || []) as Drop[];
 }
+
+export async function getDrop(id: string, appType: AppType = 'customer'): Promise<Drop | null> {
+  const supabase = createClient({ appType });
+  // We allow fetching even if not published? No, customer usage means strict check usually.
+  // But if the link is shared, maybe checking status on UI side is better for 'Draft' message.
+  // For now, raw fetch.
+  const { data, error } = await supabase
+    .from('drops')
+    .select('*, region:regions(*)')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+     console.error('Error fetching drop:', error);
+     return null;
+  }
+  return data as Drop;
+}

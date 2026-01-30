@@ -24,6 +24,7 @@ export default function AdminDropsPage() {
   // Form State
   const [formRegion, setFormRegion] = useState('');
   const [formTitle, setFormTitle] = useState('');
+  const [formSubtitle, setFormSubtitle] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formPoster, setFormPoster] = useState('');
   const [formStatus, setFormStatus] = useState<'draft' | 'published'>('draft');
@@ -62,6 +63,7 @@ export default function AdminDropsPage() {
     setEditingDrop(drop);
     setFormRegion(drop.region_id);
     setFormTitle(drop.title);
+    setFormSubtitle(drop.subtitle || '');
     setFormContent(drop.content);
     setFormPoster(drop.poster_url || '');
     setFormStatus(drop.status);
@@ -72,6 +74,7 @@ export default function AdminDropsPage() {
     setEditingDrop(null);
     setFormRegion(regions.length > 0 ? regions[0].id : '');
     setFormTitle('');
+    setFormSubtitle('');
     setFormContent('');
     setFormPoster('');
     setFormStatus('draft'); // Default
@@ -87,6 +90,7 @@ export default function AdminDropsPage() {
        const payload = {
            region_id: formRegion,
            title: formTitle,
+           subtitle: formSubtitle || null,
            content: formContent,
            poster_url: formPoster || null,
            status: formStatus
@@ -158,7 +162,7 @@ export default function AdminDropsPage() {
         {/* Toolbar */}
         <div className="flex items-center gap-2">
             <select 
-                className="flex-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                className="flex-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-primary dark:text-white font-medium"
                 value={selectedRegion}
                 onChange={(e) => setSelectedRegion(e.target.value)}
             >
@@ -200,6 +204,7 @@ export default function AdminDropsPage() {
                                     {drop.status}
                                 </span>
                             </div>
+                            {drop.subtitle && <p className="text-xs text-primary/70 dark:text-white/70 font-medium line-clamp-1">{drop.subtitle}</p>}
                             <p className="text-xs text-slate-500 mt-1 line-clamp-2">{drop.content}</p>
                             <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[12px]">public</span>
@@ -223,7 +228,7 @@ export default function AdminDropsPage() {
                         {editingDrop ? 'Edit Drop' : 'New Drop'}
                     </h3>
                     <button onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">
-                        <span className="material-symbols-outlined">close</span>
+                        <span className="material-symbols-outlined dark:text-white">close</span>
                     </button>
                 </div>
                 
@@ -232,7 +237,7 @@ export default function AdminDropsPage() {
                         <label className="block text-sm font-medium mb-1 dark:text-slate-300">Region <span className="text-red-500">*</span></label>
                         <select 
                             required 
-                            className="w-full rounded border border-slate-300 dark:border-slate-600 p-2 text-sm bg-white dark:bg-slate-700"
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 p-2 text-sm bg-white dark:bg-slate-700 dark:text-white"
                             value={formRegion}
                             onChange={e => setFormRegion(e.target.value)}
                         >
@@ -246,7 +251,7 @@ export default function AdminDropsPage() {
                         <input 
                             required 
                             type="text" 
-                            className="w-full rounded border border-slate-300 dark:border-slate-600 p-2 text-sm bg-white dark:bg-slate-700" 
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 p-2 text-sm bg-white dark:bg-slate-700 dark:text-white" 
                             value={formTitle}
                             onChange={e => setFormTitle(e.target.value)}
                             placeholder="e.g. Exclusive Merch Drop"
@@ -254,10 +259,21 @@ export default function AdminDropsPage() {
                     </div>
 
                     <div>
+                        <label className="block text-sm font-medium mb-1 dark:text-slate-300">Subtitle <span className="text-gray-400 text-xs">(optional)</span></label>
+                        <input 
+                            type="text" 
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 p-2 text-sm bg-white dark:bg-slate-700 dark:text-white" 
+                            value={formSubtitle}
+                            onChange={e => setFormSubtitle(e.target.value)}
+                            placeholder="e.g. Free shipping on orders over $100"
+                        />
+                    </div>
+
+                    <div>
                         <label className="block text-sm font-medium mb-1 dark:text-slate-300">Poster URL</label>
                         <input 
                             type="text" 
-                            className="w-full rounded border border-slate-300 dark:border-slate-600 p-2 text-sm bg-white dark:bg-slate-700" 
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 p-2 text-sm bg-white dark:bg-slate-700 dark:text-white" 
                             value={formPoster}
                             onChange={e => setFormPoster(e.target.value)}
                             placeholder="https://..."
@@ -272,7 +288,7 @@ export default function AdminDropsPage() {
                         <textarea 
                             required 
                             rows={5}
-                            className="w-full rounded border border-slate-300 dark:border-slate-600 p-2 text-sm bg-white dark:bg-slate-700" 
+                            className="w-full rounded border border-slate-300 dark:border-slate-600 p-2 text-sm bg-white dark:bg-slate-700 dark:text-white" 
                             value={formContent}
                             onChange={e => setFormContent(e.target.value)}
                             placeholder="Enter drop details..."
@@ -282,11 +298,11 @@ export default function AdminDropsPage() {
                     <div>
                         <label className="block text-sm font-medium mb-1 dark:text-slate-300">Status</label>
                         <div className="flex gap-4">
-                            <label className="flex items-center gap-2">
+                            <label className="flex items-center gap-2 dark:text-slate-300">
                                 <input type="radio" name="status" value="draft" checked={formStatus === 'draft'} onChange={() => setFormStatus('draft')} />
                                 <span className="text-sm">Draft</span>
                             </label>
-                            <label className="flex items-center gap-2">
+                            <label className="flex items-center gap-2 dark:text-slate-300">
                                 <input type="radio" name="status" value="published" checked={formStatus === 'published'} onChange={() => setFormStatus('published')} />
                                 <span className="text-sm">Published</span>
                             </label>
@@ -295,7 +311,7 @@ export default function AdminDropsPage() {
                 </form>
 
                 <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex gap-3">
-                    <button type="button" onClick={() => setShowModal(false)} disabled={submitting} className="flex-1 py-2.5 rounded border border-slate-300 font-medium text-sm hover:bg-slate-100">Cancel</button>
+                    <button type="button" onClick={() => setShowModal(false)} disabled={submitting} className="flex-1 py-2.5 rounded border border-slate-300 dark:border-slate-600 dark:text-slate-300 font-medium text-sm hover:bg-slate-100 dark:hover:bg-slate-700">Cancel</button>
                     <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-2.5 rounded bg-primary text-white font-medium text-sm hover:opacity-90 disabled:opacity-50">
                         {submitting ? 'Saving...' : 'Save Drop'}
                     </button>

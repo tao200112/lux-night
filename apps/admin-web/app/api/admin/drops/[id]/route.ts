@@ -7,6 +7,7 @@ import { z } from 'zod';
 const updateDropSchema = z.object({
   region_id: z.string().uuid().optional(),
   title: z.string().min(1).optional(),
+  subtitle: z.string().optional().nullable(),
   content: z.string().min(1).optional(),
   poster_url: z.string().optional().nullable(),
   status: z.enum(['draft', 'published']).optional(),
