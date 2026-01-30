@@ -259,17 +259,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 9. 创建 order_items
-    const orderItems = items.map((item) => {
+    // 9. 创建 order_items with Validity Snapshot
+    const orderItems = await Promise.all(items.map(async (item) => {
       const ticketType = ticketTypes.find((tt) => tt.id === item.ticketTypeId);
+      if (!ticketType) throw new Error(`Ticket type not found: ${item.ticketTypeId}`);
+
+      // Get day config from joined relation
+      const dayConfig = ticketType.event_week_days; 
+      // Note: eventWeek was fetched at step 5
+      
+      if (!dayConfig) throw new Error('Missing day config');
+
+      // Calculate Validity using RPC
+      const { data: validity, error: valError } = await supabase.rpc('calculate_day_validity_window', {
+          p_week_start_date: eventWeek.week_start_date,
+          p_dow: dayConfig.dow,
+          p_start_time: dayConfig.start_time,
+          p_end_time: dayConfig.end_time,
+          p_end_next_day: dayConfig.end_next_day,
+          p_timezone: eventWeek.timezone
+      });
+
+      if (valError || !validity || validity.length === 0) {
+          console.error('Validity Calc Error', valError);
+          throw new Error('Failed to calculate validity');
+      }
+
       return {
         order_id: order.id,
-        event_id: eventId, // 使用旧 events 表的 id（兼容）或新增 event_id_v2 字段
+        event_id: eventId, 
         ticket_type_id: item.ticketTypeId,
         quantity: item.quantity,
-        unit_price_cents: ticketType!.price_cents,
+        unit_price_cents: ticketType.price_cents,
+        // New Snapshot Fields
+        event_week_day_id: item.eventWeekDayId,
+        valid_start_at: validity[0].valid_start_at, 
+        valid_end_at: validity[0].valid_end_at
       };
-    });
+    }));
 
     const { error: orderItemsError } = await supabase
       .from('order_items')

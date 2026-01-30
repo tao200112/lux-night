@@ -293,40 +293,55 @@ async function handleCheckoutSessionCompletedV2(session: Stripe.Checkout.Session
       continue;
     }
 
-    // Calculate validity window using RPC function
-    const { data: validityWindow, error: validityError } = await supabaseAdmin.rpc(
-      'calculate_day_validity_window',
-      {
-        p_week_start_date: eventWeek.week_start_date,
-        p_dow: day.dow,
-        p_start_time: day.start_time,
-        p_end_time: day.end_time,
-        p_end_next_day: day.end_next_day,
-        p_timezone: eventWeek.timezone,
-      }
-    );
+    // Determine Validity Window: Prioritize Snapshot
+    let valid_start_at: string;
+    let valid_end_at: string;
+    let dayId = day.id;
 
-    if (validityError || !validityWindow || validityWindow.length === 0) {
-      console.error('[STRIPE WEBHOOK V2]', {
-        debugId,
-        step: 'validity_window.calc.error',
-        error: validityError?.message,
-      });
-      continue;
+    if (orderItem.valid_start_at && orderItem.valid_end_at) {
+        valid_start_at = orderItem.valid_start_at;
+        valid_end_at = orderItem.valid_end_at;
+        if (orderItem.event_week_day_id) {
+           dayId = orderItem.event_week_day_id;
+        }
+        console.log('[STRIPE WEBHOOK V2] Using Snapshot Validity:', {
+           debugId,
+           valid_start_at,
+           valid_end_at,
+           dayId
+        });
+    } else {
+        // Fallback: Calculate validity window using RPC function
+        const { data: validityWindow, error: validityError } = await supabaseAdmin.rpc(
+          'calculate_day_validity_window',
+          {
+            p_week_start_date: eventWeek.week_start_date,
+            p_dow: day.dow,
+            p_start_time: day.start_time,
+            p_end_time: day.end_time,
+            p_end_next_day: day.end_next_day,
+            p_timezone: eventWeek.timezone,
+          }
+        );
+    
+        if (validityError || !validityWindow || validityWindow.length === 0) {
+          console.error('[STRIPE WEBHOOK V2]', {
+            debugId,
+            step: 'validity_window.calc.error',
+            error: validityError?.message,
+          });
+          continue;
+        }
+        valid_start_at = validityWindow[0].valid_start_at;
+        valid_end_at = validityWindow[0].valid_end_at;
+
+        console.log('[STRIPE WEBHOOK V2] Calculated Validity (Fallback):', {
+           debugId,
+           weekStartDate: eventWeek.week_start_date,
+           resultStart: valid_start_at,
+           resultEnd: valid_end_at
+        });
     }
-
-    const { valid_start_at, valid_end_at } = validityWindow[0];
-
-    console.log('[STRIPE WEBHOOK V2] Calculated Validity:', {
-       debugId,
-       weekStartDate: eventWeek.week_start_date,
-       timezone: eventWeek.timezone,
-       dayDow: day.dow,
-       startTime: day.start_time,
-       endTime: day.end_time,
-       resultStart: valid_start_at,
-       resultEnd: valid_end_at
-    });
 
     // Get event_v2 and merchant info for venue_id
     const { data: eventV2, error: eventV2Error } = await supabaseAdmin
@@ -369,7 +384,7 @@ async function handleCheckoutSessionCompletedV2(session: Stripe.Checkout.Session
         ticket_type_id: orderItem.ticket_type_id, // Keep for compatibility
         ticket_type_id_v2: orderItem.ticket_type_id,
         event_week_id: eventWeekId,
-        event_week_day_id: day.id,
+        event_week_day_id: dayId, // Use snapshot day ID
         valid_start_at: valid_start_at,
         valid_end_at: valid_end_at,
         ticket_name_snapshot: ticketType.name,
