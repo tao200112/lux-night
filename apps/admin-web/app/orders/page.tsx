@@ -13,6 +13,11 @@ import ErrorState from '@/components/admin/ErrorState';
 import EmptyState from '@/components/admin/EmptyState';
 import { SkeletonList } from '@/components/admin/Skeleton';
 
+interface MerchantOption {
+  id: string;
+  name: string;
+}
+
 interface Order {
   id: string;
   status: string;
@@ -23,7 +28,16 @@ interface Order {
   customerEmail?: string | null;
   paymentIntentId?: string | null;
   createdAt: string;
-  // Legacy fields (may not exist in new API response)
+  // Enhanced Fields
+  merchantDisplay: {
+    type: 'unknown' | 'single' | 'multiple';
+    label: string;
+    merchantId?: string;
+  };
+  dateRangeDisplay: string;
+  eventTitle?: string;
+  ticketNames?: string;
+  // Legacy fields (optional)
   currency?: string;
   user?: {
     id: string;
@@ -47,6 +61,7 @@ export default function AdminOrdersPage() {
   const [dateRange, setDateRange] = useState('7');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedMerchant, setSelectedMerchant] = useState('');
+  const [merchantOptions, setMerchantOptions] = useState<MerchantOption[]>([]);
   
   useEffect(() => {
     fetchOrders();
@@ -61,7 +76,7 @@ export default function AdminOrdersPage() {
       if (searchQuery) params.set('query', searchQuery);
       if (dateRange) params.set('dateRange', dateRange);
       if (selectedStatus) params.set('status', selectedStatus);
-      if (selectedMerchant) params.set('merchant', selectedMerchant);
+      if (selectedMerchant) params.set('merchantId', selectedMerchant); // Changed from 'merchant' to 'merchantId' to match API
       
       const response = await fetch(`/api/admin/orders?${params.toString()}`);
       const result = await response.json();
@@ -71,6 +86,11 @@ export default function AdminOrdersPage() {
       }
       
       setOrders(result.data?.orders || []);
+      
+      // Update merchant options if returned (and we are not filtering by merchant to keep the full list)
+      if (result.data?.merchantOptions && !selectedMerchant) {
+          setMerchantOptions(result.data.merchantOptions);
+      }
     } catch (err: any) {
       console.error('[ADMIN ORDERS] Error:', err);
       setError(err.message);
@@ -157,6 +177,12 @@ export default function AdminOrdersPage() {
   const formatOrderId = (id: string) => {
     return `ORD-${id.slice(0, 5).toUpperCase()}`;
   };
+
+  const getMerchantLabel = () => {
+      if (!selectedMerchant) return 'All';
+      const m = merchantOptions.find(opt => opt.id === selectedMerchant);
+      return m ? (m.name.length > 10 ? m.name.substring(0, 8) + '...' : m.name) : 'Selected';
+  };
   
   return (
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-hidden max-w-md mx-auto shadow-2xl bg-background-light dark:bg-background-dark">
@@ -227,13 +253,28 @@ export default function AdminOrdersPage() {
             <span className="material-symbols-outlined text-[16px] text-gray-400">arrow_drop_down</span>
           </button>
           
-          <button
-            onClick={() => setSelectedMerchant('')}
-            className="flex shrink-0 items-center gap-1.5 rounded-sm border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark px-3 py-1.5 active:bg-gray-50 dark:active:bg-gray-800 transition-colors"
-          >
-            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Merchant: All</span>
-            <span className="material-symbols-outlined text-[16px] text-gray-400">arrow_drop_down</span>
-          </button>
+          <div className="relative">
+            <button
+               className="flex shrink-0 items-center gap-1.5 rounded-sm border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark px-3 py-1.5 active:bg-gray-50 dark:active:bg-gray-800 transition-colors"
+               onClick={() => document.getElementById('merchant-select')?.click()}
+            >
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate max-w-[100px]">
+                Merchant: {getMerchantLabel()}
+              </span>
+              <span className="material-symbols-outlined text-[16px] text-gray-400">arrow_drop_down</span>
+            </button>
+            <select
+                id="merchant-select"
+                value={selectedMerchant}
+                onChange={(e) => setSelectedMerchant(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            >
+                <option value="">All Merchants</option>
+                {merchantOptions.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+            </select>
+          </div>
           
           <button className="flex shrink-0 items-center justify-center rounded-sm border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark w-8 h-8 active:bg-gray-50 dark:active:bg-gray-800 transition-colors ml-auto">
             <span className="material-symbols-outlined text-[18px] text-gray-500">filter_list</span>
@@ -281,9 +322,9 @@ export default function AdminOrdersPage() {
                       {order.customerEmail}
                     </span>
                   )}
-                  {!order.customerEmail && order.event?.title && (
+                  {!order.customerEmail && order.eventTitle && (
                     <span className="text-xs text-gray-600 dark:text-gray-300 truncate max-w-[140px]">
-                      {order.event.title}
+                      {order.eventTitle}
                     </span>
                   )}
                 </div>
@@ -302,10 +343,10 @@ export default function AdminOrdersPage() {
             <div className="flex justify-between items-end border-t border-border-light dark:border-border-dark pt-2 mt-1">
               <div className="flex flex-col">
                 <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                  {order.merchantId || 'Multiple Merchants'}
+                  {order.merchantDisplay?.label || 'Unknown Merchant'}
                 </span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                  {formatDate(order.createdAt)}
+                <span className="text-[10px] text-gray-400 dark:text-gray-500" title="Valid Date Range (or Created Date)">
+                  {order.dateRangeDisplay || formatDate(order.createdAt)}
                 </span>
               </div>
               <button className="text-gray-400 hover:text-primary dark:hover:text-blue-400">

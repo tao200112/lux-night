@@ -2,13 +2,10 @@
  * GET /api/admin/orders
  * Admin Orders List API
  * 
- * 强制修复版：确保所有分支都返回响应，绝不 pending
- * Uses fully decoupled queries to avoid 500 errors from missing relationships.
- * Addresses:
- * 1. No 'merchant_id' in orders table.
- * 2. Missing 'event_v2_id' (Legacy/Unlinked).
- * 3. Profiles missing email (fetch from auth.users).
- * 4. Reliable ticket name aggregation.
+ * Update:
+ * 1. Supports 'merchantId' filter via Two-Stage Query (events -> items -> orders).
+ * 2. Assembles Merchant/Date info from order_items (reliable).
+ * 3. Returns merchantOptions for frontend filter.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -22,7 +19,7 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const TIMEOUT_MS = 15000; // Build in buffer for multiple queries
+const TIMEOUT_MS = 20000; // Increased buffer for two-stage queries
 
 export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
   let step = 'init';
@@ -46,9 +43,8 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     // STEP 2: 获取查询参数
     step = 'parse_params';
     const searchParams = request.nextUrl.searchParams;
-    // const query = searchParams.get('query') || ''; // Not implemented in this phase
     const status = searchParams.get('status') || '';
-    // const merchant = searchParams.get('merchant') || ''; // Filtering by merchant requires advanced manual filtering if we decouple
+    const merchantId = searchParams.get('merchantId') || '';
     const dateRange = searchParams.get('dateRange') || '7';
     step = 'params_ok';
 
@@ -59,9 +55,34 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const startDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
     step = 'dates_ok';
 
-    // STEP 4: 查询 Orders (Primary Query - NO JOINS)
-    // Removed: merchant_id (does not exist)
-    // Kept: event_v2_id (to link manually), user_id (to link manually)
+    // STEP 4: Pre-Filter by Merchant (Two-Stage Query)
+    step = 'merchant_filter';
+    let targetOrderIds: string[] | null = null;
+
+    if (merchantId && merchantId !== 'all') {
+        // 4a. Get all event IDs for this merchant
+        const { data: mEvents } = await adminClient
+            .from('events_v2')
+            .select('id')
+            .eq('merchant_id', merchantId);
+        
+        const mEventIds = (mEvents || []).map((e: any) => e.id);
+
+        if (mEventIds.length > 0) {
+            // 4b. Get order IDs linked to these events via order_items
+            // Note: We use order_items because orders.event_v2_id might be null
+            const { data: mItems } = await adminClient
+                .from('order_items')
+                .select('order_id')
+                .in('event_id', mEventIds);
+            
+            targetOrderIds = [...new Set((mItems || []).map((i: any) => i.order_id))];
+        } else {
+            targetOrderIds = []; // Merchant has no events, so no orders
+        }
+    }
+
+    // STEP 5: 查询 Orders (Primary Query)
     step = 'query_orders_base';
     
     let queryBuilder = adminClient
@@ -85,6 +106,19 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       queryBuilder = queryBuilder.eq('status', status);
     }
     
+    // Apply ID Filter (from Merchant Stage)
+    if (targetOrderIds !== null) {
+        if (targetOrderIds.length === 0) {
+             // Optimization: If no orders match the merchant, return empty early
+             return NextResponse.json<ApiResponse>({
+                ok: true,
+                data: { orders: [], count: 0, dateRange: {}, merchantOptions: [] },
+                step: 'empty_result'
+             });
+        }
+        queryBuilder = queryBuilder.in('id', targetOrderIds);
+    }
+    
     // Order and Limit
     queryBuilder = queryBuilder
       .order('created_at', { ascending: false })
@@ -96,89 +130,79 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       'orders query'
     );
 
-    if (ordersError) {
-      console.error('[ADMIN ORDERS] Main query failed', ordersError);
-      return NextResponse.json<ApiResponse>(
-        {
-          ok: false,
-          error: 'Database Error',
-          code: 'QUERY_ERROR',
-          message: ordersError.message,
-          hint: 'Main orders query failed',
-          route: '/api/admin/orders',
-          step,
-        },
-        { status: 500 }
-      );
-    }
+    if (ordersError) throw ordersError;
 
     const rawOrders = orders || [];
     step = 'orders_base_ok';
 
-    // STEP 5: Collect IDs for batch fetching
+    // STEP 6: Collect IDs for batch fetching
     step = 'collect_ids';
     const orderIds = rawOrders.map((o: any) => o.id);
     const userIds = [...new Set(rawOrders.map((o: any) => o.user_id).filter(Boolean))];
-    const eventV2Ids = [...new Set(rawOrders.map((o: any) => o.event_v2_id).filter(Boolean))];
+    
+    // Note: We don't rely on orders.event_v2_id for fetching events anymore, 
+    // we'll get them from order_items -> event_id
 
-    // STEP 6: Parallel Batch Fetches
+    // STEP 7: Parallel Batch Fetches
     step = 'batch_fetches';
     
-    // 6a. Order Items (to get tickets) - Use decoupled select
+    // 7a. Order Items (CRITICAL: Fetch event_id and validity dates)
     const pOrderItems = orderIds.length > 0 
-      ? adminClient.from('order_items').select('order_id, quantity, ticket_type_v2_id, ticket_type_id_v2').in('order_id', orderIds)
+      ? adminClient.from('order_items').select('order_id, quantity, ticket_type_v2_id, event_id, valid_start_at, valid_end_at').in('order_id', orderIds)
       : Promise.resolve({ data: [] });
 
-    // 6b. Profiles (Display Name)
+    // 7b. Profiles
     const pProfiles = userIds.length > 0
       ? adminClient.from('profiles').select('id, display_name, avatar_url').in('id', userIds)
       : Promise.resolve({ data: [] });
 
-    // 6c. Auth Users (Emails - Service Role required)
+    // 7c. Auth Users
     const pAuthUsers = userIds.length > 0
-      // @ts-ignore: schema('auth') is valid for service role client but types might be strict
+      // @ts-ignore
       ? adminClient.schema('auth').from('users').select('id, email').in('id', userIds)
       : Promise.resolve({ data: [] });
 
-    // 6d. Events V2
-    const pEvents = eventV2Ids.length > 0
-      ? adminClient.from('events_v2').select('id, title, merchant_id').in('id', eventV2Ids)
-      : Promise.resolve({ data: [] });
-
-    const [orderItemsRes, profilesRes, authUsersRes, eventsRes] = await Promise.all([
-      pOrderItems, pProfiles, pAuthUsers, pEvents
+    const [orderItemsRes, profilesRes, authUsersRes] = await Promise.all([
+      pOrderItems, pProfiles, pAuthUsers
     ]);
 
-    // Handle Fetch Results
     const orderItems = orderItemsRes.data || [];
     const profiles = profilesRes.data || [];
     const authUsers = authUsersRes.data || [];
-    const events = eventsRes.data || [];
 
-    // STEP 7: Second Layer Fetches (Merchants & Ticket Types)
+    // STEP 8: Second Layer Fetches (Events & Merchants)
     step = 'layer2_fetches';
 
-    // 7a. Get Merchant IDs from Events
-    const merchantIds = [...new Set(events.map((e: any) => e.merchant_id).filter(Boolean))];
+    // Extract Event IDs from Items
+    const itemEventIds = [...new Set(orderItems.map((i: any) => i.event_id).filter(Boolean))];
     
-    // 7b. Get Ticket Type IDs from Order Items
-    // Prioritize ticket_type_v2_id, fallback to ticket_type_id_v2
-    const ticketTypeIds = [...new Set(orderItems.map((item: any) => item.ticket_type_v2_id || item.ticket_type_id_v2).filter(Boolean))];
+    // Also include orders.event_v2_id as fallback
+    const orderEventIds = rawOrders.map((o: any) => o.event_v2_id).filter(Boolean);
+    const allEventIds = [...new Set([...itemEventIds, ...orderEventIds])];
 
-    const [merchantsRes, ticketTypesRes] = await Promise.all([
-      merchantIds.length > 0 
-        ? adminClient.from('merchants').select('id, name').in('id', merchantIds)
-        : Promise.resolve({ data: [] }),
-      
-      ticketTypeIds.length > 0
-        ? adminClient.from('ticket_types_v2').select('id, name').in('id', ticketTypeIds)
-        : Promise.resolve({ data: [] })
-    ]);
+    // Fetch Events
+    const { data: eventsData } = allEventIds.length > 0
+        ? await adminClient.from('events_v2').select('id, title, merchant_id').in('id', allEventIds)
+        : { data: [] };
+    
+    const events = eventsData || [];
+    
+    // Fetch Merchants
+    const merchantIds = [...new Set(events.map((e: any) => e.merchant_id).filter(Boolean))];
+    const { data: merchantsData } = merchantIds.length > 0
+        ? await adminClient.from('merchants').select('id, name').in('id', merchantIds)
+        : { data: [] };
 
-    const merchants = merchantsRes.data || [];
-    const ticketTypes = ticketTypesRes.data || [];
+    const merchants = merchantsData || [];
 
-    // STEP 8: Create Lookup Maps
+    // Fetch Ticket Types (for names)
+    const ticketTypeIds = [...new Set(orderItems.map((item: any) => item.ticket_type_v2_id).filter(Boolean))];
+    const { data: ticketTypesData } = ticketTypeIds.length > 0
+        ? await adminClient.from('ticket_types_v2').select('id, name').in('id', ticketTypeIds)
+        : { data: [] };
+    const ticketTypes = ticketTypesData || [];
+
+    // STEP 9: Create Lookup Maps
     step = 'create_maps';
 
     const eventsMap = events.reduce((acc: any, e: any) => { acc[e.id] = e; return acc; }, {});
@@ -187,43 +211,96 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const authUsersMap = authUsers.reduce((acc: any, u: any) => { acc[u.id] = u.email; return acc; }, {});
     const ticketTypesMap = ticketTypes.reduce((acc: any, t: any) => { acc[t.id] = t.name; return acc; }, {});
 
-    // Group items by order
+    // Items by Order
     const itemsByOrder: Record<string, any[]> = {};
     orderItems.forEach((item: any) => {
       if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
-      
-      const ttId = item.ticket_type_v2_id || item.ticket_type_id_v2;
-      const name = ticketTypesMap[ttId] || 'Unknown Ticket';
-      
-      itemsByOrder[item.order_id].push({
-        ...item,
-        ticket_type_name: name
-      });
+      const name = ticketTypesMap[item.ticket_type_v2_id] || 'Unknown Ticket';
+      itemsByOrder[item.order_id].push({ ...item, ticket_type_name: name });
     });
 
-    // STEP 9: Assemble Final Data
+    // STEP 10: Assemble Final Data
     step = 'assemble';
 
     const formattedOrders = rawOrders.map((order: any) => {
-      // 1. Resolve Event & Merchant
-      const event = eventsMap[order.event_v2_id];
-      const merchant = event ? merchantsMap[event.merchant_id] : null;
+      // Items for this order
+      const items = itemsByOrder[order.id] || [];
+      
+      // A. Resolve Merchants (via items -> event -> merchant)
+      const orderMerchantIds = new Set<string>();
+      const orderMerchantNames = new Set<string>();
+      let orderEventTitle = 'Unlinked Order'; // Fallback
+      
+      // Collect from items
+      items.forEach((item: any) => {
+          if (item.event_id && eventsMap[item.event_id]) {
+              const evt = eventsMap[item.event_id];
+              orderEventTitle = evt.title; // Last one wins, usually same event per order
+              if (evt.merchant_id && merchantsMap[evt.merchant_id]) {
+                  orderMerchantIds.add(evt.merchant_id);
+                  orderMerchantNames.add(merchantsMap[evt.merchant_id].name);
+              }
+          }
+      });
+      
+      // Fallback to order root event if items didn't yield anything
+      if (orderMerchantIds.size === 0 && order.event_v2_id && eventsMap[order.event_v2_id]) {
+          const evt = eventsMap[order.event_v2_id];
+          orderEventTitle = evt.title;
+           if (evt.merchant_id && merchantsMap[evt.merchant_id]) {
+              orderMerchantIds.add(evt.merchant_id);
+              orderMerchantNames.add(merchantsMap[evt.merchant_id].name);
+          }
+      }
 
-      const eventTitle = event ? event.title : 'Unlinked Order';
-      const merchantName = merchant ? merchant.name : (event ? 'Unknown Merchant' : 'N/A');
+      // Determine Display
+      let merchantDisplay: { type: string; label: string; merchantId?: string } = {
+          type: 'unknown',
+          label: 'Unknown Merchant'
+      };
+      
+      if (orderMerchantIds.size === 1) {
+          const id = Array.from(orderMerchantIds)[0];
+          const name = Array.from(orderMerchantNames)[0];
+          merchantDisplay = { type: 'single', label: name, merchantId: id };
+      } else if (orderMerchantIds.size > 1) {
+          merchantDisplay = { type: 'multiple', label: 'Multiple Merchants' };
+      }
 
-      // 2. Resolve User
+      // B. Resolve Date Range
+      // Using min(valid_start_at) and max(valid_end_at)
+      let minStart: number | null = null;
+      let maxEnd: number | null = null;
+      
+      items.forEach((item: any) => {
+          if (item.valid_start_at) {
+              const t = new Date(item.valid_start_at).getTime();
+              if (minStart === null || t < minStart) minStart = t;
+          }
+          if (item.valid_end_at) {
+              const t = new Date(item.valid_end_at).getTime();
+              if (maxEnd === null || t > maxEnd) maxEnd = t;
+          }
+      });
+      
+      let dateRangeDisplay = 'Unknown Date';
+      if (minStart) { // At least start date
+          const d1 = new Date(minStart).toLocaleDateString();
+          const d2 = maxEnd ? new Date(maxEnd).toLocaleDateString() : '???';
+          dateRangeDisplay = (d1 === d2) ? d1 : `${d1} - ${d2}`;
+      } else {
+           // Fallback to created_at if no validity dates (legacy orders)
+           dateRangeDisplay = new Date(order.created_at).toLocaleDateString();
+      }
+
+      // C. User Info
       const profile = profilesMap[order.user_id];
       const email = authUsersMap[order.user_id];
-      
       const buyerName = profile?.display_name || 'Unknown User';
       const buyerEmail = email || 'Unknown Email';
 
-      // 3. Resolve Tickets
-      const items = itemsByOrder[order.id] || [];
-      const ticketNames = items.map((i: any) => i.ticket_type_name);
-      // Dedup ticket names
-      const uniqueTicketNames = Array.from(new Set(ticketNames));
+      // D. Ticket Display
+      const uniqueTicketNames = Array.from(new Set(items.map((i: any) => i.ticket_type_name)));
       const ticketDisplay = uniqueTicketNames.length > 0 ? uniqueTicketNames.join(', ') : 'No Tickets';
 
       return {
@@ -233,28 +310,34 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         amountFormatted: order.currency 
            ? new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency }).format((order.amount_cents || 0) / 100)
            : `$${((order.amount_cents || 0) / 100).toFixed(2)}`,
-        
         created_at: order.created_at,
         
-        // Buyer Info
-        buyer: {
-          name: buyerName,
-          email: buyerEmail,
-          id: order.user_id
-        },
-
-        // Context Info
-        eventTitle: eventTitle,
-        merchantName: merchantName,
+        buyer: { name: buyerName, email: buyerEmail, id: order.user_id },
+        
+        // Enhanced Info
+        eventTitle: orderEventTitle,
+        merchantDisplay,
+        dateRangeDisplay,
         ticketNames: ticketDisplay,
 
         // Legacy compatibility
         customerName: buyerName,
         customerEmail: buyerEmail,
         ticketName: ticketDisplay,
-        eventName: eventTitle
+        eventName: orderEventTitle
       };
     });
+
+    // Extract Merchant Options for Filter
+    // We return ALL merchants found in this batch. 
+    // Ideally for a global filter we'd want ALL merchants in the system, but typically 'recent' is enough context.
+    // Or we could fetch all active merchants if requested, but let's stick to "relevant to these orders" + "target merchant" if filtered.
+    const merchantOptions = merchants.map((m: any) => ({
+        id: m.id,
+        name: m.name
+    }));
+
+    step = 'success';
 
     return NextResponse.json<ApiResponse>({
       ok: true,
@@ -266,6 +349,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
           end: now.toISOString(),
           days: daysAgo,
         },
+        merchantOptions
       },
       step,
     });
