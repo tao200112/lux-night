@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { getPublishedDrops } from '@lux-night/shared/data/drops';
 import type { Drop } from '@lux-night/shared/types';
 import BottomTabBar from '@/components/ui/BottomTabBar';
+import TopBar from '@/components/ui/TopBar';
 import DropsList from './components/DropsList';
 
 export default function DropsPage() {
@@ -54,17 +55,7 @@ export default function DropsPage() {
 
   return (
     <div className="min-h-screen max-w-md mx-auto flex flex-col bg-background-dark text-white pb-24">
-      <header className="sticky top-0 z-20 px-6 py-4 bg-background-dark/80 backdrop-blur-xl border-b border-white/5 transition-all">
-        <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tight text-white/90">Drops</h1>
-            {region && (
-                <div className="flex items-center gap-1 text-white/40 mt-0.5">
-                    <span className="material-symbols-outlined text-[14px]">location_on</span>
-                    <p className="text-xs font-medium uppercase tracking-wide">{region.name}</p>
-                </div>
-            )}
-        </div>
-      </header>
+      <TopBar />
 
       <main className="flex-1 px-4 py-6">
         {!region ? (

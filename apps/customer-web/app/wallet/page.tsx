@@ -6,6 +6,7 @@ import { Ticket } from '@/lib/data/tickets';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import TopBar from '../../components/ui/TopBar';
 import BottomTabBar from '../../components/ui/BottomTabBar';
 
 export default function WalletPage() {
@@ -75,11 +76,7 @@ export default function WalletPage() {
 
   return (
     <div className="relative flex h-auto min-h-screen w-full max-w-md mx-auto flex-col overflow-x-hidden shadow-2xl border-x border-white/5 bg-background-dark text-white">
-      {/* Header */}
-      <header className="flex items-center justify-center p-6 pb-2 relative">
-        <h1 className="font-display text-xl font-bold tracking-tight text-white">My Wallet</h1>
-        {tickets.length > 0 && <div className="absolute right-6 top-7 w-2 h-2 rounded-full bg-lux-gold shadow-[0_0_10px_rgba(232,185,75,0.5)]"></div>}
-      </header>
+      <TopBar />
 
       {/* Segmented Control */}
       <div className="px-6 py-4">

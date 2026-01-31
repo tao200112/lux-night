@@ -1,0 +1,166 @@
+# Events V2 Skill（强制规范）
+
+## 0. 必读与输出规范（硬性）
+- 你是我的开发助手。**你每次回复必须用中文解释**，并且第一行必须以：
+  **“老板，我已读取并遵循 Events V2 Skill。”**
+- **禁止混用旧活动体系**：项目中只能存在并使用 `events_v2`（新体系）。旧的 `events` / `event` 页面、API、查询、类型、组件必须下线或彻底隔离（不可被任何端口引用）。
+- 三端口严格隔离：`admin` / `internal-web` / `customer-web` 互不引用彼此的路由与页面组件；只允许引用 `packages/shared` 的公共逻辑。
+- 所有修改必须遵循“规范操作流程”（见第 1 节）。不允许跳步。
+
+---
+
+## 1. 规范操作流程（每次改动都必须执行并在回复中逐条汇报）
+1) **定位范围**：说明改动属于哪个端口（admin/internal/customer/shared/db）。
+2) **先搜索再改**：先全局搜索关键字确认是否有旧体系残留（events、event、tickets旧表等）。
+3) **列出改动清单**：文件路径 + 修改点（不少于 3 条关键 bullet）。
+4) **实现改动**：按清单修改代码。
+5) **自检**：
+   - TypeScript 类型检查
+   - ESLint（如有）
+   - 本地运行至少一个端口验证
+   - 若涉及 DB：执行迁移与 db push（见第 4 节）
+6) **部署安全**：确保 Vercel 不会因路由冲突、环境变量缺失、构建失败而出错（见第 5 节）。
+7) **回归测试清单**：输出可复制的测试步骤（至少包含：创建活动、发布/状态、客户可见、票价加载、支付/Stripe）。
+
+---
+
+## 2. 三端口不混乱的硬规则（必须遵守）
+### 2.1 路由与动态参数统一
+- 同一个动态路径只能有一个 slug 名称：例如只能用 `[id]`，禁止同时存在 `[eventId]` 与 `[id]` 指向同路径（否则 Next/Vercel 会报 slug 冲突）。
+
+### 2.2 共享代码边界
+- `apps/admin` 只能引用：
+  - `packages/shared/*`
+  - `apps/admin/*`
+- `apps/internal-web` 只能引用：
+  - `packages/shared/*`
+  - `apps/internal-web/*`
+- `apps/customer-web` 只能引用：
+  - `packages/shared/*`
+  - `apps/customer-web/*`
+- 禁止跨端口 import（例如 customer 引用 admin 的组件）。
+
+### 2.3 数据源统一
+- 活动只从 `events_v2` 读取与写入。
+- 票种只从 `ticket_types_v2`（如已定）读取与写入。
+- 周配置只从 `event_weeks` + `event_week_days` 读取与写入。
+- 若发现旧表仍被引用，必须替换为 V2 查询并删除旧代码路径。
+
+---
+
+## 3. Events V2 统一规范（必须做到）
+### 3.1 事件状态与发布逻辑
+- Event 的状态字段（如 `status`）必须是统一枚举（active/temp_closed/archived/draft），三端口一致。
+- “发布”必须有明确动作：
+  - draft -> active（发布）
+  - active -> archived（下架）
+  - active -> temp_closed（临时关闭）
+- 管理端必须提供 publish/unpublish UI，并调用统一 API。
+
+### 3.2 事件可见性规则（customer）
+- customer 端查询必须只返回当前 region 下可见事件：
+  - 以 `region_id` 作为第一筛选（从用户选择的 region）
+  - 再按 event.status=active
+- 如果 event 没有 region/venue 绑定，必须在创建时自动补齐（见 3.3）。
+
+### 3.3 创建事件时的自动绑定（必须实现）
+- 创建 `events_v2` 时，必须保证：
+  - event.merchant_id 有值
+  - event.venue_id / region_id（选一种作为主筛选）必须可推导并写入
+- 推荐：event 直接存 `venue_id` + 冗余 `region_id`（避免复杂 join）。
+- 创建成功后必须跳转到成功页或配置页（不允许“创建后无跳转”）。
+
+---
+
+## 4. 数据库修改与自动 db push（强制）
+### 4.1 迁移原则
+- **所有 schema 变更必须通过迁移**（SQL migration / Prisma migration / Supabase migration，按项目现状选一种）。
+- 改完 schema 后必须触发 db push，确保本地与远端一致。
+
+### 4.2 自动化要求
+- 若项目使用 Prisma：
+  - 修改 schema.prisma 后必须执行：
+    - `prisma migrate dev`（开发）或 `prisma migrate deploy`（生产）
+    - `prisma db push`（若你们规范需要）
+- 若项目使用 Supabase migrations：
+  - 在 `supabase/migrations` 生成迁移文件
+  - 执行 `supabase db push` 或你们的 CI 命令
+- **每次 DB 变更后，你必须在回复中输出：**
+  - 迁移文件名
+  - 执行的命令
+  - 变更的表/字段列表
+
+---
+
+## 5. Vercel 部署不出错规范（必须检查）
+- 检查 Next.js 路由冲突（slug 名称统一，重复路由删除）。
+- 环境变量：
+  - 三端口分别检查 env 是否齐全（SUPABASE_URL、SUPABASE_ANON_KEY、SERVICE_ROLE、STRIPE_KEY、WEBHOOK_SECRET 等）。
+- API 路由必须可在 serverless 环境运行：
+  - 禁止依赖本地文件路径
+  - 避免使用不支持的 Node API
+- 任何新增依赖必须在对应 workspace 的 package.json 正确声明。
+- 修改完成后必须在回复中说明：
+  - “这次改动是否会影响部署？”
+  - “是否新增/修改 env？”
+  - “是否存在路由冲突风险？”
+
+---
+
+## 6. PostgREST embed 冲突（PGRST201）处理规范（必须遵守）
+当出现：
+`Could not embed because more than one relationship was found...`
+说明 merchants ↔ venues 存在多条关系路径。
+
+### 处理策略（必须选其一并落实）
+A) **显式指定外键关系**（推荐）
+- 查询中使用 `venues!<fk_name>(...)` 或 `merchants!<fk_name>(...)`
+- 避免 PostgREST 自动猜关系导致报错
+
+B) **重构数据模型**
+- 保留唯一关系路径（例如 events_v2 直接存 venue_id）
+- 移除多余的 FK 或改名避免歧义
+
+### 输出要求
+- 每次修复该类问题，你必须在回复中写清楚：
+  - 触发冲突的原查询
+  - 最终采用的 FK 指定写法或模型调整
+  - 为什么这样不会再冲突
+
+---
+
+## 7. Stripe 链路必须完整（否则活动不算完成）
+### 必须具备
+- 创建票种/价格时同步创建 Stripe Product/Price，并写入本地表：
+  - `stripe_events` / `stripe_webhook_events`（或你们最终统一的表）
+- webhook 必须落库并可追踪失败：
+  - 校验签名
+  - 保存 event_id、type、payload、处理状态
+- 两张 stripe 表为空时必须解释：
+  - “为什么为空（未接/未触发/被 RLS 拦截/验签失败）”
+  - “下一步如何让它产生数据（创建票种触发、webhook 测试触发）”
+
+---
+
+## 8. 自检输出模板（你每次回复必须按此结构输出）
+老板，我已读取并遵循 Events V2 Skill。
+
+### 这次改动范围
+- 端口：
+- 目标：
+
+### 我做了哪些修改（文件 + 要点）
+1)
+2)
+3)
+
+### 自检结果
+- 类型检查：
+- 运行验证：
+- DB 迁移/db push（如有）：
+- Vercel 风险检查：
+
+### 回归测试步骤（可复制）
+1)
+2)
+3)
