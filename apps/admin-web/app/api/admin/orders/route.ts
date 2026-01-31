@@ -157,7 +157,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const [orderItemsResult, profilesResult] = await Promise.all([
       // 1. Order Items (Raw select, NO JOIN to ticket_types)
       orderIds.length > 0 
-        ? adminClient.from('order_items').select('order_id, quantity, ticket_type_id_v2').in('order_id', orderIds)
+        ? adminClient.from('order_items').select('order_id, quantity, ticket_type_v2_id').in('order_id', orderIds)
         : Promise.resolve({ data: [], error: null }),
       
       // 2. Profiles
@@ -178,7 +178,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     step = 'fetch_ticket_types';
     
     // Extract ticket type IDs from items
-    const ticketTypeIds = [...new Set(orderItems.map((item: any) => item.ticket_type_id_v2).filter(Boolean))];
+    const ticketTypeIds = [...new Set(orderItems.map((item: any) => item.ticket_type_v2_id).filter(Boolean))];
     
     let ticketTypesMap: Record<string, string> = {};
     
@@ -204,7 +204,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const itemsByOrder: Record<string, any[]> = {};
     orderItems.forEach((item: any) => {
       // Resolve ticket name
-      const name = ticketTypesMap[item.ticket_type_id_v2] || 'Unknown Ticket';
+      const name = ticketTypesMap[item.ticket_type_v2_id] || 'Unknown Ticket';
       
       if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
       itemsByOrder[item.order_id].push({

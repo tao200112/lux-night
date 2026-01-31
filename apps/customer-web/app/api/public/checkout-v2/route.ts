@@ -312,6 +312,7 @@ export async function POST(req: NextRequest) {
         order_id: order.id,
         event_id: eventId, 
         ticket_type_id: item.ticketTypeId,
+        ticket_type_v2_id: item.ticketTypeId, // Creating strict V2 relationship
         quantity: item.quantity,
         unit_price_cents: ticketType.price_cents,
         // New Snapshot Fields
