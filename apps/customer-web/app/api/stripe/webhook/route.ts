@@ -444,6 +444,55 @@ async function handleCheckoutSessionCompletedV2(session: Stripe.Checkout.Session
     .update(updateData)
     .eq('id', orderId);
 
+  // Step 6.5: Increment invite code usage (if applicable)
+  // This happens AFTER payment is confirmed
+  const { data: orderWithInvite } = await supabaseAdmin
+    .from('orders')
+    .select('invite_id, invite_code')
+    .eq('id', orderId)
+    .single();
+
+  if (orderWithInvite?.invite_id) {
+    console.log('[STRIPE WEBHOOK V2]', {
+      debugId,
+      step: 'invite.increment.start',
+      inviteId: orderWithInvite.invite_id,
+      inviteCode: orderWithInvite.invite_code,
+    });
+
+    // Fetch current invite to check limits
+    const { data: currentInvite } = await supabaseAdmin
+      .from('ambassador_invites')
+      .select('uses_count, max_uses')
+      .eq('id', orderWithInvite.invite_id)
+      .single();
+
+    if (currentInvite) {
+      // Increment usage count
+      const { error: inviteUpdateError } = await supabaseAdmin
+        .from('ambassador_invites')
+        .update({ uses_count: currentInvite.uses_count + 1 })
+        .eq('id', orderWithInvite.invite_id);
+
+      if (inviteUpdateError) {
+        console.error('[STRIPE WEBHOOK V2]', {
+          debugId,
+          step: 'invite.increment.error',
+          inviteId: orderWithInvite.invite_id,
+          error: inviteUpdateError.message,
+        });
+        // Non-blocking error - order is already paid
+      } else {
+        console.log('[STRIPE WEBHOOK V2]', {
+          debugId,
+          step: 'invite.increment.success',
+          inviteId: orderWithInvite.invite_id,
+          newUsesCount: currentInvite.uses_count + 1,
+        });
+      }
+    }
+  }
+
   // Step 7: Update order status to 'fulfilled'
   await supabaseAdmin
     .from('orders')

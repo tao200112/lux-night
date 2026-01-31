@@ -138,6 +138,8 @@ export async function POST(req: NextRequest) {
     let validatedInvite: any = null;
     let finalInviteCode: string | null = null;
     
+    // Validate Invite Code (if provided) - DO NOT increment usage yet
+    // Usage will be incremented in webhook after successful payment
     if (inviteCode && inviteCode.trim()) {
         const normalizedCode = inviteCode.trim().toUpperCase();
         
@@ -164,22 +166,7 @@ export async function POST(req: NextRequest) {
             );
         }
         
-        // 2. Increment Usage
-        // Using simple UPDATE since max check was done above. 
-        // In high concurrency, this could overrun, but for this use case it's acceptable.
-        // A strictly correct way would be `UPDATE ... WHERE ... AND uses_count < max_uses`
-        // but JS client update method doesn't support complex WHERE clause easily combined with SET.
-        // We accept the slight race condition risk.
-        const { error: updateErr } = await supabaseAdmin
-            .from('ambassador_invites')
-            .update({ uses_count: existingInvite.uses_count + 1 })
-            .eq('id', existingInvite.id);
-            
-        if (updateErr) {
-            console.error('[CHECKOUT V2] Invite increment failed', updateErr);
-            throw new Error('Failed to apply invite code');
-        }
-        
+        // Store validated invite info (will be used in webhook)
         validatedInvite = existingInvite;
         finalInviteCode = normalizedCode;
     }
