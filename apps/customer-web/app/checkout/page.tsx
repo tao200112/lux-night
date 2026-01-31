@@ -16,6 +16,46 @@ function CheckoutPageContent() {
   
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+
+  // Invite Code State
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteStatus, setInviteStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [appliedAmbassador, setAppliedAmbassador] = useState('');
+  const [finalInviteCode, setFinalInviteCode] = useState('');
+
+  const validateInvite = async () => {
+    if (!inviteCode.trim()) return;
+    setInviteStatus('validating');
+    setInviteMessage('');
+    
+    try {
+        const res = await fetch(`/api/public/invites/validate?code=${encodeURIComponent(inviteCode)}&eventId=${eventId}`);
+        const data = await res.json();
+        
+        if (data.ok && data.valid) {
+            setInviteStatus('valid');
+            setAppliedAmbassador(data.ambassadorName);
+            setFinalInviteCode(data.code);
+            setInviteMessage(`Applied: ${data.ambassadorName}`);
+        } else {
+            setInviteStatus('invalid');
+            setInviteMessage(data.message || 'Invalid code');
+            setFinalInviteCode('');
+        }
+    } catch (e) {
+        setInviteStatus('invalid');
+        setInviteMessage('Validation failed');
+    }
+  };
+
+  const clearInvite = () => {
+      setInviteCode('');
+      setInviteStatus('idle');
+      setInviteMessage('');
+      setAppliedAmbassador('');
+      setFinalInviteCode('');
+  };
   
   const handlePayment = async () => {
     setStatus('processing');
@@ -24,6 +64,10 @@ function CheckoutPageContent() {
     try {
       // Get items from localStorage
       const itemsJson = localStorage.getItem('checkout_items');
+      const eventWeekId = localStorage.getItem('checkout_eventWeekId'); // Ensure this exists or fallback?
+      // Assuming items stored are already compatible or we need to map them.
+      // Items should be: { ticketTypeId, eventWeekDayId, quantity }
+      
       if (!itemsJson || !eventId) {
         setStatus('failed');
         setError('Missing checkout information');
@@ -32,29 +76,33 @@ function CheckoutPageContent() {
 
       const items = JSON.parse(itemsJson);
 
-      // Call API to create Stripe checkout session
-      const response = await fetch('/api/checkout/create-session', {
+      // Call API to create Stripe checkout session (V2)
+      const response = await fetch('/api/public/checkout-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, items }),
+        body: JSON.stringify({ 
+            eventId, 
+            eventWeekId: eventWeekId, // We might need to ensure this is saved in previous flow
+            items, 
+            inviteCode: finalInviteCode || undefined
+        }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         // 检查是否是 Stripe 未配置错误
         if (data.error?.code === 'STRIPE_NOT_CONFIGURED') {
           throw new Error('Stripe payment is not configured. Please contact support.');
         }
-        throw new Error(data.error?.message || data.error || 'Failed to create checkout session');
+        throw new Error(data.error?.message || 'Failed to create checkout session');
       }
 
-      // 检查响应格式
-      if (!data.data?.sessionId && !data.sessionId) {
+      const sessionId = data.data?.sessionId;
+
+      if (!sessionId) {
         throw new Error('Invalid response from server');
       }
-
-      const sessionId = data.data?.sessionId || data.sessionId;
 
       // Redirect to Stripe Checkout
       const stripe = await getStripe();
@@ -74,6 +122,7 @@ function CheckoutPageContent() {
       localStorage.removeItem('checkout_items');
       localStorage.removeItem('checkout_eventId');
       localStorage.removeItem('checkout_total');
+      localStorage.removeItem('checkout_eventWeekId');
     } catch (err: any) {
       console.error('Payment error:', err);
       setStatus('failed');
@@ -137,7 +186,7 @@ function CheckoutPageContent() {
                          <div className="flex justify-between items-start border-b border-white/5 pb-5">
                             <div className="flex flex-col">
                                 <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1 font-bold">Event</span>
-                                <h2 className="font-display text-white text-xl leading-tight">Neon Nights:<br/>Deep House</h2>
+                                <h2 className="font-display text-white text-xl leading-tight">Your Tickets are Ready</h2>
                             </div>
                          </div>
                          <div className="flex justify-between items-center pt-2">
@@ -193,50 +242,66 @@ function CheckoutPageContent() {
                 {/* Decorative top border */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-4">Order Summary</h4>
-                {/* Item */}
+                
+                {/* Simplified Item Display (since we don't have detailed item info in searchParams) */}
                 <div className="flex items-start justify-between gap-4 mb-4">
                     <div>
-                        <p className="text-gray-900 dark:text-white font-medium text-base">General Admission</p>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">Quantity: 2</p>
+                        <p className="text-gray-900 dark:text-white font-medium text-base">Current Order</p>
                     </div>
                     <p className="text-gray-900 dark:text-white font-medium">${totalPrice}</p>
                 </div>
+                
                 {/* Divider */}
                 <div className="h-px w-full bg-gray-200 dark:bg-white/10 my-4"></div>
+                
                 {/* Breakdown */}
                 <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                        <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
+                        <span className="text-gray-500 dark:text-gray-400">Total</span>
                         <span className="text-gray-900 dark:text-white">${totalPrice}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                        <span className="text-gray-500 dark:text-gray-400">Service Fee</span>
-                        <span className="text-gray-900 dark:text-white">$10.00</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                        <span className="text-gray-500 dark:text-gray-400">Taxes</span>
-                        <span className="text-gray-900 dark:text-white">$5.00</span>
-                    </div>
                 </div>
-                {/* Total Display */}
-                <div className="mt-6 pt-4 border-t border-dashed border-gray-300 dark:border-white/20 flex items-end justify-between">
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400 pb-1">Total Amount</span>
-                    <span className="text-3xl font-bold text-primary tracking-tight">${Number(totalPrice) + 15}</span>
-                </div>
-            </div>
 
-            {/* Payment Method Preview */}
-            <div className="bg-surface-light dark:bg-surface-dark rounded-xl p-4 flex items-center justify-between border border-gray-100 dark:border-white/5 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                <div className="flex items-center gap-3">
-                    <div className="bg-gray-100 dark:bg-white/10 p-2 rounded text-gray-900 dark:text-white">
-                        <span className="material-symbols-outlined">credit_card</span>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">Apple Pay</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">Ending in 4242</span>
-                    </div>
+                {/* Invite Code Input */}
+                <div className="mt-6 pt-4 border-t border-dashed border-gray-300 dark:border-white/20">
+                     <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Ambassador Code</p>
+                     
+                     {inviteStatus === 'valid' ? (
+                          <div className="flex items-center justify-between bg-status-success-bg dark:bg-status-success-bg-dark border border-status-success-border dark:border-status-success-border-dark p-3 rounded-md">
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-status-success-text dark:text-status-success-text-dark font-bold">Code Applied</span>
+                                    <span className="text-sm font-medium text-gray-800 dark:text-white">{inviteMessage}</span>
+                                </div>
+                                <button onClick={clearInvite} className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400">
+                                    <span className="material-symbols-outlined text-[18px]">close</span>
+                                </button>
+                          </div>
+                     ) : (
+                         <div className="flex gap-2">
+                             <input 
+                                type="text"
+                                value={inviteCode}
+                                onChange={(e) => setInviteCode(e.target.value)}
+                                placeholder="Enter invite code"
+                                className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary uppercase"
+                             />
+                             <button 
+                                onClick={validateInvite}
+                                disabled={!inviteCode.trim() || inviteStatus === 'validating'}
+                                className="bg-gray-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50"
+                             >
+                                {inviteStatus === 'validating' ? '...' : 'Apply'}
+                             </button>
+                         </div>
+                     )}
+                     
+                     {inviteStatus === 'invalid' && (
+                         <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                             <span className="material-symbols-outlined text-[14px]">error</span>
+                             {inviteMessage}
+                         </p>
+                     )}
                 </div>
-                <span className="text-xs font-bold text-primary uppercase tracking-wide">Change</span>
             </div>
 
             {/* Agreement */}
@@ -261,7 +326,7 @@ function CheckoutPageContent() {
             >
                 <span>Proceed to Pay</span>
                 <div className="flex items-center gap-2">
-                    <span className="opacity-90 font-medium">${Number(totalPrice) + 15}</span>
+                    <span className="opacity-90 font-medium">${totalPrice}</span>
                     <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform" style={{ fontSize: '20px' }}>arrow_forward</span>
                 </div>
             </button>

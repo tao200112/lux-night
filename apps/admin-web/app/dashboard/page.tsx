@@ -24,13 +24,14 @@ export default async function AdminDashboardPage() {
   }
   
   // 格式化金额显示
-  const formatCurrency = (value: number): string => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(2)}M`;
-    } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(1)}K`;
+  const formatCurrency = (value: number | undefined): string => {
+    const val = value || 0;
+    if (val >= 1000000) {
+      return `$${(val / 1000000).toFixed(2)}M`;
+    } else if (val >= 1000) {
+      return `$${(val / 1000).toFixed(1)}K`;
     }
-    return `$${value.toFixed(0)}`;
+    return `$${val.toFixed(0)}`;
   };
   
   return (
@@ -280,8 +281,8 @@ export default async function AdminDashboardPage() {
               </div>
             </section>
             
-            {/* Top Merchants Table - 完全按照 UI 文档 */}
-            <section className="px-4 pb-6">
+            {/* Top Merchants Table */}
+            <section className="px-4 pb-4">
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow-card border border-slate-100 dark:border-slate-700 overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">Top Merchants</h3>
@@ -293,58 +294,107 @@ export default async function AdminDashboardPage() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50/50 dark:bg-slate-700/50">
-                        <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Merchant</th>
-                        <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Revenue</th>
-                        <th className="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Status</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Merchant</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Revenue</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                       {dashboardData.topMerchants && dashboardData.topMerchants.length > 0 ? (
                         dashboardData.topMerchants.slice(0, 3).map((merchant: any, index: number) => {
                           const initials = (merchant.name || 'Unknown').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-                          // 使用固定的颜色类名（Tailwind 需要编译时知道）
-                          const colorClasses = [
-                            { bg: 'bg-purple-100 dark:bg-purple-900', text: 'text-purple-600 dark:text-purple-300' },
-                            { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-300' },
-                            { bg: 'bg-orange-100 dark:bg-orange-900', text: 'text-orange-600 dark:text-orange-300' },
-                          ];
-                          const color = colorClasses[index % colorClasses.length];
-                          
                           return (
                             <tr key={merchant.id || index} className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                              <td className="px-5 py-3">
+                              <td className="px-4 py-3">
                                 <div className="flex items-center gap-3">
-                                  <div className={`h-8 w-8 rounded ${color.bg} ${color.text} flex items-center justify-center text-xs font-bold`}>
+                                  <div className="h-8 w-8 rounded bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center text-xs font-bold">
                                     {initials}
                                   </div>
                                   <span className="text-sm font-medium text-slate-900 dark:text-white">{merchant.name || 'Unknown'}</span>
                                 </div>
                               </td>
-                              <td className="px-5 py-3 text-right">
+                              <td className="px-4 py-3 text-right">
                                 <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">
-                                  {formatCurrency((merchant.revenue || merchant.count || 0) * 100)}
-                                </span>
-                              </td>
-                              <td className="px-5 py-3 text-right">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                  Active
+                                  {formatCurrency(merchant.revenue)}
                                 </span>
                               </td>
                             </tr>
                           );
                         })
                       ) : (
-                        <tr>
-                          <td colSpan={3} className="px-5 py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-                            No merchants found
-                          </td>
-                        </tr>
+                        <tr><td colSpan={2} className="px-5 py-8 text-center text-xs text-slate-500">No data</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
             </section>
+
+            {/* Top Invites Table */}
+            <section className="px-4 pb-4">
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-card border border-slate-100 dark:border-slate-700 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 border-l-4 border-l-purple-500">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Top Ambassador Invites</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 dark:bg-slate-700/50">
+                                <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase">Code</th>
+                                <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase">Ambassador</th>
+                                <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase text-right">Rev</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {dashboardData.topInvites && dashboardData.topInvites.length > 0 ? (
+                                dashboardData.topInvites.slice(0, 5).map((inv: any, idx: number) => (
+                                    <tr key={idx}>
+                                        <td className="px-4 py-2 text-sm font-mono font-bold text-slate-700 dark:text-slate-300">{inv.code}</td>
+                                        <td className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{inv.ambassadorName}</td>
+                                        <td className="px-4 py-2 text-sm font-medium text-right text-slate-900 dark:text-white">{formatCurrency(inv.revenue)}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr><td colSpan={3} className="px-4 py-4 text-center text-xs text-slate-400">No active invites</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+              </div>
+            </section>
+
+            {/* Top Ambassadors Table */}
+            <section className="px-4 pb-6">
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-card border border-slate-100 dark:border-slate-700 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-700 border-l-4 border-l-pink-500">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Top Ambassadors</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-slate-50/50 dark:bg-slate-700/50">
+                                <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase">Name</th>
+                                <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase">Merchant</th>
+                                <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase text-right">Rev</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                           {dashboardData.topAmbassadors && dashboardData.topAmbassadors.length > 0 ? (
+                                dashboardData.topAmbassadors.slice(0, 5).map((amb: any, idx: number) => (
+                                    <tr key={idx}>
+                                        <td className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">{amb.name}</td>
+                                        <td className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{amb.merchantName}</td>
+                                        <td className="px-4 py-2 text-sm font-medium text-right text-slate-900 dark:text-white">{formatCurrency(amb.revenue)}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr><td colSpan={3} className="px-4 py-4 text-center text-xs text-slate-400">No active ambassadors</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+              </div>
+            </section>
+
           </>
         ) : (
           <div className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">

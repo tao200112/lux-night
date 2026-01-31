@@ -1,12 +1,11 @@
 /**
  * GET /api/admin/overview
  * Admin Dashboard Overview API
- * 返回 Dashboard KPI、趋势、Top Merchants、按地区订单等
  * 
- * Fixed:
- * 1. Uses amount_cents instead of total_cents.
- * 2. Status filter: paid, fulfilled, completed.
- * 3. Decoupled Aggregation (no inner joins that filter out unlinked orders).
+ * Update 2026-02-01:
+ * - Supports Ambassador Invites.
+ * - Uses orders.merchant_id as source of truth.
+ * - Adds Top Invites / Top Ambassadors / Unlinked Orders stats.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,7 +14,7 @@ import { handlerWrapper, requireAdmin, withTimeout, type ApiResponse } from '@/l
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const TIMEOUT_MS = 15000;
+const TIMEOUT_MS = 20000;
 
 export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
   let step = 'init';
@@ -36,264 +35,202 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const { adminClient } = authResult;
     step = 'auth_ok';
 
-    // Calculate Dates
+    // Parse Date Range (Default 30 days)
+    const searchParams = request.nextUrl.searchParams;
+    const rangeDays = parseInt(searchParams.get('dateRange') || '30');
+    
+    // Dates
     const now = new Date();
-    // Start of Today
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
 
-    // 30 Days Ago
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    // 60 Days Ago (for trend comparison)
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-
-    // STEP 2: Fetch Orders (Raw) for last 60 days
-    // We fetch a bit more data to handle trends and multiple stats in one go if possible, 
-    // or we can make parallel queries. Given the volume might be 100s or 1000s, fetching ID/Amount/Status/Date is efficient.
-    step = 'fetch_orders';
+    const rangeStart = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000);
+    const previousRangeStart = new Date(now.getTime() - (rangeDays * 2) * 24 * 60 * 60 * 1000);
     
+    // FETCH ORDERS with new fields
+    step = 'fetch_orders';
     const { data: allOrders, error: ordersError } = await adminClient
       .from('orders')
-      .select('id, amount_cents, status, created_at, event_v2_id')
-      .gte('created_at', sixtyDaysAgo.toISOString())
-      .in('status', ['paid', 'fulfilled', 'completed']); // Strict status filter
+      .select('id, amount_cents, status, created_at, merchant_id, invite_id, ambassador_id')
+      .gte('created_at', previousRangeStart.toISOString())
+      .in('status', ['paid', 'fulfilled', 'completed']);
 
-    if (ordersError) {
-      throw new Error(`Orders query failed: ${ordersError.message}`);
-    }
-
+    if (ordersError) throw new Error(`Orders query failed: ${ordersError.message}`);
     const orders = allOrders || [];
 
-    // Filter subsets in memory
-    const recentOrders = orders.filter((o: any) => new Date(o.created_at) >= thirtyDaysAgo);
+    // Memory Partition
+    const currentOrders = orders.filter((o: any) => new Date(o.created_at) >= rangeStart);
     const previousOrders = orders.filter((o: any) => {
         const d = new Date(o.created_at);
-        return d >= sixtyDaysAgo && d < thirtyDaysAgo;
+        return d >= previousRangeStart && d < rangeStart;
     });
-
-    // Subsets for Today
-    const todayOrders = recentOrders.filter((o: any) => new Date(o.created_at) >= todayStart);
     
-    // Previous Period (Yesterday) - simplified comparison
+    const todayOrders = currentOrders.filter((o: any) => new Date(o.created_at) >= todayStart);
+    
+    // Previous day calculation for trend
     const yesterdayStart = new Date(todayStart);
     yesterdayStart.setDate(yesterdayStart.getDate() - 1);
     const yesterdayEnd = new Date(todayStart);
     yesterdayEnd.setMilliseconds(-1);
-    
     const yesterdayOrders = orders.filter((o: any) => {
         const d = new Date(o.created_at);
         return d >= yesterdayStart && d <= yesterdayEnd;
     });
 
-    // STEP 3: KPIs Calculation
+    // KPI Calculation
     step = 'calc_kpis';
+    const totalRevenueCents = currentOrders.reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);
+    const previousRevenueCents = previousOrders.reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);
     
-    // 1. Revenue
-    const totalRevenue = recentOrders.reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);
-    const previousRevenue = previousOrders.reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);
-    
-    const netRevenue = Math.round(totalRevenue * 0.79); // 21% take assumption
-    const previousNetRevenue = Math.round(previousRevenue * 0.79);
-
-    // 2. Orders Count
     const ordersCount = todayOrders.length;
     const previousOrdersCount = yesterdayOrders.length;
 
-    // 3. Trends
-    const calculateTrend = (current: number, previous: number) => {
-        if (previous === 0) return current > 0 ? 100 : 0;
-        return Math.round(((current - previous) / previous) * 100);
-    };
-
-    const revenueTrend = calculateTrend(totalRevenue, previousRevenue);
-    const netRevenueTrend = calculateTrend(netRevenue, previousNetRevenue);
+    const calculateTrend = (curr: number, prev: number) => prev === 0 ? (curr > 0 ? 100 : 0) : Math.round(((curr - prev) / prev) * 100);
+    
+    const revenueTrend = calculateTrend(totalRevenueCents, previousRevenueCents);
     const ordersTrend = calculateTrend(ordersCount, previousOrdersCount);
 
-    // STEP 4: Fetch Metadata for Aggregations (Events, Merchants, Regions)
-    step = 'fetch_metadata';
+    // Unlinked Orders
+    const unlinkedOrdersCount = currentOrders.filter((o: any) => !o.merchant_id).length;
 
-    const eventIds = [...new Set(recentOrders.map((o: any) => o.event_v2_id).filter(Boolean))];
-    
-    // 4a. Fetch Events V2
-    const { data: events, error: eventsError } = await adminClient
-      .from('events_v2')
-      .select('id, title, merchant_id')
-      .in('id', eventIds);
-    
-    if (eventsError) throw eventsError;
-
-    const eventsList = events || [];
-    const eventMap = eventsList.reduce((acc: any, e: any) => { acc[e.id] = e; return acc; }, {});
-
-    // 4b. Fetch Merchants & Regions
-    const merchantIds = [...new Set(eventsList.map((e: any) => e.merchant_id).filter(Boolean))];
-    const { data: merchants, error: merchantsError } = await adminClient
-      .from('merchants')
-      .select('id, name, region_id, regions(id, name)')
-      .in('id', merchantIds);
-
-    if (merchantsError) throw merchantsError;
-
-    const merchantsList = merchants || [];
-    const merchantMap = merchantsList.reduce((acc: any, m: any) => { acc[m.id] = m; return acc; }, {});
-
-    // STEP 5: Complex Aggregations
+    // Aggregations
     step = 'aggregations';
-
-    // 5a. Orders by Region
-    const regionStats: Record<string, { name: string; count: number }> = {};
-    let unlinkedOrdersCount = 0;
-
-    recentOrders.forEach((order: any) => {
-        const eventId = order.event_v2_id;
-        if (!eventId) {
-            unlinkedOrdersCount++;
-            return;
-        }
-
-        const event = eventMap[eventId];
-        const merchant = event ? merchantMap[event.merchant_id] : null;
-        const region = merchant ? merchant.regions : null; // Access nested region
-
-        if (region) {
-            if (!regionStats[region.id]) {
-                regionStats[region.id] = { name: region.name || 'Unknown Region', count: 0 };
-            }
-            regionStats[region.id].count++;
-        } else {
-             // Count as Unlinked/Unknown Region
-             if (!regionStats['unknown']) {
-                 regionStats['unknown'] = { name: 'Unknown Region', count: 0 };
-             }
-             regionStats['unknown'].count++;
-        }
-    });
-
-    const ordersByRegion = Object.values(regionStats).sort((a, b) => b.count - a.count);
-
-    // 5b. Top Merchants
-    const merchantStats: Record<string, { name: string; count: number }> = {};
     
-    recentOrders.forEach((order: any) => {
-        const eventId = order.event_v2_id;
-        if (!eventId) return;
+    // 1. Revenue By Merchant
+    const merchantAgg: Record<string, { revenue: number; count: number }> = {};
+    // 2. Top Invites
+    const inviteAgg: Record<string, { revenue: number; count: number; invite_id: string }> = {};
+    // 3. Top Ambassadors
+    const ambassadorAgg: Record<string, { revenue: number; count: number; ambassador_id: string }> = {};
 
-        const event = eventMap[eventId];
-        const merchant = event ? merchantMap[event.merchant_id] : null;
-
-        if (merchant) {
-             if (!merchantStats[merchant.id]) {
-                 merchantStats[merchant.id] = { name: merchant.name, count: 0 };
-             }
-             merchantStats[merchant.id].count++;
+    currentOrders.forEach((o: any) => {
+        // Merchant
+        if (o.merchant_id) {
+            if (!merchantAgg[o.merchant_id]) merchantAgg[o.merchant_id] = { revenue: 0, count: 0 };
+            merchantAgg[o.merchant_id].revenue += o.amount_cents;
+            merchantAgg[o.merchant_id].count++;
+        }
+        
+        // Invite
+        if (o.invite_id) {
+            if (!inviteAgg[o.invite_id]) inviteAgg[o.invite_id] = { revenue: 0, count: 0, invite_id: o.invite_id };
+            inviteAgg[o.invite_id].revenue += o.amount_cents;
+            inviteAgg[o.invite_id].count++;
+        }
+        
+        // Ambassador
+        if (o.ambassador_id) {
+             if (!ambassadorAgg[o.ambassador_id]) ambassadorAgg[o.ambassador_id] = { revenue: 0, count: 0, ambassador_id: o.ambassador_id };
+             ambassadorAgg[o.ambassador_id].revenue += o.amount_cents;
+             ambassadorAgg[o.ambassador_id].count++;
         }
     });
 
-    const topMerchants = Object.entries(merchantStats)
-        .map(([id, stats]) => ({ id, ...stats }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+    // Process Top Lists Logic
+    // Get Top 5 IDs for each
+    const topMerchantIds = Object.keys(merchantAgg).sort((a,b) => merchantAgg[b].revenue - merchantAgg[a].revenue).slice(0, 5);
+    const topInviteIds = Object.keys(inviteAgg).sort((a,b) => inviteAgg[b].revenue - inviteAgg[a].revenue).slice(0, 5);
+    const topAmbassadorIds = Object.keys(ambassadorAgg).sort((a,b) => ambassadorAgg[b].revenue - ambassadorAgg[a].revenue).slice(0, 5);
 
-    // 5c. Revenue Trend (Daily for last 7 days)
-    const revenueTrendData: { date: string; revenue: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+    // FETCH METADATA
+    step = 'fetch_metadata';
+    const pMerchants = topMerchantIds.length > 0 
+        ? adminClient.from('merchants').select('id, name').in('id', topMerchantIds)
+        : Promise.resolve({ data: [] });
         
-        // Filter orders for this day (local time approx by UTC date string match for simplicity, or strict date range)
-        // Using string match on created_at is safer for simple buckets
-        const dayRevenue = recentOrders
-            .filter((o: any) => o.created_at.startsWith(dateStr))
-            .reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);
-        
-        revenueTrendData.push({ date: dateStr, revenue: dayRevenue });
-    }
+    const pInvites = topInviteIds.length > 0
+        ? adminClient.from('ambassador_invites').select('id, code, merchant_id, ambassador:ambassadors(display_name)').in('id', topInviteIds)
+        : Promise.resolve({ data: [] });
 
-    // STEP 6: Other Counts (Independent queries)
-    step = 'other_counts';
+    // For ambassadors, we fetch from ambassadors table
+    const pAmbassadors = topAmbassadorIds.length > 0
+        ? adminClient.from('ambassadors').select('id, display_name, merchant_id').in('id', topAmbassadorIds)
+        : Promise.resolve({ data: [] });
 
-    const [totalMerchantsRes, activeEventsRes, pendingApprovalsRes, checkinsRes] = await Promise.all([
-        adminClient.from('merchants').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-        adminClient.from('events_v2').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-        adminClient.from('requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'), // Assuming 'requests' table exists
-        adminClient.from('checkins').select('*', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString())
+    const [merchantsRes, invitesRes, ambassadorsRes, allMerchantsRes] = await Promise.all([
+        pMerchants, 
+        pInvites, 
+        pAmbassadors,
+        // Also fetch all merchants for mapping invites/ambassadors to merchant names if needed, 
+        // but for top lists usually we just want the entity name. 
+        // Let's optimize: map merchant IDs from invites/ambassadors to fetch their names too.
+        Promise.resolve({ data: [] })
     ]);
-
-    const totalMerchants = totalMerchantsRes.count || 0;
-    const activeEvents = activeEventsRes.count || 0;
-    const pendingApprovals = pendingApprovalsRes.count || 0;
-    const ticketsRedeemed = checkinsRes.count || 0;
-
-    // STEP 7: Alerts
-    const alerts = [];
-    if (pendingApprovals > 0) {
-        alerts.push({
-            type: 'pending_approvals',
-            title: 'Pending Approvals',
-            message: `${pendingApprovals} requests waiting.`,
-            severity: 'info'
-        });
+    
+    const merchantsMap = (merchantsRes.data || []).reduce((acc: any, m: any) => { acc[m.id] = m; return acc; }, {});
+    
+    // Need names for merchant_id in invites/ambuls
+    const extraMerchantIds = new Set<string>();
+    (invitesRes.data || []).forEach((i: any) => extraMerchantIds.add(i.merchant_id));
+    (ambassadorsRes.data || []).forEach((a: any) => extraMerchantIds.add(a.merchant_id));
+    
+    // If we have extra merchants not in top 5, fetch them
+    const missingMerchantIds = [...extraMerchantIds].filter(id => !merchantsMap[id]);
+    if (missingMerchantIds.length > 0) {
+        const { data: moreMerchants } = await adminClient.from('merchants').select('id, name').in('id', missingMerchantIds);
+        (moreMerchants || []).forEach((m: any) => merchantsMap[m.id] = m);
     }
+    
+    // Assemble Lists
+    step = 'assemble_lists';
+    
+    const revenueByMerchant = topMerchantIds.map(id => ({
+        merchantId: id,
+        merchantName: merchantsMap[id]?.name || 'Unknown',
+        revenueCents: merchantAgg[id].revenue,
+        ordersCount: merchantAgg[id].count
+    }));
+    
+    const topInvites = topInviteIds.map(id => {
+        const inv = (invitesRes.data || []).find((i: any) => i.id === id);
+        return {
+            inviteId: id,
+            code: inv?.code || '???',
+            // @ts-ignore
+            ambassadorName: inv?.ambassador?.display_name || 'Unknown',
+            merchantName: merchantsMap[inv?.merchant_id]?.name || 'Unknown',
+            revenueCents: inviteAgg[id].revenue,
+            ordersCount: inviteAgg[id].count
+        };
+    });
+    
+    const topAmbassadors = topAmbassadorIds.map(id => {
+        const amb = (ambassadorsRes.data || []).find((a: any) => a.id === id);
+        return {
+            ambassadorId: id,
+            ambassadorName: amb?.display_name || 'Unknown',
+            merchantName: merchantsMap[amb?.merchant_id]?.name || 'Unknown',
+            revenueCents: ambassadorAgg[id].revenue,
+            ordersCount: ambassadorAgg[id].count
+        };
+    });
 
-    if (unlinkedOrdersCount > 0) {
-        alerts.push({
-            type: 'unlinked_orders',
-            title: 'Data Integrity Warning',
-            message: `Found ${unlinkedOrdersCount} unlinked orders (missing event link).`,
-            severity: 'warning'
-        });
-    }
-
-    // Helper formatter
-    const formatCurrency = (cents: number): string => {
-      const dollars = cents / 100;
-      if (dollars >= 1000000) return `$${(dollars / 1000000).toFixed(2)}M`;
-      if (dollars >= 1000) return `$${(dollars / 1000).toFixed(1)}K`;
-      return `$${dollars.toFixed(0)}`;
-    };
-
+    // Format helpers
+    const formatCurrency = (cents: number) => `$${(cents/100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    
     step = 'success';
     return NextResponse.json<ApiResponse>({
       ok: true,
       data: {
-        kpis: {
-          totalRevenue: {
-             value: totalRevenue / 100,
-             formatted: formatCurrency(totalRevenue),
-             trend: revenueTrend
-          },
-          netRevenue: {
-             value: netRevenue / 100,
-             formatted: formatCurrency(netRevenue),
-             trend: netRevenueTrend
-          },
-          ordersToday: {
-              value: ordersCount,
-              formatted: ordersCount.toLocaleString(),
-              trend: ordersTrend
-          },
-          ticketsRedeemed: {
-              value: ticketsRedeemed,
-              formatted: ticketsRedeemed >= 1000 ? `${(ticketsRedeemed/1000).toFixed(1)}K` : ticketsRedeemed.toString(),
-              trend: null
-          },
-          totalMerchants: {
-              value: totalMerchants,
-              formatted: totalMerchants.toLocaleString()
-          },
-          activeEvents: {
-              value: activeEvents,
-              formatted: activeEvents.toLocaleString()
-          }
-        },
-        revenueTrend: revenueTrendData,
-        ordersByRegion,
-        topMerchants,
-        alerts,
-        pendingApprovals,
-        debug: {
-            unlinkedOrdersCount
+        totalRevenueCents,
+        totalRevenueFormatted: formatCurrency(totalRevenueCents),
+        revenueTrend,
+        
+        totalOrders: currentOrders.length, // Total in period
+        
+        ordersToday: ordersCount,
+        ordersTodayTrend: ordersTrend,
+        
+        unlinkedOrdersCount,
+        
+        revenueByMerchant,
+        topInvites,
+        topAmbassadors,
+        
+        dateRange: {
+            days: rangeDays,
+            start: rangeStart.toISOString(),
+            end: now.toISOString()
         }
       },
       step
