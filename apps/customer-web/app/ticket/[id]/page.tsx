@@ -116,7 +116,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
                  {/* 黑金票券卡容器 */}
                  <div className={`bg-[#0A0A0A] rounded-2xl p-4 flex flex-col items-center shadow-[0_0_20px_rgba(212,175,55,0.1)] border border-[#D4AF37]/25 relative z-10 overflow-hidden transition-all duration-500 ${isInactive ? 'opacity-80' : ''}`}>
                      {/* 内层 QR 面板: bg-neutral-50/95 */}
-                     <div className="w-full bg-neutral-50/95 rounded-xl p-3 flex flex-col items-center mb-3">
+                     <div className="w-full max-w-[280px] bg-neutral-50/95 rounded-xl p-3 flex flex-col items-center mb-3">
                         <img alt="QR code" className="w-full aspect-square object-contain mix-blend-multiply" src={ticket.qrCodeUrl}/>
                      </div>
                      
@@ -163,37 +163,50 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
                 <p className="text-white text-[15px] font-medium truncate">{ticket.tierName}</p>
             </div>
             <div className="bg-[#0A0A0A] p-3 rounded-lg border border-white/5 flex flex-col justify-center">
-                <p className="text-[#8A7E5E] text-[10px] font-bold uppercase tracking-wider mb-1">核销时间</p>
-                <p className="text-white text-[15px] font-medium">
                 {(() => {
-                    // 优先级 1: 已核销时间 (ticket.redeemedAt - 假设字段，需确认，此处用 status 判断辅助)
-                    // 注意：API 返回的 ticket 对象定义在 @/lib/data/tickets.ts，这里我们只能用现有字段
-                    // 假设 ticket.status === 'used' 代表已核销。如果后端传了 redeemedAt 最好，没有则显示 "已核销"
-                    // 检查是否有 redeemedAt 字段 (类型定义可能不完整，暂时尝试用 any 访问或 fallback)
-                    const t = ticket as any;
-                    
-                    if (t.redeemedAt || t.checkedInAt) {
-                        const date = new Date(t.redeemedAt || t.checkedInAt);
-                        return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    }
-                    if (ticket.status === 'used' || redemptionStatus === 'redeemed') {
-                        return '已核销'; // Fallback if no specific time
-                    }
-
-                    // 优先级 2: 截止时间
-                    // ticket.entryBefore / ticket.validBefore / ticket.redeemBefore
-                    // 现有代码用的是 ticket.time 作为 fallback
-                    const deadline = t.entryBefore || t.validBefore || t.redeemBefore || ticket.time;
-                    if (deadline) {
-                        // 如果是纯时间字符串 "23:00"，直接显示
-                        // 如果是日期对象，格式化
-                        return `需在 ${deadline} 前核销`;
-                    }
-
-                    // 优先级 3
-                    return '—';
+                   // Label Selection
+                   let label = 'REDEMPTION WINDOW';
+                   if (ticket.status === 'used' || ticket.redeemedAt) {
+                       label = 'REDEEMED AT';
+                   }
+                   
+                   // Value Selection
+                   let value = '—';
+                   
+                   // Priority 1: Redeemed At
+                   if (ticket.redeemedAt) {
+                       const d = new Date(ticket.redeemedAt);
+                       value = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                   } 
+                   // Alternate Priority 1: Status is used but no time (fallback)
+                   else if (ticket.status === 'used' || redemptionStatus === 'redeemed') {
+                       value = 'Already Redeemed';
+                   }
+                   // Priority 2: Validity Window (from DB fields valid_start_at / valid_end_at)
+                   else if (ticket.validStartAt && ticket.validEndAt) {
+                       const start = new Date(ticket.validStartAt);
+                       const end = new Date(ticket.validEndAt);
+                       
+                       const startTime = start.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
+                       const endTime = end.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
+                       
+                       // Check if end is next day logic (simple date check)
+                       const isNextDay = end.getDate() !== start.getDate();
+                       value = `${startTime} – ${endTime}${isNextDay ? ' (+1)' : ''}`;
+                   }
+                   // Priority 3: Only Valid Start (Open ended?)
+                   else if (ticket.validStartAt) {
+                        const start = new Date(ticket.validStartAt);
+                        value = `From ${start.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}`;
+                   }
+                   
+                   return (
+                       <>
+                           <p className="text-[#8A7E5E] text-[10px] font-bold uppercase tracking-wider mb-1">{label}</p>
+                           <p className="text-white text-[15px] font-medium leading-tight">{value}</p>
+                       </>
+                   );
                 })()}
-                </p>
             </div>
         </div>
 
