@@ -148,11 +148,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
     // We also need merchant names for Invites and Ambassadors list rows
     // Efficiently: we need them. For now, fetch ALL merchants mentioned in top lists.
-    const [merchantsRes, invitesRes, ambassadorsRes] = await Promise.all([pMerchants, pInvites, pAmbassadors]);
+    const [merchantsDataRes, invitesRes, ambassadorsRes] = await Promise.all([pMerchants, pInvites, pAmbassadors]);
     
     // Map
     const merchantsMap: Record<string, any> = {};
-    (merchantsRes.data || []).forEach((m: any) => merchantsMap[m.id] = m);
+    (merchantsDataRes.data || []).forEach((m: any) => merchantsMap[m.id] = m);
     
     // Check if we need more merchants (for invites/ambassadors)
     const extraMerchantIds = new Set<string>();
