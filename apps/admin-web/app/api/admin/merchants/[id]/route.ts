@@ -1,212 +1,210 @@
 /**
  * GET /api/admin/merchants/[id]
  * Admin Merchant Detail API
+ * 
+ * Fixed:
+ * 1. Decoupled queries for Orders (via events_v2 list).
+ * 2. Fetches member emails from auth.users (service role).
+ * 3. Does not rely on inner joins that fail on unlinked data.
  */
 
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, type ApiResponse } from '@/lib/admin/api';
+import { handlerWrapper, requireAdmin, withTimeout, type ApiResponse } from '@/lib/admin/api';
 import { randomUUID } from 'crypto';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const TIMEOUT_MS = 15000;
+
+export const GET = handlerWrapper(async (request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
+  let step = 'init';
+  const { id } = await params;
+
   try {
-    const { id } = await params;
-    const supabase = await createClient();
-    
-    // 检查 Admin 权限
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json(
-        { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
-        { status: 401 }
-      );
+    // STEP 1: Auth + Admin Client
+    step = 'auth_check';
+    const authResult = await withTimeout(
+      requireAdmin(request),
+      TIMEOUT_MS,
+      'requireAdmin'
+    );
+
+    if ('status' in authResult) {
+      return authResult.response;
     }
-    
-    const { data: isAdmin } = await supabase.rpc('is_admin');
-    if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
-        { status: 403 }
-      );
-    }
-    
-    // 获取商家详情
-    const { data: merchant, error: merchantError } = await supabase
+
+    const { adminClient } = authResult;
+    step = 'auth_ok';
+
+    // STEP 2: Fetch Merchant Details
+    step = 'fetch_merchant';
+    const { data: merchant, error: merchantError } = await adminClient
       .from('merchants')
       .select(`
         *,
-        regions!inner(
-          id,
-          name,
-          state,
-          country,
-          status
+        regions (
+          id, name, state, country, status
         )
       `)
       .eq('id', id)
       .single();
-    
+
     if (merchantError || !merchant) {
-      return NextResponse.json(
-        { success: false, code: 'NOT_FOUND', message: 'Merchant not found' },
+      return NextResponse.json<ApiResponse>(
+        { ok: false, error: 'Not Found', code: 'NOT_FOUND', message: 'Merchant not found', step },
         { status: 404 }
       );
     }
+
+    // STEP 3: Parallel Fetch of Related Data
+    step = 'fetch_related';
     
-    // 获取关联数据
-    const [venuesResult, eventsResult, membersResult, ordersResult] = await Promise.all([
-      // Venues
-      supabase
-        .from('venues')
-        .select('id, name, address, is_active')
-        .eq('merchant_id', id),
-      
-      // Events (最近 30 天)
-      supabase
+    // 3a. Venues
+    const pVenues = adminClient.from('venues').select('id, name, address, is_active').eq('merchant_id', id);
+    
+    // 3b. Events V2 (Get IDs for finding orders)
+    const pEvents = adminClient
         .from('events_v2')
         .select('id, title, status, created_at')
         .eq('merchant_id', id)
-        .order('created_at', { ascending: false })
-        .limit(10),
-      
-      // Members
-      supabase
+        .order('created_at', { ascending: false });
+
+    // 3c. Members (Get Profile IDs for finding emails)
+    const pMembers = adminClient
         .from('merchant_members')
         .select(`
-          id,
-          role,
-          is_active,
-          created_at,
-          profiles!inner(
-            id,
-            display_name,
-            email,
-            avatar_url
-          )
+           id, role, is_active, created_at, user_id,
+           profiles (id, display_name, avatar_url)
         `)
         .eq('merchant_id', id)
-        .eq('is_active', true),
-      
-      // Orders (recent 30 days) - Using event relation to ensure V2 coverage
-      supabase
-        .from('orders')
-        .select(`
-            id, amount_cents, status, created_at,
-            events_v2!inner(merchant_id)
-        `)
-        .eq('events_v2.merchant_id', id)
-        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: false })
-        .limit(20),
-    ]);
+        .eq('is_active', true);
+
+    const [venuesRes, eventsRes, membersRes] = await Promise.all([pVenues, pEvents, pMembers]);
+
+    const venues = venuesRes.data || [];
+    const events = eventsRes.data || [];
+    const members = membersRes.data || [];
+
+    // STEP 4: Fetch Orders using Event IDs
+    step = 'fetch_orders';
+    const eventIds = events.map((e: any) => e.id);
     
-    // 计算统计数据
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    
-    const { count: totalOrders } = await supabase
-      .from('orders')
-      .select('events_v2!inner(merchant_id)', { count: 'exact', head: true })
-      .eq('events_v2.merchant_id', id)
-      .gte('created_at', thirtyDaysAgo.toISOString());
-    
-    const { data: revenueOrders } = await supabase
-      .from('orders')
-      .select('amount_cents, events_v2!inner(merchant_id)')
-      .eq('events_v2.merchant_id', id)
-      .eq('status', 'completed')
-      .gte('created_at', thirtyDaysAgo.toISOString());
-    
-    const totalRevenue = (revenueOrders || []).reduce((sum, order) => sum + (order.amount_cents || 0), 0);
-    
-    return NextResponse.json({
-      success: true,
-      data: {
+    let orders: any[] = [];
+    if (eventIds.length > 0) {
+        // Fetch recent orders for these events
+        const { data: ordersData } = await adminClient
+            .from('orders')
+            .select('id, amount_cents, status, created_at, event_v2_id')
+            .in('event_v2_id', eventIds)
+            .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
+            .order('created_at', { ascending: false });
+        
+        orders = ordersData || [];
+    }
+
+    // STEP 5: Fetch Member Emails
+    step = 'fetch_emails';
+    const memberUserIds = members.map((m: any) => m.user_id).filter(Boolean);
+    let memberEmails: Record<string, string> = {};
+
+    if (memberUserIds.length > 0) {
+        // @ts-ignore
+        const { data: users } = await adminClient.schema('auth').from('users').select('id, email').in('id', memberUserIds);
+        if (users) {
+            memberEmails = users.reduce((acc: any, u: any) => { acc[u.id] = u.email; return acc; }, {});
+        }
+    }
+
+    // STEP 6: Assemble Data
+    step = 'assemble';
+
+    // Stats
+    const totalOrders = orders.length; // Approximate, strictly speaking we limited query by date
+    const revenueOrders = orders.filter((o: any) => ['paid', 'completed', 'fulfilled'].includes(o.status));
+    const totalRevenue = revenueOrders.reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);
+
+    // Build Response
+    const responseData = {
         id: merchant.id,
         name: merchant.name,
         status: merchant.status,
-        region: (() => {
-          if (!merchant.regions) return null;
-          const regionData = Array.isArray(merchant.regions) ? merchant.regions[0] : merchant.regions;
-          return regionData ? {
-            id: regionData.id,
-            name: regionData.name,
-            state: regionData.state,
-            country: regionData.country,
-            status: regionData.status,
-          } : null;
-        })(),
-        venues: (venuesResult.data || []).map((v: any) => ({
-          id: v.id,
-          name: v.name,
-          address: v.address,
-          isActive: v.is_active,
+        region: merchant.regions ? {
+            id: merchant.regions.id,
+            name: merchant.regions.name,
+            state: merchant.regions.state,
+            country: merchant.regions.country,
+            status: merchant.regions.status
+        } : null,
+        venues: venues.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            address: v.address,
+            isActive: v.is_active
         })),
-        events: Array.isArray(eventsResult.data) 
-          ? eventsResult.data.map((e: any) => ({
-              id: e.id,
-              title: e.title,
-              status: e.status,
-              startAt: e.created_at, // V2 uses weeks info, fallback to created_at for sorting/display
-              endAt: null,
-            }))
-          : [],
-        members: (membersResult.data || []).map((m: any) => {
-          const profileData = (() => {
-            if (!m.profiles) return null;
-            return Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-          })();
-          
-          return {
-            id: m.id,
-            role: m.role,
-            isActive: m.is_active,
-            user: profileData ? {
-              id: profileData.id,
-              name: profileData.display_name || 'Unknown',
-              email: profileData.email,
-              avatar: profileData.avatar_url,
-            } : null,
-            joinedAt: m.created_at,
-          };
+        events: events.slice(0, 10).map((e: any) => ({
+            id: e.id,
+            title: e.title,
+            status: e.status,
+            startAt: e.created_at,
+            endAt: null
+        })),
+        members: members.map((m: any) => {
+            const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+            return {
+                id: m.id,
+                role: m.role,
+                isActive: m.is_active,
+                user: profile ? {
+                    id: profile.id,
+                    name: profile.display_name || 'Unknown',
+                    email: memberEmails[profile.id] || 'Unknown Email', // Filled from auth
+                    avatar: profile.avatar_url
+                } : null,
+                joinedAt: m.created_at
+            };
         }),
-        recentOrders: (ordersResult.data || []).map((o: any) => ({
-          id: o.id,
-          total: o.amount_cents / 100,
-          status: o.status,
-          createdAt: o.created_at,
+        recentOrders: orders.slice(0, 20).map((o: any) => ({
+            id: o.id,
+            total: (o.amount_cents || 0) / 100,
+            status: o.status,
+            createdAt: o.created_at
         })),
         stats: {
-          totalOrders: totalOrders || 0,
-          totalRevenue: totalRevenue / 100,
-          totalRevenueFormatted: `$${(totalRevenue / 100).toLocaleString()}`,
-          venuesCount: venuesResult.data?.length || 0,
-          eventsCount: eventsResult.data?.length || 0,
-          membersCount: membersResult.data?.length || 0,
+            totalOrders,
+            totalRevenue: totalRevenue / 100,
+            totalRevenueFormatted: `$${(totalRevenue / 100).toLocaleString()}`,
+            venuesCount: venues.length,
+            eventsCount: events.length,
+            membersCount: members.length
         },
         createdAt: merchant.created_at,
-        updatedAt: merchant.updated_at,
-      },
+        updatedAt: merchant.updated_at
+    };
+
+    return NextResponse.json<ApiResponse>({
+        ok: true,
+        data: responseData,
+        step
     });
+
   } catch (error: any) {
-    console.error('[ADMIN MERCHANT DETAIL API] Error:', error);
-    return NextResponse.json(
-      { success: false, code: 'INTERNAL_ERROR', message: error.message },
+    console.error('[ADMIN MERCHANT DETAIL] Error:', error);
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: 'Internal Error', code: 'INTERNAL_ERROR', message: error.message, step },
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PATCH /api/admin/merchants/[id]
  * Update merchant information (name, regionId, status)
  */
-export async function PATCH(
+export const PATCH = handlerWrapper(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> => {
   const debugId = randomUUID().substring(0, 8);
   let step = 'init';
 
@@ -214,7 +212,7 @@ export async function PATCH(
     step = 'auth_check';
     const authResult = await requireAdmin(request);
     
-    if ('response' in authResult) {
+    if ('status' in authResult) {
       return authResult.response;
     }
 
@@ -227,173 +225,45 @@ export async function PATCH(
       body = await request.json();
     } catch (e) {
       return NextResponse.json<ApiResponse>(
-        {
-          ok: false,
-          error: 'Invalid request body',
-          code: 'INVALID_BODY',
-          message: 'Request body must be valid JSON',
-          step,
-          debugId,
-        },
+        { ok: false, error: 'Invalid Body', code: 'INVALID_BODY', message: 'Invalid JSON', step },
         { status: 400 }
       );
     }
 
-    step = 'validate_fields';
+    step = 'validate';
     const { name, regionId, status } = body;
-
-    // 至少需要一个字段
     if (!name && !regionId && !status) {
-      return NextResponse.json<ApiResponse>(
-        {
-          ok: false,
-          error: 'At least one field is required',
-          code: 'MISSING_FIELDS',
-          message: 'At least one of name, regionId, or status must be provided',
-          step,
-          debugId,
-        },
+       return NextResponse.json<ApiResponse>(
+        { ok: false, error: 'Missing Fields', code: 'MISSING_FIELDS', message: 'No fields to update', step },
         { status: 400 }
       );
     }
 
-    // 验证 name（如果提供）
-    if (name !== undefined) {
-      const trimmedName = typeof name === 'string' ? name.trim() : '';
-      if (!trimmedName) {
-        return NextResponse.json<ApiResponse>(
-          {
-            ok: false,
-            error: 'Name cannot be empty',
-            code: 'INVALID_NAME',
-            message: 'Merchant name must be a non-empty string',
-            step,
-            debugId,
-          },
-          { status: 400 }
-        );
-      }
-    }
+    step = 'update';
+    const payload: any = {};
+    if (name) payload.name = name.trim();
+    if (regionId) payload.region_id = regionId;
+    if (status) payload.status = status;
 
-    step = 'update_merchant';
-    const updatePayload: {
-      name?: string;
-      region_id?: string;
-      status?: string;
-    } = {};
-
-    if (name !== undefined) {
-      updatePayload.name = (typeof name === 'string' ? name : String(name)).trim();
-    }
-    if (regionId !== undefined) {
-      updatePayload.region_id = regionId;
-    }
-    if (status !== undefined) {
-      updatePayload.status = status;
-    }
-
-    const { data: updatedMerchant, error: updateError } = await adminClient
+    const { data: updated, error: updateError } = await adminClient
       .from('merchants')
-      .update(updatePayload)
+      .update(payload)
       .eq('id', id)
-      .select('id, name, region_id, status, created_at, updated_at')
+      .select()
       .single();
 
-    if (updateError) {
-      console.error('[ADMIN MERCHANTS PATCH] Update error:', {
-        debugId,
-        step,
-        merchantId: id,
-        updatePayload,
-        error: {
-          message: updateError.message,
-          code: updateError.code,
-          details: updateError.details,
-          hint: updateError.hint,
-        },
-      });
+    if (updateError) throw updateError;
 
-      return NextResponse.json<ApiResponse>(
-        {
-          ok: false,
-          error: 'Failed to update merchant',
-          code: 'UPDATE_ERROR',
-          message: updateError.message || 'Database update failed',
-          step,
-          debugId,
-          details: {
-            supabaseError: {
-              message: updateError.message,
-              code: updateError.code,
-              details: updateError.details,
-              hint: updateError.hint,
-            },
-          },
-        },
-        { status: 500 }
-      );
-    }
-
-    if (!updatedMerchant) {
-      return NextResponse.json<ApiResponse>(
-        {
-          ok: false,
-          error: 'Merchant not found',
-          code: 'NOT_FOUND',
-          message: `Merchant with id ${id} not found`,
-          step,
-          debugId,
-        },
-        { status: 404 }
-      );
-    }
-
-    step = 'success';
-    console.log('[ADMIN MERCHANTS PATCH]', {
-      debugId,
-      step,
-      merchantId: id,
-      updatedFields: Object.keys(updatePayload),
+    return NextResponse.json<ApiResponse>({
+      ok: true,
+      data: updated,
+      step
     });
-
-    return NextResponse.json<ApiResponse>(
-      {
-        ok: true,
-        data: {
-          id: updatedMerchant.id,
-          name: updatedMerchant.name,
-          regionId: updatedMerchant.region_id,
-          status: updatedMerchant.status,
-          createdAt: updatedMerchant.created_at,
-          updatedAt: updatedMerchant.updated_at,
-        },
-        step,
-        debugId,
-      },
-      { status: 200 }
-    );
 
   } catch (error: any) {
-    console.error('[ADMIN MERCHANTS PATCH] Unexpected error:', {
-      debugId,
-      step,
-      error: {
-        name: error?.name,
-        message: error?.message,
-        stack: error?.stack?.substring(0, 500),
-      },
-    });
-
-    return NextResponse.json<ApiResponse>(
-      {
-        ok: false,
-        error: 'Internal server error',
-        code: 'INTERNAL_ERROR',
-        message: error?.message || 'An unexpected error occurred',
-        step,
-        debugId,
-      },
+      return NextResponse.json<ApiResponse>(
+      { ok: false, error: 'Internal Error', code: 'INTERNAL_ERROR', message: error.message, step },
       { status: 500 }
     );
   }
-}
+});

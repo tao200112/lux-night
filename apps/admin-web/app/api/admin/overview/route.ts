@@ -2,300 +2,314 @@
  * GET /api/admin/overview
  * Admin Dashboard Overview API
  * 返回 Dashboard KPI、趋势、Top Merchants、按地区订单等
+ * 
+ * Fixed:
+ * 1. Uses amount_cents instead of total_cents.
+ * 2. Status filter: paid, fulfilled, completed.
+ * 3. Decoupled Aggregation (no inner joins that filter out unlinked orders).
  */
 
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { handlerWrapper, requireAdmin, withTimeout, type ApiResponse } from '@/lib/admin/api';
 
-export async function GET() {
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const TIMEOUT_MS = 15000;
+
+export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
+  let step = 'init';
+
   try {
-    const supabase = await createClient();
-    
-    // 检查 Admin 权限
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json(
-        { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
-        { status: 401 }
-      );
+    // STEP 1: Auth Check
+    step = 'auth_check';
+    const authResult = await withTimeout(
+      requireAdmin(request),
+      TIMEOUT_MS,
+      'requireAdmin'
+    );
+
+    if ('status' in authResult) {
+      return authResult.response;
     }
-    
-    const { data: isAdmin } = await supabase.rpc('is_admin');
-    if (!isAdmin) {
-      return NextResponse.json(
-        { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
-        { status: 403 }
-      );
-    }
-    
-    // 计算时间范围（最近 30 天）
+
+    const { adminClient } = authResult;
+    step = 'auth_ok';
+
+    // Calculate Dates
     const now = new Date();
+    // Start of Today
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(now);
-    todayEnd.setHours(23, 59, 59, 999);
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    
-    // 1. Total Revenue (最近 30 天)
-    const { data: revenueData, error: revenueError } = await supabase
-      .from('orders')
-      .select('total_cents, status')
-      .gte('created_at', thirtyDaysAgo.toISOString())
-      .in('status', ['completed', 'fulfilled', 'paid']); // Support multiple success statuses
-    
-    const totalRevenue = revenueData?.reduce((sum, order) => sum + (order.total_cents || 0), 0) || 0;
-    const netRevenue = Math.round(totalRevenue * 0.79); // 假设平台抽成 21%
-    
-    // 2. Orders Today
-    const { count: ordersToday, error: ordersError } = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', todayStart.toISOString())
-      .lte('created_at', todayEnd.toISOString());
-    
-    // 3. Total Merchants
-    const { count: totalMerchants, error: merchantsError } = await supabase
-      .from('merchants')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
-    
-    // 4. Active Events (published)
-    const { count: activeEvents, error: eventsError } = await supabase
-      .from('events_v2')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
-      // .gte('end_at', new Date().toISOString()); // V2 events are continuous/weekly, so validity_end_date check maybe?
-      // For now, just active is fine.
 
-    // 5. Tickets Redeemed Today
-    const { count: ticketsRedeemed, error: ticketsError } = await supabase
-      .from('checkins')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', todayStart.toISOString());
+    // 30 Days Ago
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    // 60 Days Ago (for trend comparison)
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    // STEP 2: Fetch Orders (Raw) for last 60 days
+    // We fetch a bit more data to handle trends and multiple stats in one go if possible, 
+    // or we can make parallel queries. Given the volume might be 100s or 1000s, fetching ID/Amount/Status/Date is efficient.
+    step = 'fetch_orders';
     
-    // 6. Orders by Region (最近 30 天)
-    // Note: Assuming orders.event_id links to events_v2 logical ID.
-    // If not, this join might fail if no FK exists. 
-    // We try 'events_v2'.
-    const { data: ordersByRegion, error: regionError } = await supabase
+    const { data: allOrders, error: ordersError } = await adminClient
       .from('orders')
-      .select(`
-        id,
-        events_v2!inner(
-          merchants!inner(
-             region_id,
-             regions!inner(name, state, country)
-          )
-        )
-      `)
-      .gte('created_at', thirtyDaysAgo.toISOString())
-      .eq('status', 'completed');
-    
-    // 聚合按地区统计
-    const regionStats: Record<string, { name: string; count: number; percentage: number }> = {};
-    const totalOrders = ordersByRegion?.length || 0;
-    
-    ordersByRegion?.forEach((order: any) => {
-      // Structure: order.events_v2.merchants.regions
-      const eventData = Array.isArray(order.events_v2) ? order.events_v2[0] : order.events_v2;
-      const merchant = eventData?.merchants;
-      const regionId = merchant?.region_id;
-      const regionData = merchant?.regions;
-      
-      const regionName = regionData?.name || 'Unknown';
-      
-      if (!regionStats[regionId]) {
-        regionStats[regionId] = {
-          name: regionName,
-          count: 0,
-          percentage: 0,
-        };
-      }
-      regionStats[regionId].count++;
+      .select('id, amount_cents, status, created_at, event_v2_id')
+      .gte('created_at', sixtyDaysAgo.toISOString())
+      .in('status', ['paid', 'fulfilled', 'completed']); // Strict status filter
+
+    if (ordersError) {
+      throw new Error(`Orders query failed: ${ordersError.message}`);
+    }
+
+    const orders = allOrders || [];
+
+    // Filter subsets in memory
+    const recentOrders = orders.filter((o: any) => new Date(o.created_at) >= thirtyDaysAgo);
+    const previousOrders = orders.filter((o: any) => {
+        const d = new Date(o.created_at);
+        return d >= sixtyDaysAgo && d < thirtyDaysAgo;
     });
+
+    // Subsets for Today
+    const todayOrders = recentOrders.filter((o: any) => new Date(o.created_at) >= todayStart);
     
-    // 计算百分比
-    Object.keys(regionStats).forEach((regionId) => {
-      regionStats[regionId].percentage = totalOrders > 0
-        ? Math.round((regionStats[regionId].count / totalOrders) * 100)
-        : 0;
+    // Previous Period (Yesterday) - simplified comparison
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayEnd = new Date(todayStart);
+    yesterdayEnd.setMilliseconds(-1);
+    
+    const yesterdayOrders = orders.filter((o: any) => {
+        const d = new Date(o.created_at);
+        return d >= yesterdayStart && d <= yesterdayEnd;
     });
+
+    // STEP 3: KPIs Calculation
+    step = 'calc_kpis';
     
-    // 7. Top Merchants (按订单数，最近 30 天)
-    const { data: topMerchants, error: topMerchantsError } = await supabase
-      .from('orders')
-      .select(`
-        events_v2!inner(
-          merchant_id,
-          merchants!inner(name)
-        )
-      `)
-      .gte('created_at', thirtyDaysAgo.toISOString())
-      .eq('status', 'completed')
-      .limit(100);
+    // 1. Revenue
+    const totalRevenue = recentOrders.reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);
+    const previousRevenue = previousOrders.reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);
     
-    // 聚合商户统计
+    const netRevenue = Math.round(totalRevenue * 0.79); // 21% take assumption
+    const previousNetRevenue = Math.round(previousRevenue * 0.79);
+
+    // 2. Orders Count
+    const ordersCount = todayOrders.length;
+    const previousOrdersCount = yesterdayOrders.length;
+
+    // 3. Trends
+    const calculateTrend = (current: number, previous: number) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return Math.round(((current - previous) / previous) * 100);
+    };
+
+    const revenueTrend = calculateTrend(totalRevenue, previousRevenue);
+    const netRevenueTrend = calculateTrend(netRevenue, previousNetRevenue);
+    const ordersTrend = calculateTrend(ordersCount, previousOrdersCount);
+
+    // STEP 4: Fetch Metadata for Aggregations (Events, Merchants, Regions)
+    step = 'fetch_metadata';
+
+    const eventIds = [...new Set(recentOrders.map((o: any) => o.event_v2_id).filter(Boolean))];
+    
+    // 4a. Fetch Events V2
+    const { data: events, error: eventsError } = await adminClient
+      .from('events_v2')
+      .select('id, title, merchant_id')
+      .in('id', eventIds);
+    
+    if (eventsError) throw eventsError;
+
+    const eventsList = events || [];
+    const eventMap = eventsList.reduce((acc: any, e: any) => { acc[e.id] = e; return acc; }, {});
+
+    // 4b. Fetch Merchants & Regions
+    const merchantIds = [...new Set(eventsList.map((e: any) => e.merchant_id).filter(Boolean))];
+    const { data: merchants, error: merchantsError } = await adminClient
+      .from('merchants')
+      .select('id, name, region_id, regions(id, name)')
+      .in('id', merchantIds);
+
+    if (merchantsError) throw merchantsError;
+
+    const merchantsList = merchants || [];
+    const merchantMap = merchantsList.reduce((acc: any, m: any) => { acc[m.id] = m; return acc; }, {});
+
+    // STEP 5: Complex Aggregations
+    step = 'aggregations';
+
+    // 5a. Orders by Region
+    const regionStats: Record<string, { name: string; count: number }> = {};
+    let unlinkedOrdersCount = 0;
+
+    recentOrders.forEach((order: any) => {
+        const eventId = order.event_v2_id;
+        if (!eventId) {
+            unlinkedOrdersCount++;
+            return;
+        }
+
+        const event = eventMap[eventId];
+        const merchant = event ? merchantMap[event.merchant_id] : null;
+        const region = merchant ? merchant.regions : null; // Access nested region
+
+        if (region) {
+            if (!regionStats[region.id]) {
+                regionStats[region.id] = { name: region.name || 'Unknown Region', count: 0 };
+            }
+            regionStats[region.id].count++;
+        } else {
+             // Count as Unlinked/Unknown Region
+             if (!regionStats['unknown']) {
+                 regionStats['unknown'] = { name: 'Unknown Region', count: 0 };
+             }
+             regionStats['unknown'].count++;
+        }
+    });
+
+    const ordersByRegion = Object.values(regionStats).sort((a, b) => b.count - a.count);
+
+    // 5b. Top Merchants
     const merchantStats: Record<string, { name: string; count: number }> = {};
     
-    topMerchants?.forEach((order: any) => {
-      const event = Array.isArray(order.events_v2) ? order.events_v2[0] : order.events_v2;
-      const merchantId = event?.merchant_id;
-      const merchantName = event?.merchants?.name || 'Unknown';
-      
-      if (!merchantStats[merchantId]) {
-        merchantStats[merchantId] = { name: merchantName, count: 0 };
-      }
-      merchantStats[merchantId].count++;
+    recentOrders.forEach((order: any) => {
+        const eventId = order.event_v2_id;
+        if (!eventId) return;
+
+        const event = eventMap[eventId];
+        const merchant = event ? merchantMap[event.merchant_id] : null;
+
+        if (merchant) {
+             if (!merchantStats[merchant.id]) {
+                 merchantStats[merchant.id] = { name: merchant.name, count: 0 };
+             }
+             merchantStats[merchant.id].count++;
+        }
     });
-    
-    // 转换为数组并排序
-    const topMerchantsList = Object.entries(merchantStats)
-      .map(([id, stats]) => ({ id, ...stats }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-    
-    // 8. Revenue Trend (最近 7 天，按天统计)
-    const revenueTrend: Array<{ date: string; revenue: number }> = [];
+
+    const topMerchants = Object.entries(merchantStats)
+        .map(([id, stats]) => ({ id, ...stats }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    // 5c. Revenue Trend (Daily for last 7 days)
+    const revenueTrendData: { date: string; revenue: number }[] = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
-      
-      const { data: dayOrders } = await supabase
-        .from('orders')
-        .select('total_cents')
-        .gte('created_at', dayStart.toISOString())
-        .lte('created_at', dayEnd.toISOString())
-        .eq('status', 'completed');
-      
-      const dayRevenue = dayOrders?.reduce((sum, order) => sum + (order.total_cents || 0), 0) || 0;
-      
-      revenueTrend.push({
-        date: dayStart.toISOString().split('T')[0],
-        revenue: dayRevenue,
-      });
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        // Filter orders for this day (local time approx by UTC date string match for simplicity, or strict date range)
+        // Using string match on created_at is safer for simple buckets
+        const dayRevenue = recentOrders
+            .filter((o: any) => o.created_at.startsWith(dateStr))
+            .reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);
+        
+        revenueTrendData.push({ date: dateStr, revenue: dayRevenue });
     }
-    
-    // 9. Pending Approvals Count
-    const { count: pendingApprovals, error: approvalsError } = await supabase
-      .from('requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
-    
-    // 10. 计算趋势（最近 30 天 vs 前 30 天，修复 NaN% 问题）
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-    
-    // 前 30 天的数据（用于对比）
-    const { data: previousRevenueData } = await supabase
-      .from('orders')
-      .select('total_cents')
-      .gte('created_at', sixtyDaysAgo.toISOString())
-      .lt('created_at', thirtyDaysAgo.toISOString())
-      .eq('status', 'completed');
-    
-    const previousRevenue = previousRevenueData?.reduce((sum, order) => sum + (order.total_cents || 0), 0) || 0;
-    const previousNetRevenue = Math.round(previousRevenue * 0.79);
-    
-    // 昨天的订单（用于对比）
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStart = new Date(yesterday.setHours(0, 0, 0, 0));
-    const yesterdayEnd = new Date(yesterday.setHours(23, 59, 59, 999));
-    
-    const { count: previousOrdersToday } = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', yesterdayStart.toISOString())
-      .lte('created_at', yesterdayEnd.toISOString());
-    
-    // 计算趋势百分比（修复 NaN）
-    const calculateTrend = (current: number, previous: number): number => {
-      if (previous === 0 || isNaN(previous)) {
-        return current > 0 ? 0 : 0; // 如果前值为 0，显示 0% 或 —
-      }
-      const trend = ((current - previous) / previous) * 100;
-      return isNaN(trend) ? 0 : Math.round(trend);
-    };
-    
-    const revenueTrendPercent = calculateTrend(totalRevenue, previousRevenue);
-    const netRevenueTrendPercent = calculateTrend(netRevenue, previousNetRevenue);
-    const ordersTrendPercent = calculateTrend(ordersToday || 0, previousOrdersToday || 0);
-    
-    // 11. Alerts (高退款率等)
-    const alerts: Array<{ type: string; title: string; message: string; severity: 'warning' | 'error' | 'info' }> = [];
-    
-    // 检查高退款率（简化版，实际需要计算退款率）
-    // TODO: 实现退款率计算
-    
-    // 如果有待审批，添加 alert
-    if ((pendingApprovals || 0) > 0) {
-      alerts.push({
-        type: 'pending_approvals',
-        title: 'Pending Approvals',
-        message: `${pendingApprovals} new requests are waiting for verification.`,
-        severity: 'info',
-      });
+
+    // STEP 6: Other Counts (Independent queries)
+    step = 'other_counts';
+
+    const [totalMerchantsRes, activeEventsRes, pendingApprovalsRes, checkinsRes] = await Promise.all([
+        adminClient.from('merchants').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        adminClient.from('events_v2').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        adminClient.from('requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'), // Assuming 'requests' table exists
+        adminClient.from('checkins').select('*', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString())
+    ]);
+
+    const totalMerchants = totalMerchantsRes.count || 0;
+    const activeEvents = activeEventsRes.count || 0;
+    const pendingApprovals = pendingApprovalsRes.count || 0;
+    const ticketsRedeemed = checkinsRes.count || 0;
+
+    // STEP 7: Alerts
+    const alerts = [];
+    if (pendingApprovals > 0) {
+        alerts.push({
+            type: 'pending_approvals',
+            title: 'Pending Approvals',
+            message: `${pendingApprovals} requests waiting.`,
+            severity: 'info'
+        });
     }
-    
-    // 格式化金额（M = million, K = thousand）
+
+    if (unlinkedOrdersCount > 0) {
+        alerts.push({
+            type: 'unlinked_orders',
+            title: 'Data Integrity Warning',
+            message: `Found ${unlinkedOrdersCount} unlinked orders (missing event link).`,
+            severity: 'warning'
+        });
+    }
+
+    // Helper formatter
     const formatCurrency = (cents: number): string => {
       const dollars = cents / 100;
-      if (dollars >= 1000000) {
-        return `$${(dollars / 1000000).toFixed(2)}M`;
-      } else if (dollars >= 1000) {
-        return `$${(dollars / 1000).toFixed(1)}K`;
-      }
+      if (dollars >= 1000000) return `$${(dollars / 1000000).toFixed(2)}M`;
+      if (dollars >= 1000) return `$${(dollars / 1000).toFixed(1)}K`;
       return `$${dollars.toFixed(0)}`;
     };
-    
-    return NextResponse.json({
-      success: true,
+
+    step = 'success';
+    return NextResponse.json<ApiResponse>({
+      ok: true,
       data: {
         kpis: {
           totalRevenue: {
-            value: totalRevenue / 100, // 转换为美元
-            formatted: formatCurrency(totalRevenue),
-            trend: revenueTrendPercent,
+             value: totalRevenue / 100,
+             formatted: formatCurrency(totalRevenue),
+             trend: revenueTrend
           },
           netRevenue: {
-            value: netRevenue / 100,
-            formatted: formatCurrency(netRevenue),
-            trend: netRevenueTrendPercent,
+             value: netRevenue / 100,
+             formatted: formatCurrency(netRevenue),
+             trend: netRevenueTrend
           },
           ordersToday: {
-            value: ordersToday || 0,
-            formatted: (ordersToday || 0).toLocaleString(),
-            trend: ordersTrendPercent,
+              value: ordersCount,
+              formatted: ordersCount.toLocaleString(),
+              trend: ordersTrend
           },
           ticketsRedeemed: {
-            value: ticketsRedeemed || 0,
-            formatted: (ticketsRedeemed || 0) >= 1000 ? `${((ticketsRedeemed || 0) / 1000).toFixed(1)}K` : (ticketsRedeemed || 0).toString(),
-            trend: null, // 无趋势（显示 —）
+              value: ticketsRedeemed,
+              formatted: ticketsRedeemed >= 1000 ? `${(ticketsRedeemed/1000).toFixed(1)}K` : ticketsRedeemed.toString(),
+              trend: null
           },
           totalMerchants: {
-            value: totalMerchants || 0,
-            formatted: (totalMerchants || 0).toLocaleString(),
+              value: totalMerchants,
+              formatted: totalMerchants.toLocaleString()
           },
           activeEvents: {
-            value: activeEvents || 0,
-            formatted: (activeEvents || 0).toLocaleString(),
-          },
+              value: activeEvents,
+              formatted: activeEvents.toLocaleString()
+          }
         },
-        revenueTrend,
-        ordersByRegion: Object.values(regionStats).sort((a, b) => b.count - a.count),
-        topMerchants: topMerchantsList,
+        revenueTrend: revenueTrendData,
+        ordersByRegion,
+        topMerchants,
         alerts,
-        pendingApprovals: pendingApprovals || 0,
+        pendingApprovals,
+        debug: {
+            unlinkedOrdersCount
+        }
       },
+      step
     });
+
   } catch (error: any) {
     console.error('[ADMIN OVERVIEW API] Error:', error);
-    return NextResponse.json(
-      { success: false, code: 'INTERNAL_ERROR', message: error.message },
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error: 'Internal Server Error',
+        code: 'INTERNAL_ERROR',
+        message: error.message || 'Unexpected error',
+        step,
+      },
       { status: 500 }
     );
   }
-}
+});
