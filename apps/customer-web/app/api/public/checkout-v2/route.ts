@@ -312,7 +312,7 @@ export async function POST(req: NextRequest) {
         event_id: eventId,
         event_v2_id: eventId, // Add to metadata too
         merchant_id: event.merchant_id,
-        invite_code: finalInviteCode || undefined,
+        ...(finalInviteCode ? { invite_code: finalInviteCode } : {}),
         version: 'v2'
       },
     });
