@@ -30,7 +30,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
                 id, display_name, status, created_at, 
                 merchant_id, 
                 merchants:merchants(id, name),
-                invites:ambassador_invites(id, code, uses_count, max_uses, is_active)
+                invites:ambassador_invites(id, code, uses_count, max_uses, status)
            `)
            .order('created_at', { ascending: false });
            
@@ -53,7 +53,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
                code: i.code,
                used: i.uses_count,
                max: i.max_uses,
-               active: i.is_active
+               active: i.status === 'active'
            })),
            createdAt: a.created_at
        }));
@@ -108,7 +108,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
                 merchant_id: merchantId,
                 code: defaultCode,
                 max_uses: null, // Unlimited by default
-                is_active: true
+                status: 'active'
             })
             .select()
             .single();

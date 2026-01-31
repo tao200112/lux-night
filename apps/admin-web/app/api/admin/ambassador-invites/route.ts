@@ -38,7 +38,7 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
                 merchant_id: amb.merchant_id,
                 code: code.toUpperCase(),
                 max_uses: maxUses || null,
-                is_active: true
+                status: 'active'
             })
             .select()
             .single();
