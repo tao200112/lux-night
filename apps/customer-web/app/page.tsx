@@ -105,18 +105,44 @@ export default function DiscoverPage() {
       )}
 
       {/* Header: Region + no Bars/Filters */}
-      <header className="sticky top-0 z-40 bg-background-dark/90 backdrop-blur-xl border-b border-white/5">
-        <div className="px-4 py-4">
-          <button
-            onClick={() => setIsRegionOpen(true)}
-            className="group relative flex items-center justify-center gap-2 bg-primary w-full px-5 py-3 rounded-full shadow-[0_0_15px_rgba(223,181,42,0.3)] active:scale-95 transition-transform"
-          >
-            <span className="material-symbols-outlined text-background-dark text-[20px]">location_on</span>
-            <span className="text-background-dark font-bold text-sm tracking-wide uppercase">
-              {region ? region.name : 'Choose your area'}
-            </span>
-            <span className="material-symbols-outlined text-background-dark text-[18px]">expand_more</span>
-          </button>
+      {/* Header: New Night UI */}
+      <header className="sticky top-0 z-50 flex flex-col w-full bg-[#050505]/95 backdrop-blur-md pb-4 pt-safe-top border-b border-white/5">
+        <div className="h-2 w-full"></div>
+        <div className="flex items-center justify-between px-6 pt-4 pb-2">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8A7E5E] mb-1">Current Location</span>
+            <button 
+              onClick={() => setIsRegionOpen(true)}
+              className="group flex items-center gap-2 bg-transparent text-left transition-opacity active:opacity-70"
+            >
+              <span className="text-2xl font-light tracking-tight text-white">
+                {region ? region.name : 'Select Area'}
+              </span>
+              <span className="material-symbols-outlined text-[#C5A028] text-[20px] transition-transform group-active:rotate-180">expand_more</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-4">
+            <button className="flex items-center justify-center text-white transition-colors hover:text-[#D4AF37]">
+              <span className="material-symbols-outlined text-[24px] font-light">search</span>
+            </button>
+            <button 
+              onClick={() => router.push('/profile')}
+              className="relative h-8 w-8 rounded-full border border-white/10 active:scale-[0.96] transition-transform duration-150 ease-out"
+            >
+               <div className="absolute inset-0 overflow-hidden rounded-full">
+                  {user?.user_metadata?.avatar_url ? (
+                    <img src={user.user_metadata.avatar_url} alt="Profile" className="h-full w-full object-cover opacity-90" />
+                  ) : (
+                    <div className="h-full w-full bg-zinc-800 flex items-center justify-center">
+                       <span className="material-symbols-outlined text-[16px] text-white/50">person</span>
+                    </div>
+                  )}
+               </div>
+               <div className="absolute -bottom-1 -right-1 z-10 flex items-center justify-center rounded-full bg-black">
+                  <span className="material-symbols-outlined text-[14px] text-[#8A7E5E]/80">settings</span>
+               </div>
+            </button>
+          </div>
         </div>
       </header>
 

@@ -24,14 +24,14 @@ export default function EventGlassCard({ event }: { event: EventWithVenue }) {
   return (
     <Link
       href={`/events-v2/${event.id}`}
-      className="flex gap-3 p-2 rounded-lg w-full
-        bg-[#1A1A1A] border border-white/5
-        active:scale-[0.99] transition-transform duration-200"
+      className="group flex gap-3 p-3 rounded-lg w-full
+        bg-[#0A0A0A] border border-[#D4AF37]/20
+        hover:border-[#D4AF37]/40 active:scale-[0.99] transition-all duration-300"
     >
-      {/* Poster: Landscape ratio (3:2 approx), compact */}
-      <div className="w-[100px] h-[66px] shrink-0 rounded-md overflow-hidden bg-white/5 relative">
+      {/* Poster: Portrait ratio 3:4 */}
+      <div className="w-[60px] h-[80px] shrink-0 rounded overflow-hidden bg-gray-900 shadow-lg relative">
         {event.poster_url ? (
-          <img src={event.poster_url} alt="" className="w-full h-full object-cover" />
+          <img src={event.poster_url} alt="" className="w-full h-full object-cover opacity-90 transition-opacity group-hover:opacity-100" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-zinc-800">
             <span className="material-symbols-outlined text-white/20 text-xl">event</span>
@@ -39,23 +39,23 @@ export default function EventGlassCard({ event }: { event: EventWithVenue }) {
         )}
       </div>
 
-      {/* Info: Compact Hierarchy */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+      {/* Info */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center relative z-10 pl-1">
         
         {/* Title */}
-        <h4 className="text-white font-semibold text-[14px] leading-tight truncate">
+        <h3 className="text-white font-semibold text-base leading-tight truncate mb-1.5">
           {event.title}
-        </h4>
+        </h3>
 
-        {/* Date & Time */}
-        <p className="text-[rgb(212,175,55)] text-[12px] font-medium leading-none mt-0.5">
-          {formatTime(event.start_at)}
-        </p>
-
-        {/* Venue / Location */}
-        <p className="text-zinc-500 text-[11px] truncate leading-none mt-1">
-          {locationText}
-        </p>
+        {/* Date & Time and Venue */}
+        <div className="flex flex-col gap-0.5">
+          <p className="text-[#D4AF37] text-sm font-medium">
+            {formatTime(event.start_at)}
+          </p>
+          <p className="text-gray-400 text-xs font-light truncate">
+            {locationText}
+          </p>
+        </div>
       </div>
     </Link>
   );
