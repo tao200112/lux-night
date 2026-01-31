@@ -53,6 +53,27 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
       .catch(() => {});
   }, [token]);
 
+  const [isOnline, setIsOnline] = useState(true);
+  const resetTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  // Connectivity Monitoring
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsOnline(navigator.onLine);
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   // Helper to format window
   const formatTicketWindow = (start?: string, end?: string) => {
       if (!start || !end) return 'Check details';
@@ -68,68 +89,111 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
   };
 
   const handleTap = () => {
-    if (redeemed || submitting) return;
+    // 1. Basic Guards
+    if (redeemed || submitting || !isOnline) return;
+
+    // 2. Reset Timer Logic (2.0s window)
+    if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+    }
+    resetTimerRef.current = setTimeout(() => {
+        if (!submitting && !redeemed) {
+            setCount(0);
+        }
+    }, 2000);
+
+    // 3. Count Logic
     if (count < 2) {
       setCount((c) => c + 1);
       return;
     }
-    // 3rd tap: submit
+
+    // 4. Submit & Lock
+    if (abortControllerRef.current) {
+        abortControllerRef.current.abort(); // Cancel prev if any (though button disabled)
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setSubmitting(true);
     setError(null);
-    fetch('/api/tickets/redeem', {
+
+    // Timeout Promise
+    const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timed out')), 10000)
+    );
+
+    // Request
+    const request = fetch('/api/tickets/redeem', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, redeem_method: 'tap' }),
-    })
-      .then(async (r) => {
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) {
-          // Status Handling
-          if (r.status === 401 || r.status === 403) {
-             setError('权限不足：仅限工作人员登录后核销');
-             setCount(0);
-             return;
-          }
-          
-          let msg = '核销失败';
-          const code = j.code;
-          
-          switch (code) {
-             case 'TOO_EARLY':
-                msg = `未到核销时间\n有效期: ${formatTicketWindow(j.debugInfo?.startsAt || j.validFrom, j.debugInfo?.endsAt)}`;
-                break;
-             case 'EXPIRED':
-                msg = `票据已过期\n有效期: ${formatTicketWindow(j.debugInfo?.startsAt, j.debugInfo?.endsAt || j.expiredAt)}`;
-                break;
-             case 'LIMIT_REACHED':
-                msg = `核销次数已用完 (${j.redeemedCount}/${j.redeemLimit})`;
-                break;
-             case 'STATUS_INVALID':
-                msg = `票据状态无效 (${j.status})`;
-                break;
-             default:
-                msg = j.message || j.error || `Error: ${r.status}`;
-          }
+      signal: controller.signal
+    });
 
-          // Special case: Limit Reached might return 409 with ticket data
-          if (code === 'LIMIT_REACHED' && j.ticket) {
-             setRedeemed({
-                redeemedAt: j.ticket.redeemed_at,
-                redeemedBy: j.ticket.redeemed_by,
-                already: true,
-                count: j.ticket.redeemed_count,
-                limit: j.ticket.redeem_limit
-             });
-             setError(msg); 
-             return;
-          }
-          
-          setError(msg);
-          setCount(0);
-          return;
+    Promise.race([request, timeout])
+      .then(async (res: any) => {
+        if (controller.signal.aborted) return;
+
+        // Strict Success Check: Must be HTTP OK
+        if (!res.ok) {
+           let j = {};
+           try { j = await res.json(); } catch(e) {}
+           
+           // Auth Error
+           if (res.status === 401 || res.status === 403) {
+             throw new Error('权限不足：仅限工作人员登录后核销');
+           }
+
+           const code = (j as any).code;
+           const debugInfo = (j as any).debugInfo;
+           
+           // Already Redeemed Handling (Map to Success View logic if needed, OR Error)
+           // Requirement: "Show 'Already redeemed' if server says so".
+           // Current logic maps LIMIT_REACHED to Error OR Success-like view.
+           if (code === 'LIMIT_REACHED' && (j as any).ticket) {
+               const t = (j as any).ticket;
+               setRedeemed({
+                   redeemedAt: t.redeemed_at,
+                   redeemedBy: t.redeemed_by,
+                   already: true,
+                   count: t.redeemed_count,
+                   limit: t.redeem_limit
+               });
+               // Do NOT throw error, this is a "valid" terminal state
+               return; 
+           }
+
+           // Other Errors
+           let msg = 'Redemption Failed';
+           switch (code) {
+               case 'TOO_EARLY':
+                  msg = `Too Early to Redeem\nWindow: ${formatTicketWindow(debugInfo?.startsAt, debugInfo?.endsAt)}`;
+                  break;
+               case 'EXPIRED':
+                  msg = `Ticket Expired\nWindow: ${formatTicketWindow(debugInfo?.startsAt, debugInfo?.endsAt)}`;
+                  break;
+               case 'LIMIT_REACHED':
+                  msg = `Limit Reached (${(j as any).redeemedCount}/${(j as any).redeemLimit})`;
+                  break;
+               case 'STATUS_INVALID':
+                  msg = `Invalid Status (${(j as any).status})`;
+                  break;
+               default:
+                  msg = (j as any).message || (j as any).error || `Server Error (${res.status})`;
+           }
+           throw new Error(msg);
         }
 
-        // Success
+        // Response is OK
+        const j = await res.json();
+        
+        // Final Double Check of 'success' flag if API provides it
+        // The API returns ticket object on success.
+        if (!j.ticket && !j.success) {
+            throw new Error('Invalid server response');
+        }
+
         setRedeemed({
           redeemedAt: j.ticket?.redeemed_at || new Date().toISOString(),
           redeemedBy: j.ticket?.redeemed_by,
@@ -138,11 +202,19 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
           limit: j.ticket?.redeem_limit
         });
       })
-      .catch(() => {
-        setError('网络错误，请重试');
-        setCount(0);
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        // Verify we NEVER set Redeemed=true here
+        console.error('Redeem error:', err);
+        setError(err.message || 'Network error. Please try again.');
+        setCount(0); // Reset UI
       })
-      .finally(() => setSubmitting(false));
+      .finally(() => {
+         if (!controller.signal.aborted) {
+             setSubmitting(false);
+             abortControllerRef.current = null;
+         }
+      });
   };
 
   const resetCount = () => {
@@ -193,12 +265,21 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
       </header>
 
       <main className="flex-1 px-5 pb-24">
+        {/* Network Status Banner */}
+        {!isOnline && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+                <span className="material-symbols-outlined text-red-400">wifi_off</span>
+                <p className="text-red-300 text-sm font-bold">You are offline. Network required.</p>
+            </div>
+        )}
+
         {/* (a) Redeem Ticket */}
         <section className="mb-8">
           <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Staff Operation</p>
           
           {!redeemed ? (
             <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
+                !isOnline ? 'bg-[#151515] border-white/5 opacity-50 grayscale' :
                 count === 0 ? 'bg-[#151515] border-[#D4AF37]/30 shadow-none' :
                 count === 1 ? 'bg-[#1A1A1A] border-[#D4AF37]/60 shadow-[0_0_15px_rgba(212,175,55,0.15)]' :
                 'bg-[#221E10] border-[#FFD700]/80 shadow-[0_0_25px_rgba(255,215,0,0.3)]'
@@ -206,16 +287,18 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
               <button
                 onClick={handleTap}
                 onBlur={resetCount}
-                disabled={submitting}
-                className="relative z-10 w-full py-8 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-transform"
+                disabled={submitting || !isOnline}
+                className="relative z-10 w-full py-8 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-transform disabled:active:scale-100 disabled:cursor-not-allowed"
               >
                   {/* Status Text & Button Appearance */}
                   <span className={`text-xl font-bold tracking-wide transition-colors duration-200 ${
+                      !isOnline ? 'text-zinc-500' :
                       count === 2 ? 'text-[#FFD700]' : 
                       count === 1 ? 'text-[#D4AF37]' : 
                       'text-[#8A7E5E]'
                   }`}>
-                      {submitting ? 'PROCESSING...' : 
+                      {!isOnline ? 'NETWORK REQ.' :
+                       submitting ? 'PROCESSING...' : 
                        count === 0 ? 'TAP TO REDEEM' :
                        count === 1 ? 'CONFIRM (1/3)' :
                        'CONFIRM AGAIN (2/3)'}
@@ -224,12 +307,15 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
                   {/* Progress Dots */}
                   <div className="flex items-center gap-3 mt-1">
                       <div className={`w-3 h-3 rounded-full border border-[#D4AF37] transition-all duration-300 ${
+                          !isOnline ? 'border-zinc-700 bg-transparent' :
                           count >= 1 ? 'bg-[#D4AF37] shadow-[0_0_8px_#D4AF37]' : 'bg-transparent opacity-30'
                       }`} />
                       <div className={`w-3 h-3 rounded-full border border-[#D4AF37] transition-all duration-300 ${
+                          !isOnline ? 'border-zinc-700 bg-transparent' :
                           count >= 2 ? 'bg-[#D4AF37] shadow-[0_0_8px_#D4AF37]' : 'bg-transparent opacity-30'
                       }`} />
                       <div className={`w-3 h-3 rounded-full border border-[#D4AF37] transition-all duration-300 ${
+                          !isOnline ? 'border-zinc-700 bg-transparent' :
                           submitting ? 'bg-[#D4AF37] shadow-[0_0_8px_#D4AF37] animate-pulse' : 'bg-transparent opacity-30'
                       }`} />
                   </div>

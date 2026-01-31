@@ -77,15 +77,45 @@ export default function WeekConfigPage() {
   const [days, setDays] = useState<Record<number, DayUI>>({});
   const [weekStartDate, setWeekStartDate] = useState<string>(''); // Store week_start_date
   const [status, setStatus] = useState<'draft' | 'active' | 'temp_closed' | 'archived'>('draft');
+  
+  // Event Info State
+  const [activeTab, setActiveTab] = useState<'tickets' | 'info'>('tickets');
+  const [eventInfo, setEventInfo] = useState({
+    title: '',
+    subtitle: '',
+    description: '',
+    posterUrl: '',
+    venueName: '',
+    venueAddress: ''
+  });
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [infoDirty, setInfoDirty] = useState(false);
 
   // Fetch Config
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await fetch(`/api/admin/events-v2/${eventId}/week`);
-        const json = await res.json();
+        const [weekRes, infoRes] = await Promise.all([
+           fetch(`/api/admin/events-v2/${eventId}/week`),
+           fetch(`/api/admin/events-v2/${eventId}`)
+        ]);
         
-        console.log('[DEBUG] Raw Config:', json);
+        const json = await weekRes.json();
+        const infoJson = await infoRes.json();
+        
+        console.log('[DEBUG] Configs:', { week: json, info: infoJson });
+
+        if (infoJson.event) {
+            const e = infoJson.event;
+            setEventInfo({
+                title: e.title || '',
+                subtitle: e.subtitle || '',
+                description: e.description || '',
+                posterUrl: e.poster_url || '',
+                venueName: e.venue?.name || '',
+                venueAddress: e.venue?.address || ''
+            });
+        }
 
         if (json.week_start_date) {
             setWeekStartDate(json.week_start_date);
@@ -273,6 +303,44 @@ export default function WeekConfigPage() {
 
   // --- Save ---
 
+  const updateInfo = (field: keyof typeof eventInfo, value: string) => {
+      setEventInfo(prev => ({ ...prev, [field]: value }));
+      setInfoDirty(true);
+  };
+
+  const handleSaveInfo = async () => {
+    if (!eventInfo.title.trim()) {
+        alert('Title is required');
+        return;
+    }
+    setSavingInfo(true);
+    try {
+        const res = await fetch(`/api/admin/events-v2/${eventId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: eventInfo.title,
+                subtitle: eventInfo.subtitle,
+                description: eventInfo.description,
+                poster_url: eventInfo.posterUrl,
+                venue_name: eventInfo.venueName,
+                venue_address: eventInfo.venueAddress
+            })
+        });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        
+        setInfoDirty(false);
+        alert('Event Info Saved Successfully!');
+    } catch (err: any) {
+        alert('Failed to save info: ' + err.message);
+    } finally {
+        setSavingInfo(false);
+    }
+  };
+
+  // --- Save ---
+
   const handleSave = async () => {
     // Validation
     let hasEnabledDay = false;
@@ -414,28 +482,143 @@ export default function WeekConfigPage() {
                     )}
                 </div>
              </div>
+             
+             {/* Tabs */}
+             <div className="flex items-center gap-1 mt-3 bg-[#181820] p-1 rounded-lg border border-[#333]">
+                <button 
+                    onClick={() => setActiveTab('tickets')}
+                    className={`text-xs font-bold px-4 py-1.5 rounded-md transition-all ${activeTab === 'tickets' ? 'bg-[#1313ec] text-white shadow-sm' : 'text-[#888] hover:text-white'}`}
+                >
+                    Tickets
+                </button>
+                <button 
+                    onClick={() => setActiveTab('info')}
+                    className={`text-xs font-bold px-4 py-1.5 rounded-md transition-all ${activeTab === 'info' ? 'bg-[#1313ec] text-white shadow-sm' : 'text-[#888] hover:text-white'}`}
+                >
+                    Event Info
+                </button>
+             </div>
           </div>
 
           <div className="flex flex-col items-end">
-             {isDirty && <span className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-1 block">Unsaved changes</span>}
-             <button
-                onClick={handleSave}
-                disabled={saving || !isDirty}
-                className={`bg-[#1313ec] hover:bg-[#1313ec]/90 text-white font-bold py-1.5 px-4 rounded transition-all flex items-center gap-2 ${saving || !isDirty ? 'opacity-70 cursor-not-allowed' : ''}`}
-             >
-                {saving ? 'Saving...' : 'Save Changes'}
-             </button>
+             {(activeTab === 'tickets' ? isDirty : infoDirty) && <span className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-1 block">Unsaved changes</span>}
+             {activeTab === 'tickets' ? (
+                 <button
+                    onClick={handleSave}
+                    disabled={saving || !isDirty}
+                    className={`bg-[#1313ec] hover:bg-[#1313ec]/90 text-white font-bold py-1.5 px-4 rounded transition-all flex items-center gap-2 ${saving || !isDirty ? 'opacity-70 cursor-not-allowed' : ''}`}
+                 >
+                    {saving ? 'Saving...' : 'Save Tickets'}
+                 </button>
+             ) : (
+                 <button
+                    onClick={handleSaveInfo}
+                    disabled={savingInfo || !infoDirty}
+                    className={`bg-[#1313ec] hover:bg-[#1313ec]/90 text-white font-bold py-1.5 px-4 rounded transition-all flex items-center gap-2 ${savingInfo || !infoDirty ? 'opacity-70 cursor-not-allowed' : ''}`}
+                 >
+                    {savingInfo ? 'Saving...' : 'Save Event Info'}
+                 </button>
+             )}
           </div>
         </div>
       </div>
 
-       <div className="p-4 max-w-2xl mx-auto space-y-4">
-        {/* Helper Actions */}
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-            {/* Can add Copy/Paste logic here later */}
-        </div>
-  
-        {DAY_ORDER.map((dow) => {
+       <div className="p-4 max-w-2xl mx-auto">
+         
+         {activeTab === 'info' && (
+             <div className="bg-[#15151A] rounded-xl border border-[#333] p-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  {/* Title & Subtitle */}
+                  <div className="grid grid-cols-1 gap-4">
+                      <div>
+                          <label className="text-xs text-[#888] uppercase font-bold block mb-1.5">Event Title <span className="text-red-400">*</span></label>
+                          <input 
+                              type="text" 
+                              value={eventInfo.title}
+                              onChange={(e) => updateInfo('title', e.target.value)}
+                              className="w-full bg-[#0A0A0E] border border-[#333] rounded-lg px-3 py-2 text-white placeholder-white/20 focus:border-[#1313ec] focus:outline-none transition-colors"
+                              placeholder="e.g. Friday Night Magic"
+                          />
+                      </div>
+                      <div>
+                          <label className="text-xs text-[#888] uppercase font-bold block mb-1.5">Subtitle</label>
+                          <input 
+                              type="text" 
+                              value={eventInfo.subtitle}
+                              onChange={(e) => updateInfo('subtitle', e.target.value)}
+                              className="w-full bg-[#0A0A0E] border border-[#333] rounded-lg px-3 py-2 text-white placeholder-white/20 focus:border-[#1313ec] focus:outline-none transition-colors"
+                              placeholder="e.g. Special Guest DJ"
+                          />
+                      </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                      <label className="text-xs text-[#888] uppercase font-bold block mb-1.5">Description</label>
+                      <textarea 
+                          value={eventInfo.description}
+                          onChange={(e) => updateInfo('description', e.target.value)}
+                          rows={4}
+                          className="w-full bg-[#0A0A0E] border border-[#333] rounded-lg px-3 py-2 text-white placeholder-white/20 focus:border-[#1313ec] focus:outline-none transition-colors resize-none"
+                          placeholder="Event details..."
+                      />
+                  </div>
+
+                  {/* Poster */}
+                  <div>
+                      <label className="text-xs text-[#888] uppercase font-bold block mb-1.5">Poster URL</label>
+                      <div className="flex gap-4 items-start">
+                          <input 
+                              type="text" 
+                              value={eventInfo.posterUrl}
+                              onChange={(e) => updateInfo('posterUrl', e.target.value)}
+                              className="flex-1 bg-[#0A0A0E] border border-[#333] rounded-lg px-3 py-2 text-white placeholder-white/20 focus:border-[#1313ec] focus:outline-none transition-colors font-mono text-xs"
+                              placeholder="https://..."
+                          />
+                          {eventInfo.posterUrl && (
+                              <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-[#333] bg-black">
+                                  <img src={eventInfo.posterUrl} alt="Poster" className="w-full h-full object-cover" />
+                              </div>
+                          )}
+                      </div>
+                  </div>
+
+                  {/* Venue Info */}
+                  <div className="pt-4 border-t border-[#333]">
+                      <h4 className="text-sm font-bold text-white mb-4">Venue Override</h4>
+                      <div className="grid grid-cols-1 gap-4">
+                          <div>
+                              <label className="text-xs text-[#888] uppercase font-bold block mb-1.5">Venue Name</label>
+                              <input 
+                                  type="text" 
+                                  value={eventInfo.venueName}
+                                  onChange={(e) => updateInfo('venueName', e.target.value)}
+                                  className="w-full bg-[#0A0A0E] border border-[#333] rounded-lg px-3 py-2 text-white placeholder-white/20 focus:border-[#1313ec] focus:outline-none transition-colors"
+                                  placeholder="Leave blank to use default"
+                              />
+                          </div>
+                          <div>
+                              <label className="text-xs text-[#888] uppercase font-bold block mb-1.5">Address</label>
+                              <input 
+                                  type="text" 
+                                  value={eventInfo.venueAddress}
+                                  onChange={(e) => updateInfo('venueAddress', e.target.value)}
+                                  className="w-full bg-[#0A0A0E] border border-[#333] rounded-lg px-3 py-2 text-white placeholder-white/20 focus:border-[#1313ec] focus:outline-none transition-colors"
+                                  placeholder="Leave blank to use default"
+                              />
+                          </div>
+                      </div>
+                  </div>
+             </div>
+         )}
+        
+        {activeTab === 'tickets' && (
+         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Helper Actions */}
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                {/* Can add Copy/Paste logic here later */}
+            </div>
+    
+            {DAY_ORDER.map((dow) => {
           const day = days[dow];
           if (!day) return null; // Safety
           
@@ -614,6 +797,8 @@ export default function WeekConfigPage() {
             </div>
           );
         })}
+          </div>
+       )}
        </div>
     </div>
   );

@@ -30,6 +30,11 @@ export async function GET(
           id,
           name,
           region_id
+        ),
+        venue:venues!events_v2_venue_id_fkey (
+          id,
+          name,
+          address
         )
       `)
       .eq('id', id)
@@ -65,12 +70,13 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { title, description, poster_url, status } = body;
+    const { title, subtitle, description, poster_url, status, venue_name, venue_address } = body;
 
     const supabase = createAdminClient();
 
     const updates: any = {};
     if (title !== undefined) updates.title = title;
+    if (subtitle !== undefined) updates.subtitle = subtitle;
     if (description !== undefined) updates.description = description;
     if (poster_url !== undefined) updates.poster_url = poster_url;
     if (status !== undefined) updates.status = status;
@@ -79,7 +85,7 @@ export async function PUT(
       .from('events_v2')
       .update(updates)
       .eq('id', id)
-      .select()
+      .select('*, venue_id')
       .single();
 
     if (error) {
@@ -88,6 +94,23 @@ export async function PUT(
         { error: 'Failed to update event', details: error.message },
         { status: 500 }
       );
+    }
+
+    // Update Venue if needed
+    if ((venue_name !== undefined || venue_address !== undefined) && event.venue_id) {
+       const venueUpdates: any = {};
+       if (venue_name !== undefined) venueUpdates.name = venue_name;
+       if (venue_address !== undefined) venueUpdates.address = venue_address;
+       
+       const { error: venueError } = await supabase
+         .from('venues')
+         .update(venueUpdates)
+         .eq('id', event.venue_id);
+         
+       if (venueError) {
+           console.warn('Failed to update venue:', venueError);
+           // Not blocking event update success
+       }
     }
 
     return NextResponse.json({ event });
