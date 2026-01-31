@@ -75,6 +75,12 @@ export default function CustomerEventV2DetailPage() {
   const [weekConfig, setWeekConfig] = useState<WeekConfig | null>(null);
   const [selections, setSelections] = useState<Record<string, number>>({}); // ticketTypeId -> quantity
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
+  
+  // Invite Code State
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteStatus, setInviteStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [validatedInviteCode, setValidatedInviteCode] = useState('');
 
   useEffect(() => {
     if (eventId) {
@@ -135,6 +141,39 @@ export default function CustomerEventV2DetailPage() {
       }, 0)
     : 0;
 
+  const validateInviteCode = async () => {
+    if (!inviteCode.trim()) {
+      setInviteStatus('idle');
+      setInviteMessage('');
+      setValidatedInviteCode('');
+      return;
+    }
+
+    setInviteStatus('validating');
+    setInviteMessage('');
+
+    try {
+      const res = await fetch(
+        `/api/public/invites/validate?code=${encodeURIComponent(inviteCode)}&eventId=${eventId}`
+      );
+      const data = await res.json();
+
+      if (data.ok && data.valid) {
+        setInviteStatus('valid');
+        setValidatedInviteCode(data.code);
+        setInviteMessage(`✓ ${data.ambassadorName || 'Valid code'}`);
+      } else {
+        setInviteStatus('invalid');
+        setValidatedInviteCode('');
+        setInviteMessage(data.message || 'Invalid code');
+      }
+    } catch (e) {
+      setInviteStatus('invalid');
+      setValidatedInviteCode('');
+      setInviteMessage('Validation failed');
+    }
+  };
+
   const handleCheckout = async () => {
     if (!event || !weekConfig || totalQuantity === 0) return;
 
@@ -177,6 +216,7 @@ export default function CustomerEventV2DetailPage() {
           eventId: event.id,
           eventWeekId: weekConfig.event_week_id,
           items,
+          inviteCode: validatedInviteCode || undefined,
         }),
       });
 
@@ -401,7 +441,68 @@ export default function CustomerEventV2DetailPage() {
       {/* Checkout Footer */}
       {totalQuantity > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-background-dark/95 backdrop-blur-xl border-t border-white/5 p-4 max-w-md mx-auto">
-          <div className="flex items-center justify-between mb-3">
+          {/* Invite Code Section */}
+          <div className="mb-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="material-symbols-outlined text-[16px] text-zinc-400">confirmation_number</span>
+              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Invite Code (Optional)
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  onBlur={validateInviteCode}
+                  placeholder="Enter code"
+                  disabled={inviteStatus === 'validating'}
+                  className={`w-full px-3 py-2.5 rounded-lg bg-white/5 border text-sm font-mono uppercase transition-all focus:outline-none focus:ring-2 ${
+                    inviteStatus === 'valid'
+                      ? 'border-green-500/50 focus:ring-green-500/20 text-green-400'
+                      : inviteStatus === 'invalid'
+                      ? 'border-red-500/50 focus:ring-red-500/20 text-red-400'
+                      : 'border-white/10 focus:ring-primary/20 text-white'
+                  }`}
+                />
+                {inviteStatus === 'validating' && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                  </div>
+                )}
+                {inviteStatus === 'valid' && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <span className="material-symbols-outlined text-green-500 text-[20px]">check_circle</span>
+                  </div>
+                )}
+                {inviteStatus === 'invalid' && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <span className="material-symbols-outlined text-red-500 text-[20px]">cancel</span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={validateInviteCode}
+                disabled={!inviteCode.trim() || inviteStatus === 'validating'}
+                className="px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-sm font-medium transition-all active:scale-95"
+              >
+                Apply
+              </button>
+            </div>
+            {inviteMessage && (
+              <div
+                className={`mt-1.5 text-xs ${
+                  inviteStatus === 'valid' ? 'text-green-400' : 'text-red-400'
+                }`}
+              >
+                {inviteMessage}
+              </div>
+            )}
+          </div>
+
+          {/* Price and Checkout Button */}
+          <div className="flex items-center justify-between">
             <div>
               <div className="text-sm text-gray-400">
                 {totalQuantity} {totalQuantity === 1 ? 'ticket' : 'tickets'}
