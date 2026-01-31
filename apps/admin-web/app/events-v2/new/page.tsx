@@ -28,15 +28,16 @@ function NewEventForm() {
   
   // Data State
   const [title, setTitle] = useState('');
+  const [subtitle, setSubtitle] = useState('');
   const [description, setDescription] = useState('');
   const [posterUrl, setPosterUrl] = useState('');
   const [status, setStatus] = useState<'draft' | 'active' | 'paused' | 'archived'>('draft');
+  const [venueName, setVenueName] = useState('');
+  const [venueAddress, setVenueAddress] = useState('');
   
   // Context Data
   const [merchantData, setMerchantData] = useState<{
     name: string;
-    venueName: string;
-    venueAddress: string;
     timezone: string;
   } | null>(null);
 
@@ -61,13 +62,18 @@ function NewEventForm() {
 
         const m = json.data;
         const venue = m.venues?.[0]; 
-        
+
         setMerchantData({
           name: m.name,
-          venueName: venue?.name || 'Main Venue',
-          venueAddress: formatAddress(venue),
           timezone: 'America/New_York',
         });
+        
+        // Pre-fill venue info from merchant defaut
+        if (venue) {
+           setVenueName(venue.name || '');
+           setVenueAddress(formatAddress(venue));
+        }
+
       } catch (err) {
         console.error('Error fetching merchant:', err);
       } finally {
@@ -150,8 +156,11 @@ function NewEventForm() {
         body: JSON.stringify({
           merchant_id: merchantId,
           title,
+          subtitle,
           description,
           poster_url: posterUrl,
+          venue_name: venueName,
+          address: venueAddress,
           status,
         }),
       });
@@ -279,6 +288,17 @@ function NewEventForm() {
           </div>
 
           <div className="space-y-1.5">
+            <label className="text-xs font-medium text-[#9d9db9] uppercase tracking-wide ml-1">Subtitle</label>
+            <input 
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              className="w-full bg-[#111111] border border-[#262626] rounded-lg px-4 py-3.5 text-white placeholder-[#444444] focus:outline-none focus:border-[#1313ec] focus:ring-1 focus:ring-[#1313ec] transition-all text-base" 
+              placeholder="e.g. Special Guest DJ" 
+              type="text"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <label className="text-xs font-medium text-[#9d9db9] uppercase tracking-wide ml-1">Description</label>
             <textarea 
               value={description}
@@ -290,6 +310,32 @@ function NewEventForm() {
           </div>
 
 
+        </section>
+
+        <section className="space-y-5">
+            <h3 className="text-sm font-semibold text-white/90">Venue Details</h3>
+            <div className="grid grid-cols-1 gap-4">
+                 <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-[#9d9db9] uppercase tracking-wide ml-1">Venue Name</label>
+                    <input 
+                      value={venueName}
+                      onChange={(e) => setVenueName(e.target.value)}
+                      className="w-full bg-[#111111] border border-[#262626] rounded-lg px-4 py-3.5 text-white placeholder-[#444444] focus:outline-none focus:border-[#1313ec] focus:ring-1 focus:ring-[#1313ec] transition-all text-base" 
+                      placeholder="e.g. Club Space" 
+                      type="text"
+                    />
+                 </div>
+                 <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-[#9d9db9] uppercase tracking-wide ml-1">Address</label>
+                    <input 
+                      value={venueAddress}
+                      onChange={(e) => setVenueAddress(e.target.value)}
+                      className="w-full bg-[#111111] border border-[#262626] rounded-lg px-4 py-3.5 text-white placeholder-[#444444] focus:outline-none focus:border-[#1313ec] focus:ring-1 focus:ring-[#1313ec] transition-all text-base" 
+                      placeholder="e.g. 34 NE 11th St" 
+                      type="text"
+                    />
+                 </div>
+            </div>
         </section>
 
         <section className="pt-2">
@@ -309,13 +355,6 @@ function NewEventForm() {
                 <div className="flex flex-col">
                   <span className="text-[10px] text-[#666666] uppercase tracking-wider font-mono mb-0.5">Merchant</span>
                   <span className="text-sm text-[#cccccc] font-mono truncate">{merchantData.name}</span>
-                </div>
-                <div className="h-[1px] bg-[#222222] w-full"></div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-[#666666] uppercase tracking-wider font-mono mb-0.5">Venue Location</span>
-                  <span className="text-sm text-[#cccccc] font-mono truncate">
-                    {merchantData.venueAddress}
-                  </span>
                 </div>
                 <div className="h-[1px] bg-[#222222] w-full"></div>
                 <div className="flex flex-col">

@@ -100,15 +100,19 @@ export async function PUT(
   
   try {
     body = await req.json();
-    const { title, description, poster_url, status, venue_name, venue_address } = body;
+    const { title, subtitle, description, poster_url, status, venue_name, venue_address } = body;
     const adminSupabase = createAdminClient();
 
     // 1. Update Event V2 (Critical)
     const updates: any = {};
     if (title !== undefined) updates.title = title;
+    if (subtitle !== undefined) updates.subtitle = subtitle;
     if (description !== undefined) updates.description = description;
     if (poster_url !== undefined) updates.poster_url = poster_url;
     if (status !== undefined) updates.status = status;
+    // Save venue info to event directly (snapshot/override)
+    if (venue_name !== undefined) updates.venue_name = venue_name;
+    if (venue_address !== undefined) updates.address = venue_address;
 
     const { data: event, error } = await adminSupabase
       .from('events_v2')

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { merchant_id, title, description, poster_url, status = 'active' } = body;
+    const { merchant_id, title, subtitle, description, poster_url, status = 'active', venue_name, address } = body;
 
     if (!merchant_id || !title || !poster_url) {
       return NextResponse.json(
@@ -54,8 +54,11 @@ export async function POST(req: NextRequest) {
       .insert({
         merchant_id,
         title,
+        subtitle: subtitle || null,
         description: description || null,
         poster_url,
+        venue_name: venue_name || null,
+        address: address || null,
         status,
         region_id: merchantData.region_id,
         venue_id: defaultVenueId,

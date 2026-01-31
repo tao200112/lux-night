@@ -7,6 +7,7 @@ export interface Event {
   venue_id: string;
   status: 'draft' | 'pending_review' | 'approved' | 'published' | 'rejected' | 'archived';
   title: string;
+  subtitle?: string | null;
   description: string | null;
   poster_url: string | null;
   start_at: string;
@@ -16,6 +17,8 @@ export interface Event {
   publish_at: string | null;
   created_at: string;
   updated_at: string;
+  venue_name?: string | null;
+  address?: string | null;
   venue?: {
     id: string;
     name: string;
@@ -115,19 +118,20 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
     // FK usually returns object
     const r = Array.isArray(merchant?.region) ? merchant.region[0] : merchant?.region;
 
-    const venue = v
-      ? {
-          id: v.id,
-          name: v.name,
-          address: v.address || v.formatted_address,
-          address_line1: v.address_line1,
-          city: v.city,
-          state: v.state,
-          region_id: v.region_id,
-          lat: v.lat,
-          lng: v.lng,
-        }
-      : { id: '', name: 'Venue TBD', address: null };
+    const venueName = row.venue_name || v?.name || 'Venue TBD';
+    const venueAddress = row.address || v?.address || v?.formatted_address || null;
+
+    const venue = {
+          id: v?.id || '',
+          name: venueName,
+          address: venueAddress,
+          address_line1: v?.address_line1,
+          city: v?.city,
+          state: v?.state,
+          region_id: v?.region_id,
+          lat: v?.lat,
+          lng: v?.lng,
+        };
 
     const region = r
       ? {
@@ -141,6 +145,7 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
     return {
       id: row.id,
       title: row.title,
+      subtitle: row.subtitle,
       description: row.description,
       poster_url: row.poster_url,
       status: row.status,
@@ -228,19 +233,20 @@ export async function getEvent(id: string): Promise<EventWithVenue | null> {
   const v = Array.isArray(merchant?.venue) ? merchant.venue[0] : merchant?.venue;
   const r = Array.isArray(merchant?.region) ? merchant.region[0] : merchant?.region;
 
-  const venue = v
-    ? {
-        id: v.id,
-        name: v.name,
-        address: v.address || v.formatted_address,
-        address_line1: v.address_line1,
-        city: v.city,
-        state: v.state,
-        region_id: v.region_id,
-        lat: v.lat,
-        lng: v.lng,
-      }
-    : { id: '', name: 'Venue TBD', address: null };
+  const venueName = data.venue_name || v?.name || 'Venue TBD';
+  const venueAddress = data.address || v?.address || v?.formatted_address || null;
+
+  const venue = {
+        id: v?.id || '',
+        name: venueName,
+        address: venueAddress,
+        address_line1: v?.address_line1,
+        city: v?.city,
+        state: v?.state,
+        region_id: v?.region_id,
+        lat: v?.lat,
+        lng: v?.lng,
+      };
 
   const region = r
     ? {
@@ -254,6 +260,7 @@ export async function getEvent(id: string): Promise<EventWithVenue | null> {
   return {
     id: data.id,
     title: data.title,
+    subtitle: data.subtitle,
     description: data.description,
     poster_url: data.poster_url,
     status: data.status,

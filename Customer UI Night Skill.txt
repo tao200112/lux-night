@@ -1,0 +1,188 @@
+Customer UI Night Skill（强制规范）
+0. 目标与红线（硬性）
+
+目标
+
+仅对 apps/customer-web 进行 UI 微调/重构：布局、间距、字体、颜色、阴影、圆角、动效、组件拆分（仅 UI）。
+
+保持现有交互与功能完整：活动列表、筛选/地区、钱包票券、二维码展示、Drop、Profile/Settings 入口等都要能用。
+
+红线（任何一条踩了就是失败）
+
+❌ 不改 apps/admin-web、apps/internal-web 的任何文件
+
+❌ 不改 API、RPC、SQL、RLS、Stripe、webhook、auth、路由结构、数据模型（types/DTO）
+
+❌ 不改查询逻辑（fetch / supabase query / server action / caching 逻辑）
+
+❌ 不改页面的 URL 与动态路由参数命名（避免再出现 slug mismatch）
+
+❌ 不引入新 UI 框架/重依赖（例如突然上 shadcn 或换导航体系）
+
+1. 改动边界（今晚允许改什么）
+
+✅ 允许改：
+
+className（Tailwind）、CSS variables、globals.css
+
+组件拆分：把页面 JSX 抽成 components/*（只做 UI 展示组件）
+
+纯 UI 状态（hover/active/focus/transition），Skeleton 样式（不改加载逻辑）
+
+图标替换、文案（不影响功能）
+
+导航栏文案与 icon（不改路由逻辑的前提下）
+
+Settings 入口 UI 位置调整（按钮放哪），但点击仍指向原来的设置页面/路由
+
+❌ 禁止改：
+
+任何 data hook / service / server action 的输入输出
+
+任何 middleware.ts、鉴权守卫逻辑
+
+任何 lib/* 中与数据相关的函数（除非只是样式常量）
+
+types.ts、数据库字段映射
+
+任何 events_v2 的逻辑（你前面已经定了规范，别碰）
+
+2. 必做前置检查（每次开工前 3 分钟）
+2.1 锁定工作区
+
+只在 apps/customer-web/** 下操作
+
+Git 或 IDE 搜索确认：改动文件路径全部在 apps/customer-web
+
+2.2 建立 UI 分支/提交节奏
+
+每完成一个 UI 小目标就 commit（例如 “home header cleanup”）
+
+commit 信息必须带前缀：ui(customer): ...
+
+2.3 先跑一次基线
+
+在你开始改 UI 前，先确保基线没问题（否则后面出 bug 你找不到是谁造成的）：
+
+customer 本地能启动
+
+Home 能进、Wallet 能进、Ticket detail 能进、Drops 能进、Profile 能进
+
+3. 规范操作流程（每次改动都必须照做）
+Step A：定位影响面
+
+先在 customer-web 里定位页面入口：
+
+Home 通常在 apps/customer-web/app/(...)/page.tsx 或 apps/customer-web/app/page.tsx
+
+底部导航通常在 Layout：apps/customer-web/app/**/layout.tsx 或 shared components/NavBar.tsx
+
+找到对应组件后，只动 UI 层。
+
+Step B：最小改动原则
+
+第一刀只改 className、结构不动（除非你要删/挪某个 section）
+
+改完立刻看页面效果（不要攒一堆再看）
+
+Step C：组件拆分策略（避免“接入变丑”）
+
+如果 Stitch UI 接入后变丑，通常是全局样式污染+组件复用导致：
+
+先建立一个“设计沙盒组件”：
+
+apps/customer-web/components/ui-preview/*（只放新 UI 的组件实现）
+
+页面先引用 preview 版本确认视觉 OK
+
+再逐步替换到正式 components/*（避免一步到位翻车）
+
+4. UI 一致性护栏（今晚必须统一的视觉 token）
+
+你今晚只改 customer UI，但要统一风格，避免“东一块西一块”。
+
+4.1 统一 5 个 UI token（建议写在 apps/customer-web/constants.ts 或 lib/ui.ts）
+
+圆角：rounded-xl / rounded-2xl 统一
+
+卡片底色：bg-black/?? 或 bg-neutral-950 统一
+
+边框：border-white/5 作为基础，金边 border-gold-400/20 作为强调
+
+字体层级：H1/H2/Body/Meta/Hint 固定一套
+
+动效：transition-transform duration-150 ease-out active:scale-[0.99] 统一
+
+4.2 不要滥用金色
+
+金色只用于：强调、可交互、状态、边缘高光
+
+大面积金色背景会“土”和“廉价”
+
+5. 防回归测试清单（每次 UI 改完必测）
+
+你今晚只做 UI，但仍要保证关键路径不挂。
+
+5.1 页面可达性（路由）
+
+Home （discover）✅
+
+Wallet （tickets）✅
+
+Ticket detail（带 QR）✅
+
+Drops ✅
+
+Profile/Settings ✅
+
+5.2 功能行为（不测视觉，测功能）
+
+Home 列表点击能进活动/详情（如果有）✅
+
+Wallet 的票券状态切换（Active/Used/Refunded）仍正常 ✅
+
+Ticket detail 的 QR 仍显示、code 仍一致 ✅
+
+地区切换（Blacksburg dropdown）仍能触发 ✅
+
+底部导航切换不丢状态、不白屏 ✅
+
+5.3 移动端适配
+
+safe-area：底部导航不遮挡内容（pb-xx 是否足够）
+
+触控反馈：按钮 active 状态正常
+
+长标题：不溢出（line-clamp / truncate）
+
+6. 变更输出规范（你让 Cursor 干活时必须要求它这么交付）
+
+每次让 Cursor 修改，都要求它输出：
+
+改了哪些文件（仅 customer-web）
+
+每个文件改动点概述
+
+手动测试清单（按上面 5.1/5.2）
+
+如果有样式 token：列出 token 位置与引用点
+
+7. 今晚任务拆解建议（按你现在需求排序）
+
+你今晚是纯 UI，所以按“影响面最小 → 最大”推进：
+
+Home：删分组标题（Tonight/This Weekend）→ 仅结构清理
+
+Home Header：Settings 挪到右上角头像（UI 提示 + 路由不变）
+
+Bottom Nav：Saved → Drops（文案+icon，路由不动）
+
+统一卡片边框/发光强度（只改 class token）
+
+收尾：全链路回归测试 + 小修 spacing
+
+8. “只改 customer 端口”自检办法（别靠记忆，靠工具）
+
+Git diff 检查：git diff --name-only 必须全部以 apps/customer-web/ 开头
+
+如果出现其它端口文件：立刻回滚/拆分 commit

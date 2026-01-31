@@ -4,22 +4,22 @@ import React from 'react';
 import Link from 'next/link';
 import type { EventWithVenue } from '@/lib/data/events';
 
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-}
-
 function formatAddress(venue: { name: string; address: string | null }): string {
-  if (venue.address?.trim()) return `${venue.name} · ${venue.address.trim()}`;
-  return venue.name || '—';
+  if (!venue) return 'Venue TBD';
+  // Use strictly the venue name provided or fallback
+  if (venue.name === 'Venue TBD' && !venue.address) return 'Venue TBD';
+  
+  if (venue.address) {
+      if (venue.name && venue.name !== 'Venue TBD' && !venue.address.startsWith(venue.name)) {
+          return `${venue.name} · ${venue.address}`;
+      }
+      return venue.address;
+  }
+  return venue.name || 'Venue TBD';
 }
 
 export default function EventGlassCard({ event }: { event: EventWithVenue }) {
-  // Venue fallback logic: Venue Name -> Merchant Name -> Unknown
-  // Location logic: Venue City -> Address -> 'Location TBD'
-  const venueName = event.venue?.name || event.merchant?.name || (event as any).merchants?.name || ''; 
-  const venueCity = event.venue?.city || (event.venue?.address ? event.venue.address.split(',').pop()?.trim() : '') || '';
-  const locationText = venueCity ? `${venueName} • ${venueCity}` : venueName;
+  const addressText = formatAddress(event.venue);
 
   return (
     <Link
@@ -47,13 +47,15 @@ export default function EventGlassCard({ event }: { event: EventWithVenue }) {
           {event.title}
         </h3>
 
-        {/* Date & Time and Venue */}
+        {/* Subtitle & Address */}
         <div className="flex flex-col gap-0.5">
-          <p className="text-[#D4AF37] text-sm font-medium">
-            {formatTime(event.start_at)}
-          </p>
+          {event.subtitle && (
+            <p className="text-[#D4AF37] text-sm font-medium truncate">
+                {event.subtitle}
+            </p>
+          )}
           <p className="text-gray-400 text-xs font-light truncate">
-            {locationText}
+            {addressText}
           </p>
         </div>
       </div>

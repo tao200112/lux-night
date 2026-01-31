@@ -109,11 +109,11 @@ export default function WeekConfigPage() {
             const e = infoJson.event;
             setEventInfo({
                 title: e.title || '',
-                subtitle: '', // Subtitle not supported by V2 schema
+                subtitle: e.subtitle || '', // Now supported
                 description: e.description || '',
                 posterUrl: e.poster_url || '',
-                venueName: e.venue?.name || '',
-                venueAddress: e.venue?.address || ''
+                venueName: e.venue_name || e.venue?.name || '',
+                venueAddress: e.address || e.venue?.address || ''
             });
         }
 

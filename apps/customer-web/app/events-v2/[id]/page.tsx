@@ -42,6 +42,7 @@ interface DayConfig {
 interface EventV2 {
   id: string;
   title: string;
+  subtitle?: string | null;
   description: string | null;
   poster_url: string;
   status: 'active' | 'paused' | 'temp_closed' | 'archived';
@@ -286,17 +287,26 @@ export default function CustomerEventV2DetailPage() {
 
         {/* Event Info */}
         <div className="p-4">
-          <h1 className="text-2xl font-bold mb-2">{event.title}</h1>
-          {event.description && (
-            <p className="text-gray-400 mb-4">{event.description}</p>
+          <h1 className="text-2xl font-bold mb-1">{event.title}</h1>
+          
+          {/* Subtitle */}
+          {event.subtitle && (
+             <h2 className="text-lg text-[#D4AF37] font-medium mb-3">{event.subtitle}</h2>
           )}
 
-          {/* Venue Address */}
-          {event.venue?.address && (
-            <div className="mb-4 text-sm text-gray-400">
-              <span className="material-symbols-outlined inline-block mr-2">location_on</span>
-              {event.venue.address}
-            </div>
+          {/* Venue & Address */}
+          <div className="mb-4 flex items-start gap-2 text-sm text-zinc-400">
+              <span className="material-symbols-outlined mt-0.5 text-lg">location_on</span>
+              <div>
+                  {event.venue?.name && event.venue.name !== 'Venue TBD' && (
+                      <div className="text-white font-semibold">{event.venue.name}</div>
+                  )}
+                  <div>{event.venue?.address || 'Venue TBD'}</div>
+              </div>
+          </div>
+
+          {event.description && (
+            <p className="text-gray-400 mb-6 leading-relaxed">{event.description}</p>
           )}
 
           {/* Week Info */}
