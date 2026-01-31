@@ -14,7 +14,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   // Verify Admin Access using standard client for auth check
-  const supabase = await createClient(); // Standard client for auth
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json(
@@ -35,10 +35,10 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Use Service Role client to bypass RLS for detailed data fetching
-    // (Ensure we can read merchants/venues even if admin is not a direct member)
+    // Use Service Role client to bypass RLS
     const adminSupabase = createAdminClient();
 
+    // Use explicit relationship for venues to avoid PGRST201
     const { data: event, error } = await adminSupabase
       .from('events_v2')
       .select(`
@@ -47,7 +47,8 @@ export async function GET(
           id,
           name,
           region_id,
-          venues (
+          default_venue_id,
+          venues:venues!merchants_default_venue_id_fkey (
             id,
             name,
             address
@@ -65,16 +66,14 @@ export async function GET(
       );
     }
 
-    // Map merchant venue to event venue (fallback strategy)
-    // events_v2 uses merchant's venue
+    // Map merchant venue to event venue
+    // With explicit relationship, venues is a single object (if default_venue_id is set)
     let venue = null;
     const m = (event.merchants as any);
     if (m && m.venues) {
-        // If venues is an array, pick first (or default if available)
-        venue = Array.isArray(m.venues) ? m.venues[0] : m.venues;
+        venue = m.venues;
     }
 
-    // Attach mapped venue to response so frontend works
     (event as any).venue = venue;
 
     return NextResponse.json({ event });
@@ -96,63 +95,81 @@ export async function PUT(
     return authResult.error;
   }
 
+  const { id } = await params;
+  let body: any = {};
+  
   try {
-    const { id } = await params;
-    const body = await req.json();
+    body = await req.json();
     const { title, description, poster_url, status, venue_name, venue_address } = body;
-    // Note: 'subtitle' is not supported in events_v2 schema yet
 
     const supabase = createAdminClient();
 
     const updates: any = {};
     if (title !== undefined) updates.title = title;
-    // if (subtitle !== undefined) updates.subtitle = subtitle; // Schema restriction
     if (description !== undefined) updates.description = description;
     if (poster_url !== undefined) updates.poster_url = poster_url;
     if (status !== undefined) updates.status = status;
 
+    // Update Event V2 Only
     const { data: event, error } = await supabase
       .from('events_v2')
       .update(updates)
       .eq('id', id)
-      .select('*, merchants(venues(id))')
+      .select('merchant_id') 
       .single();
 
     if (error) {
-      console.error('Error updating event:', error);
+      console.error("[events-v2 PUT] Update Error", { id, body, error });
       return NextResponse.json(
-        { error: 'Failed to update event', details: error.message },
+        { ok: false, error: 'Failed to update event', details: error.message, context: "events_v2 update" },
         { status: 500 }
       );
     }
 
     // Update Venue if needed
-    // We update the merchant's venue (CAUTION: Affects Merchant globally, but assumed intended for this simplified model)
     if (venue_name !== undefined || venue_address !== undefined) {
-       const m = (event.merchants as any);
-       const v = (m && m.venues && Array.isArray(m.venues)) ? m.venues[0] : null;
-       
-       if (v && v.id) {
+       // 1. Get Merchant's default venue ID
+       const { data: merchant, error: merchantError } = await supabase
+           .from('merchants')
+           .select('default_venue_id')
+           .eq('id', event.merchant_id)
+           .single();
+           
+       if (merchantError || !merchant) {
+           console.error("[events-v2 PUT] Merchant not found", { id, merchantId: event.merchant_id, merchantError });
+           // Non-blocking but logged
+       } else if (!merchant.default_venue_id) {
+           console.warn("[events-v2 PUT] No default venue set for merchant", { id, merchantId: event.merchant_id });
+           return NextResponse.json(
+                { ok: false, error: 'Merchant has no default venue set. Cannot update venue details.', context: "venue update" },
+                { status: 400 }
+           );
+       } else {
+           // 2. Update the Venue
            const venueUpdates: any = {};
            if (venue_name !== undefined) venueUpdates.name = venue_name;
            if (venue_address !== undefined) venueUpdates.address = venue_address;
            
-           const { error: venueError } = await supabase
+           const { error: venueUpdateError } = await supabase
              .from('venues')
              .update(venueUpdates)
-             .eq('id', v.id);
+             .eq('id', merchant.default_venue_id);
              
-           if (venueError) {
-               console.warn('Failed to update venue:', venueError);
+           if (venueUpdateError) {
+               console.error("[events-v2 PUT] Venue Update Failed", { id, venueId: merchant.default_venue_id, venueUpdateError });
+               return NextResponse.json(
+                    { ok: false, error: 'Failed to update venue details', details: venueUpdateError.message },
+                    { status: 500 }
+               );
            }
        }
     }
 
-    return NextResponse.json({ event });
+    return NextResponse.json({ ok: true, data: { id, message: 'Updated successfully' } });
   } catch (error: any) {
-    console.error('Error in PUT /api/admin/events-v2/[id]:', error);
+    console.error('[events-v2 PUT] Exception', { id, body, error });
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { ok: false, error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }

@@ -109,7 +109,7 @@ export default function WeekConfigPage() {
             const e = infoJson.event;
             setEventInfo({
                 title: e.title || '',
-                subtitle: e.subtitle || '',
+                subtitle: '', // Subtitle not supported by V2 schema
                 description: e.description || '',
                 posterUrl: e.poster_url || '',
                 venueName: e.venue?.name || '',
