@@ -154,10 +154,11 @@ export async function PUT(
         for (const ticket of dayConfig.tickets) {
           if (ticket.action === 'delete' && ticket.id) {
             // 删除
-            await supabase
+            const { error: deleteError } = await supabase
               .from('ticket_types_v2')
               .delete()
               .eq('id', ticket.id);
+            if (deleteError) throw deleteError;
           } else if (ticket.action === 'upsert') {
             const ticketData: any = {
               event_week_day_id: dayRecord.id,
@@ -173,15 +174,17 @@ export async function PUT(
 
             if (ticket.id) {
               // 更新
-              await supabase
+              const { error: updateError } = await supabase
                 .from('ticket_types_v2')
                 .update(ticketData)
                 .eq('id', ticket.id);
+              if (updateError) throw updateError;
             } else {
               // 新增
-              await supabase
+              const { error: insertError } = await supabase
                 .from('ticket_types_v2')
                 .insert(ticketData);
+              if (insertError) throw insertError;
             }
           }
         }

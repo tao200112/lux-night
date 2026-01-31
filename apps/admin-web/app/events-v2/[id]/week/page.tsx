@@ -61,7 +61,9 @@ const mapDbCategoryToUi = (cat: string): TicketCategory => {
 
 const mapUiCategoryToDb = (cat: TicketCategory): string => {
   if (cat === 'Skip') return 'skipline';
-  return cat.toLowerCase(); // 'General' -> 'general', 'VIP' -> 'vip'
+  if (cat === 'General') return 'entry';
+  if (cat === 'Custom') return 'other';
+  return cat.toLowerCase(); // 'VIP' -> 'vip', 'Drink' -> 'drink'
 };
 
 export default function WeekConfigPage() {
