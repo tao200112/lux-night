@@ -41,7 +41,7 @@ export async function GET() {
       .from('orders')
       .select('total_cents, status')
       .gte('created_at', thirtyDaysAgo.toISOString())
-      .eq('status', 'completed');
+      .in('status', ['completed', 'fulfilled', 'paid']); // Support multiple success statuses
     
     const totalRevenue = revenueData?.reduce((sum, order) => sum + (order.total_cents || 0), 0) || 0;
     const netRevenue = Math.round(totalRevenue * 0.79); // 假设平台抽成 21%

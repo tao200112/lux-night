@@ -90,11 +90,14 @@ export async function GET(
         .eq('merchant_id', id)
         .eq('is_active', true),
       
-      // Orders (最近 30 天)
+      // Orders (recent 30 days) - Using event relation to ensure V2 coverage
       supabase
         .from('orders')
-        .select('id, total_cents, status, created_at')
-        .eq('merchant_id', id)
+        .select(`
+            id, total_cents, status, created_at,
+            events_v2!inner(merchant_id)
+        `)
+        .eq('events_v2.merchant_id', id)
         .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
         .order('created_at', { ascending: false })
         .limit(20),
@@ -105,14 +108,14 @@ export async function GET(
     
     const { count: totalOrders } = await supabase
       .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('merchant_id', id)
+      .select('events_v2!inner(merchant_id)', { count: 'exact', head: true })
+      .eq('events_v2.merchant_id', id)
       .gte('created_at', thirtyDaysAgo.toISOString());
     
     const { data: revenueOrders } = await supabase
       .from('orders')
-      .select('total_cents')
-      .eq('merchant_id', id)
+      .select('total_cents, events_v2!inner(merchant_id)')
+      .eq('events_v2.merchant_id', id)
       .eq('status', 'completed')
       .gte('created_at', thirtyDaysAgo.toISOString());
     

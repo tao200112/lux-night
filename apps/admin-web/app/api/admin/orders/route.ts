@@ -53,28 +53,85 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const startDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
     step = 'dates_ok';
 
-    // STEP 4: 查询 Orders (no join - will fetch profiles separately)
+    // STEP 4: 查询 Orders
     step = 'query_orders';
-    let ordersQuery = adminClient
-      .from('orders')
-      .select(`
+    
+    // Base Select string
+    const selectString = `
+      id,
+      status,
+      amount_cents,
+      user_id,
+      stripe_payment_intent_id,
+      created_at,
+      merchant_id,
+      events_v2 (
         id,
-        status,
-        amount_cents,
-        user_id,
-        stripe_payment_intent_id,
-        created_at
-      `)
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(100); // 限制返回数量避免超时
+        title,
+        merchants (
+          id,
+          name
+        )
+      ),
+      order_items (
+         quantity,
+         ticket_type_id_v2,
+         ticket_types_v2 (
+           name
+         )
+      )
+    `;
 
+    let queryBuilder = adminClient
+      .from('orders')
+      .select(selectString);
+
+    // Filter by Merchant ID
+    if (merchant && merchant !== 'all') {
+       // Re-initialize with !inner for filtering
+       queryBuilder = adminClient.from('orders').select(`
+          id,
+          status,
+          amount_cents,
+          user_id,
+          stripe_payment_intent_id,
+          created_at,
+          merchant_id,
+          events_v2!inner (
+            id,
+            title,
+            merchants!inner (
+              id,
+              name
+            )
+          ),
+          order_items (
+            quantity,
+            ticket_type_id_v2,
+            ticket_types_v2 (
+              name
+            )
+          )
+       `);
+       // Apply filter on the joined table
+       queryBuilder = queryBuilder.eq('events_v2.merchant_id', merchant);
+    } 
+
+    // Apply Time Filter
+    queryBuilder = queryBuilder.gte('created_at', startDate.toISOString());
+
+    // Apply Status Filter
     if (status && status !== 'all') {
-      ordersQuery = ordersQuery.eq('status', status);
+      queryBuilder = queryBuilder.eq('status', status);
     }
+    
+    // Order and Limit
+    queryBuilder = queryBuilder
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     const { data: orders, error: ordersError } = await withTimeout(
-      Promise.resolve(ordersQuery),
+      Promise.resolve(queryBuilder),
       TIMEOUT_MS,
       'orders query'
     );
@@ -127,16 +184,37 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     step = 'format_response';
     const formattedOrders = (orders || []).map((order: any) => {
       const profile = profilesMap[order.user_id];
+      
+      // Extract Ticket Info
+      const items = order.order_items || [];
+      const ticketNames = items.map((item: any) => {
+          // Try ticket_types_v2 name first, fallback to unknown
+           return item.ticket_types_v2?.name || 'Unknown Ticket';
+      }).filter((n: string) => n);
+      const uniqueTicketNames = Array.from(new Set(ticketNames));
+      const ticketDisplay = uniqueTicketNames.length > 0 ? uniqueTicketNames.join(', ') : 'Unknown';
+
+      // Extract Merchant/Event Info
+      // events_v2 might be an array or object depending on join, usually object if FK is singular
+      const eventData = Array.isArray(order.events_v2) ? order.events_v2[0] : order.events_v2;
+      const merchantData = eventData?.merchants;
+      const merchantName = merchantData?.name || 'Multiple Merchants'; // Fallback if join failed
+      const eventTitle = eventData?.title || 'Unknown Event';
+
       return {
         id: order.id,
         status: order.status,
         amount: order.amount_cents || 0,
         amountFormatted: `$${((order.amount_cents || 0) / 100).toFixed(2)}`,
         userId: order.user_id,
-        customerName: profile?.display_name || 'Unknown',
-        customerEmail: profile?.email || null,
+        customerName: profile?.display_name || 'Anonymous',
+        customerEmail: profile?.email || 'N/A', // Show N/A if missing
         paymentIntentId: order.stripe_payment_intent_id,
         createdAt: order.created_at,
+        // Added fields
+        ticketName: ticketDisplay,
+        merchantName: merchantName,
+        eventName: eventTitle
       };
     });
 
