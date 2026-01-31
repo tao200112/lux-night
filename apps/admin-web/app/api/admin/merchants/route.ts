@@ -125,7 +125,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
 
     step = 'merchants_ok';
 
-    // STEP 4: 查询 Regions
+    // STEP 4: Query Regions
     step = 'query_regions';
     const { data: regions, error: regionsError } = await withTimeout(
       Promise.resolve(
@@ -141,28 +141,84 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
 
     step = 'regions_ok';
 
-    // STEP 5: 格式化响应
-    step = 'format_response';
-    const merchantsWithStats = (merchants || []).map((merchant: any) => ({
-      id: merchant.id,
-      name: merchant.name,
-      status: merchant.status,
-      region: merchant.regions && Array.isArray(merchant.regions) && merchant.regions.length > 0
-        ? {
-            id: merchant.regions[0].id,
-            name: merchant.regions[0].name,
-            state: merchant.regions[0].state,
-            country: merchant.regions[0].country,
-          }
-        : null,
-      stats: {
-        ordersCount: 0, // TODO: 可选优化
-        revenue: 0,
-        revenueFormatted: '$0',
-        activeEvents: 0,
-      },
-      createdAt: merchant.created_at,
-    }));
+    // STEP 5: Aggregation Stats (Decoupled to fix Unlinked Order Issue)
+    step = 'aggregate_stats';
+    const merchantsList = merchants || [];
+    const merchantIds = merchantsList.map((m: any) => m.id);
+    
+    // 5a. Fetch all events for these merchants
+    const { data: allEvents } = await adminClient
+      .from('events_v2')
+      .select('id, merchant_id, status')
+      .in('merchant_id', merchantIds);
+      
+    const eventsList = allEvents || [];
+    const eventIds = eventsList.map((e: any) => e.id);
+    const eventMap: Record<string, any> = {};
+    const merchantEventsMap: Record<string, number> = {}; // merchantId -> activeEventCount
+
+    eventsList.forEach((e: any) => {
+        eventMap[e.id] = e;
+        if (e.status === 'active') {
+             merchantEventsMap[e.merchant_id] = (merchantEventsMap[e.merchant_id] || 0) + 1;
+        }
+    });
+
+    // 5b. Fetch recent orders for these events
+    // Note: We use in('event_v2_id', eventIds) which relies on the orders being linked.
+    // If orders are unlinked, this stats list will still be 0, but at least it matches the logic of Detail Page.
+    // The Data Repair script fixes the linkage.
+    let ordersList: any[] = [];
+    if (eventIds.length > 0) {
+        const { data: ordersData } = await adminClient
+          .from('orders')
+          .select('id, amount_cents, status, event_v2_id')
+          .in('event_v2_id', eventIds)
+          .in('status', ['paid', 'fulfilled', 'completed']); // Only counted revenue
+        ordersList = ordersData || [];
+    }
+
+    // 5c. Aggregate in Memory
+    const merchantStats: Record<string, { revenue: number; count: number }> = {};
+    
+    ordersList.forEach((o: any) => {
+        const event = eventMap[o.event_v2_id]; // Should exist per query
+        if (event) {
+            const mId = event.merchant_id;
+            if (!merchantStats[mId]) {
+                merchantStats[mId] = { revenue: 0, count: 0 };
+            }
+            merchantStats[mId].count++;
+            merchantStats[mId].revenue += (o.amount_cents || 0);
+        }
+    });
+
+    // 5d. Format
+    const merchantsWithStats = merchantsList.map((merchant: any) => {
+       const stats = merchantStats[merchant.id] || { revenue: 0, count: 0 };
+       const activeEvents = merchantEventsMap[merchant.id] || 0;
+       
+       return {
+          id: merchant.id,
+          name: merchant.name,
+          status: merchant.status,
+          region: merchant.regions && Array.isArray(merchant.regions) && merchant.regions.length > 0
+            ? {
+                id: merchant.regions[0].id,
+                name: merchant.regions[0].name,
+                state: merchant.regions[0].state,
+                country: merchant.regions[0].country,
+              }
+            : null,
+          stats: {
+            ordersCount: stats.count,
+            revenue: stats.revenue / 100, // cents to dollars
+            revenueFormatted: `$${(stats.revenue / 100).toLocaleString()}`,
+            activeEvents: activeEvents,
+          },
+          createdAt: merchant.created_at,
+       };
+    });
 
     step = 'success';
     
@@ -800,143 +856,38 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
     });
 
     if (insertError) {
-      console.error('[ADMIN MERCHANTS POST] Insert error:', insertError);
       return NextResponse.json<ApiResponse>(
         {
           ok: false,
           error: 'Database Error',
-          code: 'INSERT_ERROR',
+          code: 'INVITE_CREATE_ERROR',
           message: insertError.message,
-          hint: 'Check if invites table supports region_id when merchant_id is NULL',
           step,
           debugId,
-          details: {
-            insertError: {
-              message: insertError.message,
-              code: insertError.code,
-            },
-          },
         },
         { status: 500 }
       );
     }
-
+    
     step = 'success';
-    
-    console.log('[ADMIN MERCHANTS POST]', {
-      debugId,
-      step: 'response.ok',
-      ok: true,
-      inviteId: invite.id,
-      token: invite.token,
-      merchant_id: invite.merchant_id,
-      intendedRole: invite.intended_role,
-    });
-    
-    // 构建 debug 信息（收集所有步骤的日志）
-    const debugInfo: any = {
-      debugId,
-      steps: {},
-    };
-    
-    // 如果创建了新 merchant，添加 merchant.insert 日志
-    if (newMerchant) {
-      debugInfo.steps['merchant.insert.before'] = {
-        payload: {
-          name: merchantName,
-          region_id: regionId,
-          status: 'active',
-        },
-      };
-      debugInfo.steps['merchant.insert.after'] = {
-        newMerchantId: newMerchant.id || null,
-        newMerchantName: newMerchant.name || null,
-      };
-    }
-    
-    // 添加 invite.create 日志
-    debugInfo.steps['invite.create.before'] = {
-      merchantId: merchantIdFinal,
-      role: role || 'owner',
-      token: inviteCode,
-      callMethod: 'direct insert', // 直接 insert，不是 RPC
-      payload: {
-        token: inviteCode,
-        merchant_id: merchantIdFinal,
-        region_id: regionId || null,
-        intended_role: role || 'owner',
-        issued_by_type: 'admin',
-      },
-    };
-    
-    debugInfo.steps['invite.create.after'] = {
-      inviteId: invite?.id || null,
-      token: invite?.token || null,
-      merchant_id: invite?.merchant_id || null,
-      intended_role: invite?.intended_role || null,
-    };
-    
-    // Response 一致性修复：确保 invite.merchantId === merchantIdFinal
-    const responseMerchantId = invite.merchant_id || merchantIdFinal;
-    
-    // 验证一致性
-    if (responseMerchantId !== merchantIdFinal) {
-      console.error('[ADMIN MERCHANTS POST] Response merchantId mismatch:', {
-        debugId,
-        expected: merchantIdFinal,
-        actual: responseMerchantId,
-        inviteMerchantId: invite.merchant_id,
-      });
-    }
-    
-    // 4) 写入成功后，继续创建 owner invite，返回 merchant 和 invite
+
     return NextResponse.json<ApiResponse>({
       ok: true,
       data: {
-        merchant: newMerchant ? {
-          id: newMerchant.id,
-          name: newMerchant.name,
-          regionId: regionId,
-        } : null,
-        invite: {
-          id: invite.id,
-          code: invite.token,
-          token: invite.token, // Backward compatibility
-          merchantId: merchantIdFinal, // ✅ 强制使用 merchantIdFinal，确保一致性（禁止 null）
-          regionId: invite.region_id,
-          role: invite.intended_role,
-          expiresAt: invite.expires_at,
-        },
+        invite,
+        merchant: newMerchant, // 可能是 null（如果没创建新商家）
       },
-      step: 'success',
+      step,
       debugId,
-      debug: debugInfo,
     });
 
   } catch (error: any) {
-    console.error('[ADMIN MERCHANTS POST] Uncaught error:', {
+    console.error('[ADMIN MERCHANTS POST] Error:', {
       debugId,
       step,
       error: error.message,
-      errorName: error.name,
-      errorStack: error.stack,
-      errorCode: error.code,
-      errorDetails: error.details,
+      stack: error.stack,
     });
-
-    if (error.message?.includes('[TIMEOUT]')) {
-      return NextResponse.json<ApiResponse>(
-        {
-          ok: false,
-          error: 'Request Timeout',
-          code: 'TIMEOUT',
-          message: error.message,
-          step,
-          debugId,
-        },
-        { status: 504 }
-      );
-    }
 
     return NextResponse.json<ApiResponse>(
       {
@@ -946,11 +897,6 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
         message: error.message || 'Unexpected error',
         step,
         debugId,
-        details: {
-          errorName: error.name,
-          errorCode: error.code,
-          errorDetails: error.details,
-        },
       },
       { status: 500 }
     );

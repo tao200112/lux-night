@@ -72,8 +72,9 @@ export default function AdminMerchantDetailPage() {
       const response = await fetch(`/api/admin/merchants/${merchantId}`);
       const result = await response.json();
       
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to fetch merchant detail');
+      // Fixed: Support both legacy 'success' and new 'ok' properties
+      if (!result.success && !result.ok) {
+        throw new Error(result.message || result.error || 'Failed to fetch merchant detail');
       }
       
       setMerchant(result.data);
@@ -102,7 +103,7 @@ export default function AdminMerchantDetailPage() {
       
       const result = await response.json();
       
-      if (!result.success) {
+      if (!result.success && !result.ok) {
         throw new Error(result.message || 'Failed to update merchant status');
       }
       

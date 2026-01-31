@@ -6,6 +6,7 @@
  * 1. Decoupled queries for Orders (via events_v2 list).
  * 2. Fetches member emails from auth.users (service role).
  * 3. Does not rely on inner joins that fail on unlinked data.
+ * 4. Step 'success' strictly ensured.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -117,7 +118,7 @@ export const GET = handlerWrapper(async (request: NextRequest, { params }: { par
     }
 
     // STEP 6: Assemble Data
-    step = 'assemble';
+    step = 'success';
 
     // Stats
     const totalOrders = orders.length; // Approximate, strictly speaking we limited query by date
