@@ -198,42 +198,83 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
           <p className="text-white/50 text-xs uppercase tracking-wider mb-2">Staff Operation</p>
           
           {!redeemed ? (
-            <>
+            <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
+                count === 0 ? 'bg-[#151515] border-[#D4AF37]/30 shadow-none' :
+                count === 1 ? 'bg-[#1A1A1A] border-[#D4AF37]/60 shadow-[0_0_15px_rgba(212,175,55,0.15)]' :
+                'bg-[#221E10] border-[#FFD700]/80 shadow-[0_0_25px_rgba(255,215,0,0.3)]'
+            }`}>
               <button
                 onClick={handleTap}
                 onBlur={resetCount}
                 disabled={submitting}
-                className={`w-full font-bold py-6 rounded-2xl text-center transition-all shadow-lg ${
-                   count > 0 ? 'bg-lux-gold text-black scale-[1.02]' : 'bg-primary text-white hover:bg-primary/90'
-                } disabled:opacity-60 disabled:scale-100`}
+                className="relative z-10 w-full py-8 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-transform"
               >
-                {submitting
-                  ? 'Processing...'
-                  : count === 0 ? 'Tap 3 times to Redeem' 
-                  : `Tap Again (${count}/3)`}
+                  {/* Status Text & Button Appearance */}
+                  <span className={`text-xl font-bold tracking-wide transition-colors duration-200 ${
+                      count === 2 ? 'text-[#FFD700]' : 
+                      count === 1 ? 'text-[#D4AF37]' : 
+                      'text-[#8A7E5E]'
+                  }`}>
+                      {submitting ? 'PROCESSING...' : 
+                       count === 0 ? 'TAP TO REDEEM' :
+                       count === 1 ? 'CONFIRM (1/3)' :
+                       'CONFIRM AGAIN (2/3)'}
+                  </span>
+
+                  {/* Progress Dots */}
+                  <div className="flex items-center gap-3 mt-1">
+                      <div className={`w-3 h-3 rounded-full border border-[#D4AF37] transition-all duration-300 ${
+                          count >= 1 ? 'bg-[#D4AF37] shadow-[0_0_8px_#D4AF37]' : 'bg-transparent opacity-30'
+                      }`} />
+                      <div className={`w-3 h-3 rounded-full border border-[#D4AF37] transition-all duration-300 ${
+                          count >= 2 ? 'bg-[#D4AF37] shadow-[0_0_8px_#D4AF37]' : 'bg-transparent opacity-30'
+                      }`} />
+                      <div className={`w-3 h-3 rounded-full border border-[#D4AF37] transition-all duration-300 ${
+                          submitting ? 'bg-[#D4AF37] shadow-[0_0_8px_#D4AF37] animate-pulse' : 'bg-transparent opacity-30'
+                      }`} />
+                  </div>
               </button>
+
+              {/* Background Glow Effect */}
+              <div className={`absolute inset-0 bg-gradient-to-t from-[#D4AF37]/5 to-transparent pointer-events-none transition-opacity duration-300 ${
+                  count > 0 ? 'opacity-100' : 'opacity-0'
+              }`} />
+
               {error && (
-                <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
-                    <p className="text-alert-red text-sm font-bold">{error}</p>
+                <div className="flex flex-col items-center justify-center p-3 bg-red-500/10 border-t border-red-500/20 text-center w-full relative z-20">
+                    <p className="text-red-400 text-sm font-bold">{error}</p>
                 </div>
               )}
-            </>
+            </div>
           ) : (
-            <div className="rounded-2xl border border-amber-500/50 bg-amber-500/10 p-6 text-center">
-              <span className="material-symbols-outlined text-4xl text-amber-400 mb-2">check_circle</span>
-              <p className="font-bold text-amber-200">
-                {redeemed.already ? 'Ticket Used / Limit Reached' : 'Success'}
-              </p>
-              {isMultiUse && (
-                 <p className="text-xl font-bold bg-black/20 rounded-lg py-2 mt-2">
-                    {redeemed.count} / {redeemed.limit}
+            <div className="rounded-2xl border border-[#D4AF37] bg-[#0A0A0A] p-8 text-center shadow-[0_0_30px_rgba(212,175,55,0.2)]">
+               {/* Success Icon */}
+               <div className="w-16 h-16 rounded-full bg-[#D4AF37]/10 flex items-center justify-center mx-auto mb-4 border border-[#D4AF37]/30">
+                  <span className="material-symbols-outlined text-4xl text-[#D4AF37]">verified</span>
+               </div>
+               
+               <p className="font-bold text-white text-xl tracking-wide mb-1">
+                  {redeemed.already ? 'TICKET USED' : 'SUCCESS'}
+               </p>
+               <p className="text-[#8A7E5E] text-sm font-medium uppercase tracking-widest mb-6">Redemption Complete</p>
+
+               {/* Full Dots */}
+               <div className="flex items-center justify-center gap-3 mb-6">
+                  {[1, 2, 3].map(i => (
+                      <div key={i} className="w-3 h-3 rounded-full bg-[#D4AF37] shadow-[0_0_5px_#D4AF37]" />
+                  ))}
+               </div>
+
+               {isMultiUse && (
+                  <p className="text-lg font-bold text-white bg-white/5 rounded-lg py-2 px-4 inline-block mb-2">
+                     Use {redeemed.count} of {redeemed.limit}
+                  </p>
+               )}
+               {redeemed.redeemedAt && (
+                 <p className="text-zinc-500 text-xs mt-2 font-mono">
+                   {new Date(redeemed.redeemedAt).toLocaleTimeString()}
                  </p>
-              )}
-              {redeemed.redeemedAt && (
-                <p className="text-white/70 text-sm mt-2">
-                  Time: {new Date(redeemed.redeemedAt).toLocaleTimeString()}
-                </p>
-              )}
+               )}
             </div>
           )}
         </section>
