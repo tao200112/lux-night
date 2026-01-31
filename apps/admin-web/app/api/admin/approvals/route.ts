@@ -73,12 +73,12 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     console.log('[ADMIN APPROVALS] Status Filter:', status);
     console.log('[ADMIN APPROVALS] ===== DEBUG END =====');
 
-    // STEP 3: 查询 event_change_requests（使用 service role client 绕过 RLS）
-    step = 'query_event_change_requests';
+    // STEP 4: 查询 event_change_requests -> merchant_change_requests
+    step = 'query_merchant_change_requests';
     
-    // 先测试表是否存在：查询 count
+    // Check table existence first
     const { count: totalCount, error: countError } = await adminClient
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .select('*', { count: 'exact', head: true });
     
     console.log('[ADMIN APPROVALS] Table count check:', {
@@ -86,26 +86,24 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       countError: countError ? {
         code: countError.code,
         message: countError.message,
-        details: countError.details,
-        hint: countError.hint,
       } : null,
     });
 
-    // 查询带 status 过滤的记录，并 join merchant、event 和 venue
+    // Query with merchant and event joins
     let requestQuery = adminClient
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .select(`
         id,
         merchant_id,
         event_id,
-        request_type,
         status,
-        payload_json,
-        submitted_by,
-        submitted_at,
-        approved_by,
-        approved_at,
-        rejection_reason,
+        payload,
+        note,
+        created_at,
+        updated_at,
+        reviewed_by_admin,
+        reviewed_at,
+        review_note,
         merchants:merchant_id (
           id,
           name
@@ -113,18 +111,14 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         events:event_id (
           id,
           title,
-          start_at,
-          venue_id,
-          venues:venue_id (
-            id,
-            name
-          )
+          status,
+          poster_url
         )
       `)
-      .order('submitted_at', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(50);
 
-    // 严格过滤：必须使用 .eq('status', status)，禁止用 neq/in
+    // Apply strict status filter
     if (status && status !== 'all') {
       requestQuery = requestQuery.eq('status', status);
     }
@@ -132,7 +126,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const { data: requests, error: requestsError } = await withTimeout(
       Promise.resolve(requestQuery),
       TIMEOUT_MS,
-      'event_change_requests query'
+      'merchant_change_requests query'
     );
 
     // 详细日志：查询结果
@@ -201,13 +195,13 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     step = 'format_response';
     const approvals = (requests || []).map((req: any) => ({
       id: req.id,
-      type: req.request_type || 'unknown',
+      type: 'update', // Merchant Change Requests are updates
       status: req.status,
-      requestedBy: req.submitted_by,
-      decidedBy: req.approved_by,
-      createdAt: req.submitted_at,
-      decidedAt: req.approved_at,
-      note: req.rejection_reason,
+      requestedBy: 'Merchant Member', // V2 table doesn't have submitted_by user ID in header usually, assumes generic
+      decidedBy: req.reviewed_by_admin,
+      createdAt: req.created_at,
+      decidedAt: req.reviewed_at,
+      note: req.review_note || req.note, // Show merchant note or admin note
       merchantId: req.merchant_id,
       merchant: req.merchants ? {
         id: req.merchants.id,
@@ -216,16 +210,12 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       event: req.events ? {
         id: req.events.id,
         title: req.events.title,
-        start_at: req.events.start_at,
-        venue_id: req.events.venue_id,
+        status: req.events.status
       } : null,
-      venue: req.events?.venues ? {
-        id: req.events.venues.id,
-        name: req.events.venues.name,
-      } : null,
-      venueId: req.events?.venue_id || null,
-      // payload_json contains the change request details
-      payload: req.payload_json || {},
+      venue: null, // V2 doesn't link venue in this view easily
+      venueId: null,
+      // payload contains the change request details
+      payload: req.payload || {},
     }));
 
     // Debug 信息（包含详细日志）
@@ -235,11 +225,9 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       rowCount: requests?.length || 0,
       firstId,
       usedServiceRole: true,
-      table: 'event_change_requests',
-      supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
+      table: 'merchant_change_requests',
       hasServiceRoleKey,
       totalTableCount: totalCount,
-      allIds: requests?.map((r: any) => r.id) || [],
     };
 
     step = 'success';

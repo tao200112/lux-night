@@ -242,6 +242,9 @@ export async function POST(req: NextRequest) {
         status: 'pending_payment',
         amount_cents: totalAmount,
         idempotency_key: orderIdempotencyKey,
+        event_id: eventId, // Populate legacy event_id
+        event_v2_id: eventId, // Populate new FK event_v2_id
+        merchant_id: event.merchant_id // Populate merchant_id directly for faster querying
       })
       .select()
       .single();
