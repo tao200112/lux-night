@@ -79,6 +79,7 @@ export default function WeekConfigPage() {
   const [days, setDays] = useState<Record<number, DayUI>>({});
   const [weekStartDate, setWeekStartDate] = useState<string>(''); // Store week_start_date
   const [status, setStatus] = useState<'draft' | 'active' | 'temp_closed' | 'archived'>('draft');
+  const [deletedTickets, setDeletedTickets] = useState<{ id: string; dow: number }[]>([]); // Track tickets to delete
   
   // Event Info State
   const [activeTab, setActiveTab] = useState<'tickets' | 'info'>('tickets');
@@ -224,6 +225,16 @@ export default function WeekConfigPage() {
 
   const removeTicket = (dow: number, ticketTempId: string) => {
     if (!confirm('Delete this ticket?')) return;
+
+    // Remove from deletedTickets list in case it's in there (unlikely for remove, but clean)
+    // If ticket has real ID, add to deleted queue
+    const day = days[dow];
+    const ticketToRemove = day.tickets.find(t => t.tempId === ticketTempId);
+    
+    if (ticketToRemove?.id) {
+        setDeletedTickets(prev => [...prev, { id: ticketToRemove.id!, dow }]);
+    }
+
     setDays(prev => ({
       ...prev,
       [dow]: {
@@ -368,13 +379,9 @@ export default function WeekConfigPage() {
       // Prepare Payload
       const daysPayload: Record<string, any> = {};
       Object.values(days).forEach(day => {
-        daysPayload[day.dow] = {
-          enabled: day.enabled,
-          start_time: day.startTime,
-          end_time: day.endTime,
-          end_next_day: day.endNextDay,
-          tickets: day.tickets.map(t => ({
-            id: t.id, // If present, it updates
+        // Active tickets (upsert)
+        const activeTicketsPayload = day.tickets.map(t => ({
+            id: t.id, 
             name: t.name,
             category: mapUiCategoryToDb(t.category),
             price_cents: Math.round(parseFloat(t.priceDollars) * 100),
@@ -383,7 +390,22 @@ export default function WeekConfigPage() {
             inventory_limit: t.quantity === '' ? null : parseInt(t.quantity),
             status: t.status,
             action: 'upsert'
-          }))
+        }));
+
+        // Deleted tickets (delete)
+        const deletedTicketsPayload = deletedTickets
+            .filter(d => d.dow === day.dow)
+            .map(d => ({
+                id: d.id,
+                action: 'delete'
+            }));
+
+        daysPayload[day.dow] = {
+          enabled: day.enabled,
+          start_time: day.startTime,
+          end_time: day.endTime,
+          end_next_day: day.endNextDay,
+          tickets: [...activeTicketsPayload, ...deletedTicketsPayload]
         };
       });
 
@@ -400,6 +422,7 @@ export default function WeekConfigPage() {
       if (json.error) throw new Error(json.error);
 
       setIsDirty(false);
+      setDeletedTickets([]); // Clear deleted queue
       
       const syncMsg = json.stripe_sync?.status === 'failed' 
           ? `\n\n⚠️ WARNING: Stripe Sync Failed: ${json.stripe_sync.error}\nCheck your STRIPE_KEY settings.`

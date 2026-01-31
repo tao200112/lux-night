@@ -158,7 +158,21 @@ export async function PUT(
               .from('ticket_types_v2')
               .delete()
               .eq('id', ticket.id);
-            if (deleteError) throw deleteError;
+            
+            if (deleteError) {
+              // 23503 = foreign_key_violation (used in tickets table usually)
+              if (deleteError.code === '23503') {
+                  console.warn(`[Ticket Delete] FK Violation for ${ticket.id}, falling back to soft delete (hidden).`);
+                  const { error: softDeleteError } = await supabase
+                    .from('ticket_types_v2')
+                    .update({ status: 'hidden' })
+                    .eq('id', ticket.id);
+                  
+                  if (softDeleteError) throw softDeleteError; // If this fails too, throw real error
+              } else {
+                  throw deleteError;
+              }
+            }
           } else if (ticket.action === 'upsert') {
             const ticketData: any = {
               event_week_day_id: dayRecord.id,
