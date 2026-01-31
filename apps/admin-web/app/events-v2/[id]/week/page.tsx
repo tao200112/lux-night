@@ -584,7 +584,7 @@ export default function WeekConfigPage() {
 
                   {/* Venue Info */}
                   <div className="pt-4 border-t border-[#333]">
-                      <h4 className="text-sm font-bold text-white mb-4">Venue Override</h4>
+                      <h4 className="text-sm font-bold text-white mb-4">Venue Details</h4>
                       <div className="grid grid-cols-1 gap-4">
                           <div>
                               <label className="text-xs text-[#888] uppercase font-bold block mb-1.5">Venue Name</label>
@@ -593,7 +593,7 @@ export default function WeekConfigPage() {
                                   value={eventInfo.venueName}
                                   onChange={(e) => updateInfo('venueName', e.target.value)}
                                   className="w-full bg-[#0A0A0E] border border-[#333] rounded-lg px-3 py-2 text-white placeholder-white/20 focus:border-[#1313ec] focus:outline-none transition-colors"
-                                  placeholder="Leave blank to use default"
+                                  placeholder="e.g. Club Space"
                               />
                           </div>
                           <div>
@@ -603,7 +603,7 @@ export default function WeekConfigPage() {
                                   value={eventInfo.venueAddress}
                                   onChange={(e) => updateInfo('venueAddress', e.target.value)}
                                   className="w-full bg-[#0A0A0E] border border-[#333] rounded-lg px-3 py-2 text-white placeholder-white/20 focus:border-[#1313ec] focus:outline-none transition-colors"
-                                  placeholder="Leave blank to use default"
+                                  placeholder="e.g. 34 NE 11th St"
                               />
                           </div>
                       </div>
