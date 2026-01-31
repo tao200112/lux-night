@@ -113,53 +113,87 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
            
            return (
              <div className="relative w-full mb-8">
-                 <div className={`bg-white rounded-2xl pt-8 pb-8 px-6 flex flex-col items-center shadow-lg relative z-10 overflow-hidden transition-all duration-500 ${isInactive ? 'opacity-50 grayscale' : ''}`}>
-                     <div className="w-full flex justify-center mb-6">
-                         <img alt="QR code" className="w-48 h-48 object-contain mix-blend-multiply" src={ticket.qrCodeUrl}/>
+                 {/* 黑金票券卡容器 */}
+                 <div className={`bg-[#0A0A0A] rounded-2xl p-4 flex flex-col items-center shadow-[0_0_20px_rgba(212,175,55,0.1)] border border-[#D4AF37]/25 relative z-10 overflow-hidden transition-all duration-500 ${isInactive ? 'opacity-80' : ''}`}>
+                     {/* 内层 QR 面板: bg-neutral-50/95 */}
+                     <div className="w-full bg-neutral-50/95 rounded-xl p-3 flex flex-col items-center mb-3">
+                        <img alt="QR code" className="w-full aspect-square object-contain mix-blend-multiply" src={ticket.qrCodeUrl}/>
                      </div>
-                     <div className="flex flex-col items-center gap-1 w-full border-t border-gray-100 pt-4">
-                         <p className="text-gray-400 text-[9px] font-bold tracking-[0.2em] uppercase font-body">Code</p>
-                         <p className="text-black font-bold text-xl tracking-[0.1em] font-mono">{ticket.id.slice(0, 8)}</p>
+                     
+                     {/* CODE 区域: 紧凑行 */}
+                     <div className="flex items-center justify-between w-full px-2">
+                        <div className="flex items-center gap-2">
+                             <p className="text-[#8A7E5E] text-[10px] font-bold tracking-widest uppercase font-display">Code</p>
+                             <p className="text-white font-bold text-lg tracking-wider font-mono">{ticket.id.slice(0, 8)}</p>
+                        </div>
+                        {/* VALID badge: small pill */}
+                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider border ${
+                            redemptionStatus === 'redeemed' ? 'bg-zinc-800 border-zinc-700 text-zinc-400' 
+                            : isExpired ? 'bg-zinc-900 border-zinc-700 text-red-400' 
+                            : 'bg-[#D4AF37]/10 border-[#D4AF37]/30 text-[#D4AF37]'
+                        }`}>
+                           {redemptionStatus === 'redeemed' ? 'USED' : isExpired ? 'EXPIRED' : 'VALID'}
+                        </div>
                      </div>
                      
                      {redemptionStatus === 'redeemed' && (
-                         <div className="absolute inset-0 z-20 flex items-center justify-center">
-                             <div className="bg-black/90 p-3 rounded-lg border-2 border-primary text-primary font-bold text-xl uppercase tracking-widest -rotate-12">
+                         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-[1px]">
+                             <div className="bg-black/90 p-3 rounded-lg border-2 border-[#D4AF37] text-[#D4AF37] font-bold text-xl uppercase tracking-widest -rotate-12 shadow-2xl">
                                  REDEEMED
                              </div>
                          </div>
                      )}
                      
                      {isExpired && redemptionStatus !== 'redeemed' && (
-                         <div className="absolute inset-0 z-20 flex items-center justify-center">
-                             <div className="bg-zinc-800/90 p-3 rounded-lg border-2 border-zinc-500 text-zinc-300 font-bold text-xl uppercase tracking-widest -rotate-12">
+                         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-[1px]">
+                             <div className="bg-zinc-800/90 p-3 rounded-lg border-2 border-zinc-500 text-zinc-300 font-bold text-xl uppercase tracking-widest -rotate-12 shadow-2xl">
                                  EXPIRED
                              </div>
                          </div>
                      )}
-                 </div>
-                 
-                 <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap">
-                     <div className={`border px-6 py-2 rounded-full text-sm font-bold tracking-widest shadow-lg flex items-center gap-2 transition-colors duration-300 ${redemptionStatus === 'redeemed' ? 'bg-zinc-800 border-zinc-700 text-zinc-400' : isExpired ? 'bg-zinc-900 border-zinc-700 text-red-400' : 'bg-[#1A1A1A] border-white/10 text-[rgb(212,175,55)]'}`}>
-                         <span className="material-symbols-outlined text-[16px] filled">
-                            {redemptionStatus === 'redeemed' ? 'verified' : isExpired ? 'event_busy' : 'verified'}
-                         </span>
-                         {redemptionStatus === 'redeemed' ? 'USED' : isExpired ? 'EXPIRED' : 'VALID'}
-                     </div>
                  </div>
              </div>
            );
         })()}
 
         {/* Ticket Stats - Minimalist */}
-        <div className="grid grid-cols-2 gap-3 w-full mb-6 mt-4">
-            <div className="bg-[#1A1A1A] p-3 rounded-lg border border-white/5 flex flex-col justify-center">
-                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-1">Ticket Type</p>
+        <div className="grid grid-cols-2 gap-3 w-full mb-6 mt-0">
+            <div className="bg-[#0A0A0A] p-3 rounded-lg border border-white/5 flex flex-col justify-center">
+                <p className="text-[#8A7E5E] text-[10px] font-bold uppercase tracking-wider mb-1">Ticket Type</p>
                 <p className="text-white text-[15px] font-medium truncate">{ticket.tierName}</p>
             </div>
-            <div className="bg-[#1A1A1A] p-3 rounded-lg border border-white/5 flex flex-col justify-center">
-                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-1">Entry Before</p>
-                <p className="text-white text-[15px] font-medium">{ticket.time || 'Anytime'}</p>
+            <div className="bg-[#0A0A0A] p-3 rounded-lg border border-white/5 flex flex-col justify-center">
+                <p className="text-[#8A7E5E] text-[10px] font-bold uppercase tracking-wider mb-1">核销时间</p>
+                <p className="text-white text-[15px] font-medium">
+                {(() => {
+                    // 优先级 1: 已核销时间 (ticket.redeemedAt - 假设字段，需确认，此处用 status 判断辅助)
+                    // 注意：API 返回的 ticket 对象定义在 @/lib/data/tickets.ts，这里我们只能用现有字段
+                    // 假设 ticket.status === 'used' 代表已核销。如果后端传了 redeemedAt 最好，没有则显示 "已核销"
+                    // 检查是否有 redeemedAt 字段 (类型定义可能不完整，暂时尝试用 any 访问或 fallback)
+                    const t = ticket as any;
+                    
+                    if (t.redeemedAt || t.checkedInAt) {
+                        const date = new Date(t.redeemedAt || t.checkedInAt);
+                        return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    }
+                    if (ticket.status === 'used' || redemptionStatus === 'redeemed') {
+                        return '已核销'; // Fallback if no specific time
+                    }
+
+                    // 优先级 2: 截止时间
+                    // ticket.entryBefore / ticket.validBefore / ticket.redeemBefore
+                    // 现有代码用的是 ticket.time 作为 fallback
+                    const deadline = t.entryBefore || t.validBefore || t.redeemBefore || ticket.time;
+                    if (deadline) {
+                        // 如果是纯时间字符串 "23:00"，直接显示
+                        // 如果是日期对象，格式化
+                        return `需在 ${deadline} 前核销`;
+                    }
+
+                    // 优先级 3
+                    return '—';
+                })()}
+                </p>
             </div>
         </div>
 
