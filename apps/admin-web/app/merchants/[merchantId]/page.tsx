@@ -44,6 +44,12 @@ interface MerchantDetail {
     eventsCount: number;
     membersCount: number;
   };
+  inviteStats?: {
+    totalOrders: number;
+    totalRevenue: number;
+    topInvites: Array<{ code: string; ambassadorName: string; revenue: number; orders: number }>;
+    topAmbassadors: Array<{ name: string; revenue: number; orders: number }>;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -202,6 +208,57 @@ export default function AdminMerchantDetailPage() {
             </p>
           </div>
         </section>
+
+        {/* Invite Stats Section */}
+        {merchant.inviteStats && (
+            <section className="space-y-3">
+                 <div className="flex items-center justify-between p-1">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Invite Performance (Ambassadors)</h3>
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-purple-50 dark:bg-purple-900/10 rounded-lg border border-purple-100 dark:border-purple-900/30 p-4 shadow-sm">
+                        <p className="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1">
+                          Invite Revenue
+                        </p>
+                        <p className="text-lg font-bold text-slate-900 dark:text-white">
+                          ${merchant.inviteStats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                    </div>
+                    <div className="bg-pink-50 dark:bg-pink-900/10 rounded-lg border border-pink-100 dark:border-pink-900/30 p-4 shadow-sm">
+                         <p className="text-xs font-medium text-pink-600 dark:text-pink-400 uppercase tracking-wide mb-1">
+                          Invite Orders
+                        </p>
+                        <p className="text-lg font-bold text-slate-900 dark:text-white">
+                          {merchant.inviteStats.totalOrders}
+                        </p>
+                    </div>
+                 </div>
+
+                 {/* Top Invites List */}
+                 {merchant.inviteStats.topInvites.length > 0 && (
+                     <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+                           <h4 className="text-xs font-bold text-slate-500 uppercase">Top Invites</h4>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                           {merchant.inviteStats.topInvites.map((inv, idx) => (
+                               <div key={idx} className="flex items-center justify-between px-4 py-3">
+                                   <div>
+                                       <div className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200">{inv.code}</div>
+                                       <div className="text-xs text-slate-500">{inv.ambassadorName}</div>
+                                   </div>
+                                    <div className="text-right">
+                                       <div className="text-sm font-medium text-slate-900 dark:text-white">${inv.revenue.toFixed(2)}</div>
+                                       <div className="text-xs text-slate-500">{inv.orders} orders</div>
+                                   </div>
+                               </div>
+                           ))}
+                        </div>
+                     </div>
+                 )}
+            </section>
+        )}
         
         {/* Region Info */}
         {merchant.region && (
