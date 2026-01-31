@@ -202,6 +202,12 @@ export default function AdminSettingsPage() {
           >
             Invites
           </Link>
+          <Link
+            href="/ambassadors"
+            className="flex-1 px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 text-center transition-colors"
+          >
+            Ambassadors
+          </Link>
         </div>
 
         {/* Tab Content */}
