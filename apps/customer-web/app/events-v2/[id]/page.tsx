@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import BackButton from '@/components/ui/BackButton';
+import PosterPreviewModal from '@/components/ui/PosterPreviewModal';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAY_SHORT_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -72,6 +73,7 @@ export default function CustomerEventV2DetailPage() {
   const [event, setEvent] = useState<EventV2 | null>(null);
   const [weekConfig, setWeekConfig] = useState<WeekConfig | null>(null);
   const [selections, setSelections] = useState<Record<string, number>>({}); // ticketTypeId -> quantity
+  const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
 
   useEffect(() => {
     if (eventId) {
@@ -257,11 +259,29 @@ export default function CustomerEventV2DetailPage() {
 
         {/* Event Poster */}
         {event.poster_url && (
-          <img
-            src={event.poster_url}
-            alt={event.title}
-            className="w-full h-64 object-cover"
-          />
+            <>
+              <button 
+                  type="button"
+                  onClick={() => setIsPosterModalOpen(true)}
+                  className="w-full relative block group cursor-zoom-in overflow-hidden active:opacity-95 transition-all"
+              >
+                  <img
+                    src={event.poster_url}
+                    alt={event.title}
+                    className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {/* Overlay Hint */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                     <span className="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-full p-2 backdrop-blur-sm">zoom_in</span>
+                  </div>
+              </button>
+
+              <PosterPreviewModal 
+                  isOpen={isPosterModalOpen} 
+                  onClose={() => setIsPosterModalOpen(false)} 
+                  imageUrl={event.poster_url} 
+              />
+            </>
         )}
 
         {/* Event Info */}
