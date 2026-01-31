@@ -94,7 +94,7 @@ export async function GET(
       supabase
         .from('orders')
         .select(`
-            id, total_cents, status, created_at,
+            id, amount_cents, status, created_at,
             events_v2!inner(merchant_id)
         `)
         .eq('events_v2.merchant_id', id)
@@ -114,12 +114,12 @@ export async function GET(
     
     const { data: revenueOrders } = await supabase
       .from('orders')
-      .select('total_cents, events_v2!inner(merchant_id)')
+      .select('amount_cents, events_v2!inner(merchant_id)')
       .eq('events_v2.merchant_id', id)
       .eq('status', 'completed')
       .gte('created_at', thirtyDaysAgo.toISOString());
     
-    const totalRevenue = (revenueOrders || []).reduce((sum, order) => sum + (order.total_cents || 0), 0);
+    const totalRevenue = (revenueOrders || []).reduce((sum, order) => sum + (order.amount_cents || 0), 0);
     
     return NextResponse.json({
       success: true,
@@ -174,7 +174,7 @@ export async function GET(
         }),
         recentOrders: (ordersResult.data || []).map((o: any) => ({
           id: o.id,
-          total: o.total_cents / 100,
+          total: o.amount_cents / 100,
           status: o.status,
           createdAt: o.created_at,
         })),

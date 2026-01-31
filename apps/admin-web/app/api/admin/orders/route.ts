@@ -3,6 +3,7 @@
  * Admin Orders List API
  * 
  * 强制修复版：确保所有分支都返回响应，绝不 pending
+ * Uses decoupled queries to avoid 500 errors from missing relationships
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -53,18 +54,24 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const startDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
     step = 'dates_ok';
 
-    // STEP 4: 查询 Orders
-    step = 'query_orders';
+    // STEP 4: 查询 Orders (Decoupled Phase 1: Base Orders + Events/Merchants)
+    step = 'query_orders_base';
     
+    // We do NOT join order_items -> ticket_types_v2 here to avoid relationship errors.
+    // We keep events_v2 join as it's generally stable, but wrapped in try/catch via query error handling.
     // Base Select string
-    const selectString = `
+    let selectString = `
       id,
       status,
       amount_cents,
       user_id,
       stripe_payment_intent_id,
       created_at,
-      merchant_id,
+      merchant_id
+    `;
+    
+    // Attempt to join events_v2 which links to merchants
+    selectString += `,
       events_v2 (
         id,
         title,
@@ -72,13 +79,6 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
           id,
           name
         )
-      ),
-      order_items (
-         quantity,
-         ticket_type_id_v2,
-         ticket_types_v2 (
-           name
-         )
       )
     `;
 
@@ -89,6 +89,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     // Filter by Merchant ID
     if (merchant && merchant !== 'all') {
        // Re-initialize with !inner for filtering
+       // Note: we must match the select structure or else TS/PostgREST might complain if fields missing
        queryBuilder = adminClient.from('orders').select(`
           id,
           status,
@@ -104,20 +105,12 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
               id,
               name
             )
-          ),
-          order_items (
-            quantity,
-            ticket_type_id_v2,
-            ticket_types_v2 (
-              name
-            )
           )
        `);
-       // Apply filter on the joined table
        queryBuilder = queryBuilder.eq('events_v2.merchant_id', merchant);
     } 
 
-    // Apply Time Filter
+    // Apply Time Filter (created_at)
     queryBuilder = queryBuilder.gte('created_at', startDate.toISOString());
 
     // Apply Status Filter
@@ -137,13 +130,14 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     );
 
     if (ordersError) {
+      console.error('[ADMIN ORDERS] Main query failed', ordersError);
       return NextResponse.json<ApiResponse>(
         {
           ok: false,
           error: 'Database Error',
           code: 'QUERY_ERROR',
           message: ordersError.message,
-          hint: 'Check if orders table schema matches query',
+          hint: 'Main orders query failed',
           route: '/api/admin/orders',
           step,
         },
@@ -151,54 +145,87 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       );
     }
 
-    step = 'orders_ok';
+    step = 'orders_base_ok';
 
-    // STEP 5: Fetch user profiles separately (no FK dependency)
-    step = 'fetch_profiles';
-    const userIds = [...new Set((orders || []).map((o: any) => o.user_id).filter(Boolean))];
-    let profilesMap: Record<string, any> = {};
+    // STEP 5: 查询关联数据 (Decoupled Phase 2: Items & Profiles)
+    step = 'fetch_relations';
+    const rawOrders = orders || [];
+    const orderIds = rawOrders.map((o: any) => o.id);
+    const userIds = [...new Set(rawOrders.map((o: any) => o.user_id).filter(Boolean))];
 
-    if (userIds.length > 0) {
-      const { data: profiles, error: profilesError } = await withTimeout(
-        Promise.resolve(
-          adminClient
-            .from('profiles')
-            .select('id, display_name, email')
-            .in('id', userIds)
-        ),
-        TIMEOUT_MS,
-        'profiles query'
-      );
+    // Parallel fetch: Items (raw) and User Profiles
+    const [orderItemsResult, profilesResult] = await Promise.all([
+      // 1. Order Items (Raw select, NO JOIN to ticket_types)
+      orderIds.length > 0 
+        ? adminClient.from('order_items').select('order_id, quantity, ticket_type_id_v2').in('order_id', orderIds)
+        : Promise.resolve({ data: [], error: null }),
+      
+      // 2. Profiles
+      userIds.length > 0
+        ? adminClient.from('profiles').select('id, display_name, email').in('id', userIds)
+        : Promise.resolve({ data: [], error: null })
+    ]);
 
-      if (!profilesError && profiles) {
-        profilesMap = profiles.reduce((acc: any, p: any) => {
-          acc[p.id] = p;
-          return acc;
-        }, {});
-      }
+    const orderItems = orderItemsResult.data || [];
+    const profiles = profilesResult.data || [];
+
+    const profilesMap = profiles.reduce((acc: any, p: any) => {
+      acc[p.id] = p;
+      return acc;
+    }, {});
+
+    // STEP 6: 查询 Ticket Types (Decoupled Phase 3: Ticket Types by ID)
+    step = 'fetch_ticket_types';
+    
+    // Extract ticket type IDs from items
+    const ticketTypeIds = [...new Set(orderItems.map((item: any) => item.ticket_type_id_v2).filter(Boolean))];
+    
+    let ticketTypesMap: Record<string, string> = {};
+    
+    if (ticketTypeIds.length > 0) {
+       // Fetch ticket types cleanly by ID
+       const { data: ticketTypes, error: ttError } = await adminClient
+         .from('ticket_types_v2')
+         .select('id, name')
+         .in('id', ticketTypeIds);
+       
+       if (!ttError && ticketTypes) {
+         ticketTypesMap = ticketTypes.reduce((acc: any, t: any) => {
+           acc[t.id] = t.name;
+           return acc;
+         }, {});
+       }
     }
 
-    step = 'profiles_ok';
-
-    // STEP 6: 格式化响应
-    step = 'format_response';
-    const formattedOrders = (orders || []).map((order: any) => {
-      const profile = profilesMap[order.user_id];
+    // STEP 7: 组装数据 (Merge all)
+    step = 'assemble_data';
+    
+    // Group items by order
+    const itemsByOrder: Record<string, any[]> = {};
+    orderItems.forEach((item: any) => {
+      // Resolve ticket name
+      const name = ticketTypesMap[item.ticket_type_id_v2] || 'Unknown Ticket';
       
-      // Extract Ticket Info
-      const items = order.order_items || [];
-      const ticketNames = items.map((item: any) => {
-          // Try ticket_types_v2 name first, fallback to unknown
-           return item.ticket_types_v2?.name || 'Unknown Ticket';
-      }).filter((n: string) => n);
-      const uniqueTicketNames = Array.from(new Set(ticketNames));
-      const ticketDisplay = uniqueTicketNames.length > 0 ? uniqueTicketNames.join(', ') : 'Unknown';
+      if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
+      itemsByOrder[item.order_id].push({
+        ...item,
+        ticket_type_name: name
+      });
+    });
 
-      // Extract Merchant/Event Info
-      // events_v2 might be an array or object depending on join, usually object if FK is singular
+    const formattedOrders = rawOrders.map((order: any) => {
+      const profile = profilesMap[order.user_id];
+      const items = itemsByOrder[order.id] || [];
+      
+      // Aggregate ticket names
+      const ticketNames = items.map((i: any) => i.ticket_type_name);
+      const uniqueTicketNames = Array.from(new Set(ticketNames));
+      const ticketDisplay = uniqueTicketNames.length > 0 ? uniqueTicketNames.join(', ') : 'No Tickets';
+
+      // Events info
       const eventData = Array.isArray(order.events_v2) ? order.events_v2[0] : order.events_v2;
       const merchantData = eventData?.merchants;
-      const merchantName = merchantData?.name || 'Multiple Merchants'; // Fallback if join failed
+      const merchantName = merchantData?.name || 'Multiple Merchants';
       const eventTitle = eventData?.title || 'Unknown Event';
 
       return {
@@ -208,10 +235,9 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         amountFormatted: `$${((order.amount_cents || 0) / 100).toFixed(2)}`,
         userId: order.user_id,
         customerName: profile?.display_name || 'Anonymous',
-        customerEmail: profile?.email || 'N/A', // Show N/A if missing
+        customerEmail: profile?.email || 'N/A',
         paymentIntentId: order.stripe_payment_intent_id,
         createdAt: order.created_at,
-        // Added fields
         ticketName: ticketDisplay,
         merchantName: merchantName,
         eventName: eventTitle
