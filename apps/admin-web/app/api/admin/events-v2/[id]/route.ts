@@ -7,22 +7,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/server/requireAdmin';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAdmin();
-  if ('error' in authResult) {
-    return authResult.error;
+  // Verify Admin Access using standard client for auth check
+  const supabase = await createClient(); // Standard client for auth
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json(
+      { success: false, code: 'UNAUTHENTICATED', message: 'Must be logged in' },
+      { status: 401 }
+    );
   }
-
+  
+  // Check admin role
+  const { data: isAdmin } = await supabase.rpc('is_admin');
+  if (!isAdmin) {
+    return NextResponse.json(
+      { success: false, code: 'FORBIDDEN', message: 'Must be admin' },
+      { status: 403 }
+    );
+  }
+  
   try {
     const { id } = await params;
 
-    const supabase = createAdminClient();
+    // Use Service Role client to bypass RLS for detailed data fetching
+    // (Ensure we can read merchants/venues even if admin is not a direct member)
+    const adminSupabase = createAdminClient();
 
-    const { data: event, error } = await supabase
+    const { data: event, error } = await adminSupabase
       .from('events_v2')
       .select(`
         *,
