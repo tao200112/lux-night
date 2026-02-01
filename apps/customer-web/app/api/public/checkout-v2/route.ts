@@ -298,6 +298,7 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         event_id: eventId,
         event_v2_id: eventId, // Add to metadata too
+        event_week_id: eventWeekId,
         merchant_id: event.merchant_id,
         ...(finalInviteCode ? { invite_code: finalInviteCode } : {}),
         version: 'v2'
