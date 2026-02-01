@@ -118,7 +118,10 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
     let startAtISO = t.valid_start_at;
 
     if (t.valid_start_at) {
-       const d = new Date(t.valid_start_at);
+       // Parse as local date by removing the 'Z' suffix if present
+       // This ensures the date is treated as local time, not UTC
+       const dateStr = t.valid_start_at.replace('Z', '');
+       const d = new Date(dateStr);
        displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
        displayTime = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     }
@@ -213,7 +216,10 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
   let startAtISO = data.valid_start_at;
 
   if (data.valid_start_at) {
-      const d = new Date(data.valid_start_at);
+      // Parse as local date by removing the 'Z' suffix if present
+      // This ensures the date is treated as local time, not UTC
+      const dateStr = data.valid_start_at.replace('Z', '');
+      const d = new Date(dateStr);
       displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       displayTime = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
