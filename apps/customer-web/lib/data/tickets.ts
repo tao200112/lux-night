@@ -118,12 +118,17 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
     let startAtISO = t.valid_start_at;
 
     if (t.valid_start_at) {
-       // Parse as local date by removing the 'Z' suffix if present
-       // This ensures the date is treated as local time, not UTC
-       const dateStr = t.valid_start_at.replace('Z', '');
-       const d = new Date(dateStr);
-       displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-       displayTime = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+       const d = new Date(t.valid_start_at);
+       
+       // Format using UTC methods to avoid timezone conversion issues
+       // The database stores times in UTC, but they represent local event times
+       // We need to display them as-is without timezone conversion
+       const month = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+       const day = d.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'UTC' });
+       const hour = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+       
+       displayDate = `${month} ${day}`;
+       displayTime = hour;
     }
 
     return {
@@ -216,12 +221,15 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
   let startAtISO = data.valid_start_at;
 
   if (data.valid_start_at) {
-      // Parse as local date by removing the 'Z' suffix if present
-      // This ensures the date is treated as local time, not UTC
-      const dateStr = data.valid_start_at.replace('Z', '');
-      const d = new Date(dateStr);
-      displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      displayTime = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const d = new Date(data.valid_start_at);
+      
+      // Format using UTC methods to avoid timezone conversion issues
+      const month = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
+      const day = d.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'UTC' });
+      const hour = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+      
+      displayDate = `${month} ${day}`;
+      displayTime = hour;
   }
 
   return {
