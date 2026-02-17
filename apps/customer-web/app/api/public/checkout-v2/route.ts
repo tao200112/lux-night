@@ -33,13 +33,16 @@ const CheckoutItemV2Schema = z.object({
   ticketTypeId: z.string().uuid(),
   eventWeekDayId: z.string().uuid(),
   quantity: z.number().int().positive().max(100),
+  valid_start_at: z.string().optional(),
+  valid_end_at: z.string().optional(),
 });
 
 const CheckoutRequestV2Schema = z.object({
   eventId: z.string().uuid(),
   eventWeekId: z.string().uuid(),
   items: z.array(CheckoutItemV2Schema).min(1),
-  inviteCode: z.string().optional(), // New field
+  inviteCode: z.string().optional(),
+  idempotencyKey: z.string().uuid().optional(),
 });
 
 interface ApiResponse<T> {
@@ -93,7 +96,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { eventId, eventWeekId, items, inviteCode } = validationResult.data;
+    const { eventId, eventWeekId, items, inviteCode, idempotencyKey } = validationResult.data;
 
     if (!eventId) {
         throw new Error('Critical: Event ID is missing from payload');
@@ -204,22 +207,57 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 7. Calculate Totals & Validations
+    // 7. Calculate Totals & Validate inventory (sold_count vs inventory_limit)
     let totalAmount = 0;
     for (const item of items) {
       const ticketType = ticketTypes.find((tt) => tt.id === item.ticketTypeId);
       if (!ticketType) throw new Error('Ticket type missing');
-      
       if (!ticketType.stripe_price_id) {
-          throw new Error(`Ticket type ${ticketType.name} is missing Stripe Price ID`);
+        throw new Error(`Ticket type ${ticketType.name} is missing Stripe Price ID`);
+      }
+      const soldCount = ticketType.sold_count ?? 0;
+      if (ticketType.inventory_limit != null) {
+        const available = ticketType.inventory_limit - soldCount;
+        if (available < item.quantity) {
+          return NextResponse.json<ApiResponse<never>>(
+            {
+              success: false,
+              error: {
+                code: 'INSUFFICIENT_INVENTORY',
+                message: `Insufficient inventory for ${ticketType.name} (${available} left)`,
+              },
+            },
+            { status: 400 }
+          );
+        }
       }
       totalAmount += ticketType.price_cents * item.quantity;
     }
 
-    // 8. 创建订单 (CRITICAL WRITE STEP)
-    const orderIdempotencyKey = `${user.id}-${eventId}-${Date.now()}`;
-    
-    // Explicitly construct insert payload
+    // 8. Idempotency: if key provided and order exists with session, return existing session
+    const orderIdempotencyKey = idempotencyKey ?? `${user.id}-${eventId}-${Date.now()}`;
+    if (idempotencyKey) {
+      const { data: existingOrder } = await supabase
+        .from('orders')
+        .select('id, stripe_checkout_session_id, status')
+        .eq('idempotency_key', idempotencyKey)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (existingOrder?.stripe_checkout_session_id && existingOrder.status !== 'expired') {
+        return NextResponse.json<ApiResponse<{ sessionId: string }>>({
+          success: true,
+          data: { sessionId: existingOrder.stripe_checkout_session_id },
+        });
+      }
+      if (existingOrder && !existingOrder.stripe_checkout_session_id) {
+        return NextResponse.json<ApiResponse<never>>(
+          { success: false, error: { code: 'ORDER_PENDING', message: 'Order is being created, please retry in a moment' } },
+          { status: 409 }
+        );
+      }
+    }
+
+    // 9. 创建订单 (CRITICAL WRITE STEP)
     const orderPayload = {
         user_id: user.id,
         status: 'pending_payment', // Initial status
@@ -252,20 +290,19 @@ export async function POST(req: NextRequest) {
         throw new Error('Order creation returned no data');
     }
 
-    // 9. 创建 order_items
+    // 10. 创建 order_items (with validity snapshot to avoid config drift before webhook)
     const orderItems = items.map((item) => {
         const ticketType = ticketTypes.find((tt) => tt.id === item.ticketTypeId)!;
-        const dayConfig = ticketType.event_week_days!;
-
         return {
             order_id: order.id,
             event_id: eventId,
-            ticket_type_id: item.ticketTypeId,         // Legacy?
-            ticket_type_v2_id: item.ticketTypeId,      // NEW (Required)
+            ticket_type_id: item.ticketTypeId,
+            ticket_type_v2_id: item.ticketTypeId,
             quantity: item.quantity,
             unit_price_cents: ticketType.price_cents,
-            // Snapshot IDs
-            event_week_day_id: item.eventWeekDayId
+            event_week_day_id: item.eventWeekDayId,
+            valid_start_at: item.valid_start_at ?? null,
+            valid_end_at: item.valid_end_at ?? null,
         };
     });
 
@@ -278,7 +315,7 @@ export async function POST(req: NextRequest) {
         throw new Error(`Order items creation failed: ${itemsError.message}`);
     }
 
-    // 10. Create Stripe Session
+    // 11. Create Stripe Session
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -305,7 +342,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 11. Update Order with Session ID
+    // 12. Update Order with Session ID
     const { error: updateError } = await supabase
       .from('orders')
       .update({ stripe_checkout_session_id: session.id })

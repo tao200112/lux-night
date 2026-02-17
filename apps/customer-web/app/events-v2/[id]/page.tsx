@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import BackButton from '@/components/ui/BackButton';
@@ -22,6 +22,7 @@ interface TicketType {
   currency: string;
   min_age: number | null;
   inventory_limit: number | null;
+  sold_count?: number;
   status: string;
   stripe_price_id: string | null;
 }
@@ -76,6 +77,7 @@ export default function CustomerEventV2DetailPage() {
   const [selections, setSelections] = useState<Record<string, number>>({}); // ticketTypeId -> quantity
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
   
+  const idempotencyKeyRef = useRef<string | null>(null);
   // Invite Code State
   const [inviteCode, setInviteCode] = useState('');
   const [inviteStatus, setInviteStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
@@ -184,11 +186,13 @@ export default function CustomerEventV2DetailPage() {
     }
 
     try {
-      // Build items array from selections
+      // Build items array from selections (include validity snapshot for webhook consistency)
       const items: Array<{
         ticketTypeId: string;
         eventWeekDayId: string;
         quantity: number;
+        valid_start_at?: string;
+        valid_end_at?: string;
       }> = [];
 
       weekConfig.days.forEach((day) => {
@@ -199,6 +203,8 @@ export default function CustomerEventV2DetailPage() {
               ticketTypeId: ticket.id,
               eventWeekDayId: day.id,
               quantity: qty,
+              valid_start_at: day.valid_start_at,
+              valid_end_at: day.valid_end_at,
             });
           }
         });
@@ -208,7 +214,7 @@ export default function CustomerEventV2DetailPage() {
         return;
       }
 
-      // Call checkout API
+      idempotencyKeyRef.current ??= crypto.randomUUID();
       const response = await fetch('/api/public/checkout-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -217,6 +223,7 @@ export default function CustomerEventV2DetailPage() {
           eventWeekId: weekConfig.event_week_id,
           items,
           inviteCode: validatedInviteCode || undefined,
+          idempotencyKey: idempotencyKeyRef.current,
         }),
       });
 
@@ -414,7 +421,7 @@ export default function CustomerEventV2DetailPage() {
                                     <span className="w-4 text-center text-[15px] font-medium tabular-nums">{qty}</span>
                                     <button
                                       onClick={() => updateQuantity(ticket.id, 1)}
-                                      disabled={ticket.inventory_limit !== null && qty >= ticket.inventory_limit}
+                                      disabled={ticket.inventory_limit != null && qty >= Math.max(0, ticket.inventory_limit - (ticket.sold_count ?? 0))}
                                       className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white disabled:opacity-20 transition-all active:scale-95"
                                     >
                                       <span className="material-symbols-outlined text-[18px]">add</span>

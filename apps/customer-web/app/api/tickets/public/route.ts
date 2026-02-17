@@ -1,14 +1,46 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// 此接口公开，用于 Staff App 扫码后查询票据详情，或三连击页面预加载
-// 不使用 cookie auth，只认 Service Role (如果需绕过 RLS) 或 Anon (如果 RLS 配置了 public 查)
-// 鉴于 tickets 表通常 private，这里使用 Admin Client 比较稳妥，只暴露非敏感信息
+// Simple in-memory rate limit (per-instance; for distributed use Upstash/Redis)
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 60;
+const store = new Map<string, { count: number; resetAt: number }>();
 
+function getClientIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? req.headers.get('x-real-ip') ?? 'unknown';
+}
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  // Prune expired entries
+  if (store.size > 1000) {
+    for (const [k, v] of store) {
+      if (now > v.resetAt) store.delete(k);
+    }
+  }
+  const entry = store.get(ip);
+  if (!entry) {
+    store.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (now > entry.resetAt) {
+    store.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
+// 此接口公开，用于 Staff App 扫码后查询票据详情，或三连击页面预加载
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: 'Too many requests', code: 'RATE_LIMITED' }, { status: 429 });
+  }
   const { searchParams } = new URL(req.url);
   const token = searchParams.get('token');
 

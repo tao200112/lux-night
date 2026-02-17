@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { handlerWrapper, requireAdmin, withTimeout } from '@/lib/admin/api';
+import { handlerWrapper, requireAdmin, withTimeout, createCookieClient } from '@/lib/admin/api';
 import { randomBytes } from 'crypto';
 
 export const runtime = 'nodejs';
@@ -14,6 +14,16 @@ const TIMEOUT_MS = 30000;
 
 export const POST = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
     try {
+        // Disable in production unless ADMIN_DEBUG_KEY is explicitly set
+        const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+        const hasDebugKey = !!process.env.ADMIN_DEBUG_KEY;
+        if (isProduction && !hasDebugKey) {
+            return NextResponse.json(
+                { ok: false, error: 'Debug complete-order is disabled in production' },
+                { status: 403 }
+            );
+        }
+
         const authResult = await withTimeout(requireAdmin(request), TIMEOUT_MS, 'auth');
         if ('status' in authResult) return authResult.response;
         const { adminClient } = authResult;
@@ -161,7 +171,6 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
             return NextResponse.json({ ok: false, error: 'No tickets generated' }, { status: 500 });
         }
 
-        // Insert tickets
         const { error: ticketsError } = await adminClient
             .from('tickets')
             .insert(tickets);
@@ -170,20 +179,21 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
             return NextResponse.json({ ok: false, error: `Failed to create tickets: ${ticketsError.message}` }, { status: 500 });
         }
 
-        // Increment invite usage if applicable
-        if (order.invite_id) {
-            const { data: currentInvite } = await adminClient
-                .from('ambassador_invites')
-                .select('uses_count')
-                .eq('id', order.invite_id)
-                .single();
+        // Increment ticket_types_v2.sold_count
+        const typeCounts = new Map<string, number>();
+        for (const oi of orderItems) {
+            const k = oi.ticket_type_id;
+            typeCounts.set(k, (typeCounts.get(k) ?? 0) + oi.quantity);
+        }
+        for (const [tid, qty] of typeCounts.entries()) {
+            await adminClient.rpc('increment_ticket_type_v2_sold', { p_ticket_type_id: tid, p_quantity: qty });
+        }
 
-            if (currentInvite) {
-                await adminClient
-                    .from('ambassador_invites')
-                    .update({ uses_count: currentInvite.uses_count + 1 })
-                    .eq('id', order.invite_id);
-            }
+        // Increment invite usage atomically (if applicable)
+        if (order.invite_id) {
+            await adminClient.rpc('increment_ambassador_invite_usage', {
+                p_invite_id: order.invite_id,
+            });
         }
 
         // Update order status
@@ -196,6 +206,20 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
             .from('orders')
             .update({ status: 'fulfilled' })
             .eq('id', orderId);
+
+        try {
+            const cookieClient = await createCookieClient();
+            await cookieClient.rpc('log_audit', {
+                p_action: 'debug_complete_order',
+                p_entity_type: 'order',
+                p_entity_id: orderId,
+                p_before_state: { status: order.status },
+                p_after_state: { status: 'fulfilled', ticketCount: tickets.length },
+                p_metadata: { source: 'debug_complete_order', orderId },
+            });
+        } catch (auditErr) {
+            console.warn('[DEBUG COMPLETE ORDER] Audit log failed:', auditErr);
+        }
 
         return NextResponse.json({
             ok: true,

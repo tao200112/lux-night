@@ -219,12 +219,22 @@ async function handleCheckoutSessionCompletedV2(session: Stripe.Checkout.Session
   // Step 2: Fetch order and order_items
   const { data: order, error: orderError } = await supabaseAdmin
     .from('orders')
-    .select('id, user_id, status')
+    .select('id, user_id, status, amount_cents')
     .eq('id', orderId)
     .single();
 
   if (orderError || !order) {
     throw new Error(`Order not found: ${orderId}`);
+  }
+
+  // Amount consistency check (session vs order)
+  const sessionAmount = session.amount_total ?? null;
+  const orderAmount = order.amount_cents ?? null;
+  if (sessionAmount != null && orderAmount != null) {
+    const diff = Math.abs(sessionAmount - orderAmount);
+    if (diff > 1) {
+      throw new Error(`Amount mismatch: session=${sessionAmount} order=${orderAmount}`);
+    }
   }
 
   if (order.status === 'fulfilled') {
@@ -418,9 +428,19 @@ async function handleCheckoutSessionCompletedV2(session: Stripe.Checkout.Session
     throw new Error(`Failed to create tickets: ${ticketsError.message}`);
   }
 
-  // Step 5: Update ticket_types_v2 inventory (if applicable)
-  // Note: v2 doesn't track sold_count the same way, but we can update inventory_limit if needed
-  // For now, we'll skip this step as v2 uses a different inventory model
+  // Step 5: Update ticket_types_v2.sold_count atomically
+  const v2TicketTypeUpdates = new Map<string, number>();
+  for (const orderItem of orderItems) {
+    const tid = orderItem.ticket_type_id;
+    v2TicketTypeUpdates.set(tid, (v2TicketTypeUpdates.get(tid) || 0) + orderItem.quantity);
+  }
+  for (const [tid, qty] of v2TicketTypeUpdates.entries()) {
+    const { error: incErr } = await supabaseAdmin.rpc('increment_ticket_type_v2_sold', {
+      p_ticket_type_id: tid,
+      p_quantity: qty,
+    });
+    if (incErr) console.warn('[STRIPE WEBHOOK V2] sold_count increment error:', tid, incErr.message);
+  }
 
   // Step 6: Update order status to 'paid'
   const updateData: any = {
@@ -444,66 +464,30 @@ async function handleCheckoutSessionCompletedV2(session: Stripe.Checkout.Session
     .update(updateData)
     .eq('id', orderId);
 
-  // Step 6.5: Increment invite code usage (if applicable)
-  // This happens AFTER payment is confirmed
-  // Wrapped in try-catch to prevent webhook failure if ambassador tables don't exist
+  // Step 6.5: Increment invite code usage atomically (if applicable)
   try {
     const { data: orderWithInvite, error: orderFetchError } = await supabaseAdmin
       .from('orders')
-      .select('invite_id, invite_code')
+      .select('invite_id')
       .eq('id', orderId)
       .single();
 
-    if (orderFetchError) {
-      console.warn('[STRIPE WEBHOOK V2] Could not fetch order invite data:', orderFetchError.message);
-    } else if (orderWithInvite?.invite_id) {
-      console.log('[STRIPE WEBHOOK V2]', {
-        debugId,
-        step: 'invite.increment.start',
-        inviteId: orderWithInvite.invite_id,
-        inviteCode: orderWithInvite.invite_code,
-      });
+    if (orderFetchError || !orderWithInvite?.invite_id) return;
 
-      // Fetch current invite to check limits
-      const { data: currentInvite, error: inviteFetchError } = await supabaseAdmin
-        .from('ambassador_invites')
-        .select('uses_count, max_uses')
-        .eq('id', orderWithInvite.invite_id)
-        .single();
-
-      if (inviteFetchError) {
-        console.warn('[STRIPE WEBHOOK V2] Could not fetch invite:', inviteFetchError.message);
-      } else if (currentInvite) {
-        // Increment usage count
-        const { error: inviteUpdateError } = await supabaseAdmin
-          .from('ambassador_invites')
-          .update({ uses_count: currentInvite.uses_count + 1 })
-          .eq('id', orderWithInvite.invite_id);
-
-        if (inviteUpdateError) {
-          console.error('[STRIPE WEBHOOK V2]', {
-            debugId,
-            step: 'invite.increment.error',
-            inviteId: orderWithInvite.invite_id,
-            error: inviteUpdateError.message,
-          });
-        } else {
-          console.log('[STRIPE WEBHOOK V2]', {
-            debugId,
-            step: 'invite.increment.success',
-            inviteId: orderWithInvite.invite_id,
-            newUsesCount: currentInvite.uses_count + 1,
-          });
-        }
-      }
-    }
-  } catch (inviteError: any) {
-    // Non-blocking error - don't fail the entire webhook
-    console.error('[STRIPE WEBHOOK V2] Invite processing failed (non-blocking):', {
-      debugId,
-      error: inviteError.message,
-      stack: inviteError.stack,
+    const { data: incremented, error: rpcError } = await supabaseAdmin.rpc('increment_ambassador_invite_usage', {
+      p_invite_id: orderWithInvite.invite_id,
     });
+    if (rpcError) {
+      console.warn('[STRIPE WEBHOOK V2] Invite increment RPC error:', rpcError.message);
+      return;
+    }
+    if (!incremented) {
+      console.warn('[STRIPE WEBHOOK V2] Invite usage limit reached (race):', orderWithInvite.invite_id);
+      return;
+    }
+    console.log('[STRIPE WEBHOOK V2]', { debugId, step: 'invite.increment.success', inviteId: orderWithInvite.invite_id });
+  } catch (inviteError: any) {
+    console.error('[STRIPE WEBHOOK V2] Invite processing failed (non-blocking):', { debugId, error: inviteError.message });
   }
 
   // Step 7: Update order status to 'fulfilled'
@@ -626,7 +610,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   // Step 2: Fetch order and order_items
   const { data: order, error: orderError } = await supabaseAdmin
     .from('orders')
-    .select('id, user_id, status')
+    .select('id, user_id, status, amount_cents')
     .eq('id', orderId)
     .single();
 
@@ -641,6 +625,16 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       stack: error.stack,
     });
     throw error;
+  }
+
+  // Amount consistency check (session vs order)
+  const sessionAmount = session.amount_total ?? null;
+  const orderAmount = order.amount_cents ?? null;
+  if (sessionAmount != null && orderAmount != null) {
+    const diff = Math.abs(sessionAmount - orderAmount);
+    if (diff > 1) {
+      throw new Error(`Amount mismatch: session=${sessionAmount} order=${orderAmount}`);
+    }
   }
 
   console.log('[STRIPE WEBHOOK]', {
@@ -849,8 +843,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     ticketIds: insertedTickets?.map((t: any) => t.id) || [],
   });
 
-  // Step 5: Update ticket_types.sold_count atomically (after tickets are inserted)
-  // Group by ticket_type_id to update each type once
+  // Step 5: Update ticket_types.sold_count atomically via RPC (avoids race)
   const ticketTypeUpdates = new Map<string, number>();
   for (const orderItem of orderItems) {
     const currentCount = ticketTypeUpdates.get(orderItem.ticket_type_id) || 0;
@@ -858,67 +851,19 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 
   for (const [ticketTypeId, quantity] of ticketTypeUpdates.entries()) {
-    // Fetch current sold_count first
-    const { data: currentType, error: fetchError } = await supabaseAdmin
-      .from('ticket_types')
-      .select('sold_count')
-      .eq('id', ticketTypeId)
-      .single();
-
-    if (fetchError || !currentType) {
-      console.error('[STRIPE WEBHOOK]', {
-        debugId,
-        step: 'ticket_type.fetch_for_update.error',
-        ticketTypeId,
-        error: fetchError?.message || 'Ticket type not found',
-      });
-      continue; // Skip this update, but don't fail the whole process
-    }
-
-    const newSoldCount = currentType.sold_count + quantity;
-
-    console.log('[STRIPE WEBHOOK]', {
-      debugId,
-      step: 'ticket_type.update.before',
-      ticketTypeId,
-      oldSoldCount: currentType.sold_count,
-      newSoldCount,
-      quantity,
+    const { error: rpcError } = await supabaseAdmin.rpc('increment_ticket_type_sold', {
+      p_ticket_type_id: ticketTypeId,
+      p_quantity: quantity,
     });
-
-    // Update sold_count (Supabase update is atomic at the row level)
-    // Note: In high-concurrency scenarios, consider using a database function/RPC
-    // for true atomic increment (sold_count = sold_count + quantity)
-    const { error: updateError } = await supabaseAdmin
-      .from('ticket_types')
-      .update({
-        sold_count: newSoldCount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', ticketTypeId);
-
-    if (updateError) {
+    if (rpcError) {
       console.error('[STRIPE WEBHOOK]', {
         debugId,
-        step: 'ticket_type.update.error',
+        step: 'ticket_type.increment.error',
         ticketTypeId,
         quantity,
-        error: updateError.message,
-        code: updateError.code,
-        details: updateError.details,
+        error: rpcError.message,
       });
-      // Tickets are already inserted, but sold_count update failed
-      // Log error but don't throw (tickets are the critical data)
-      // In production, consider implementing a reconciliation job to fix sold_count
-    } else {
-      console.log('[STRIPE WEBHOOK]', {
-        debugId,
-        step: 'ticket_type.updated',
-        ticketTypeId,
-        oldSoldCount: currentType.sold_count,
-        newSoldCount,
-        quantity,
-      });
+      // Non-fatal: tickets already inserted; reconciliation job can fix sold_count
     }
   }
 
@@ -1087,6 +1032,24 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
   // Update order status to refunded
   await supabaseAdmin.from('orders').update({ status: 'refunded' }).eq('id', order.id);
+
+  // Mark all tickets for this order as refunded (prevent redemption after refund)
+  const { data: ticketsUpdated, error: ticketsErr } = await supabaseAdmin
+    .from('tickets')
+    .update({
+      status: 'refunded',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('order_id', order.id)
+    .in('status', ['active', 'issued'])
+    .select('id');
+
+  if (ticketsErr) {
+    console.error('[STRIPE WEBHOOK] Failed to mark tickets as refunded:', order.id, ticketsErr);
+  } else if (ticketsUpdated && ticketsUpdated.length > 0) {
+    console.log('[STRIPE WEBHOOK] Marked', ticketsUpdated.length, 'tickets as refunded for order:', order.id);
+  }
+
   console.log('[STRIPE WEBHOOK] Updated order status to refunded:', order.id);
 }
 
@@ -1318,21 +1281,25 @@ export async function POST(req: NextRequest) {
 
       case 'checkout.session.async_payment_succeeded':
       case 'checkout.session.async_payment_failed': {
-        // Handle async payment events (similar to checkout.session.completed)
         const session = event.data.object as Stripe.Checkout.Session;
+        const asyncOrderId = session.client_reference_id || session.metadata?.order_id;
         if (event.type === 'checkout.session.async_payment_succeeded') {
-          await handleCheckoutSessionCompleted(session);
+          const isV2 = session.metadata?.version === 'v2';
+          const result = isV2
+            ? await handleCheckoutSessionCompletedV2(session)
+            : await handleCheckoutSessionCompleted(session);
+          if (!result.skipped) {
+            await markEventProcessed(event.id, result.orderId);
+          }
         } else {
-          // Handle async payment failed
-          const orderId = session.client_reference_id || session.metadata?.order_id;
-          if (orderId) {
+          if (asyncOrderId) {
             await supabaseAdmin
               .from('orders')
               .update({ status: 'expired' })
-              .eq('id', orderId);
+              .eq('id', asyncOrderId);
           }
+          await markEventProcessed(event.id, asyncOrderId);
         }
-        await markEventProcessed(event.id, orderId);
         break;
       }
 
@@ -1368,8 +1335,16 @@ export async function POST(req: NextRequest) {
       duration,
     });
 
-    // Mark event as processed with error (if eventRecord exists)
-    if (eventRecord) {
+    // Only mark as processed for non-retryable errors (so Stripe won't retry)
+    const msg = (error?.message || '').toLowerCase();
+    const isNonRetryable =
+      msg.includes('order not found') ||
+      msg.includes('amount mismatch') ||
+      msg.includes('missing order_id') ||
+      msg.includes('no tickets generated') ||
+      msg.includes('failed to fetch order items') ||
+      msg.includes('event week not found');
+    if (eventRecord && isNonRetryable) {
       try {
         await markEventProcessed(event.id, orderId, error.message);
       } catch (markError: any) {
@@ -1382,7 +1357,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Return 500 to trigger Stripe retry (but idempotency ensures no duplicate processing)
+    // Return 500 to trigger Stripe retry (idempotency prevents duplicate processing on retry)
     return NextResponse.json(
       { 
         error: `Failed to process event: ${error.message}`,

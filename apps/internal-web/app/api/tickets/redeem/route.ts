@@ -126,9 +126,9 @@ export async function POST(req: NextRequest) {
       if (now > windowEnd) return NextResponse.json({ error: 'Ticket expired', code: 'EXPIRED', expiredAt: windowEnd.toISOString() }, { status: 422 });
   }
 
-  // 7. Execute Redeem
+  // 7. Execute Redeem (optimistic lock: only update if still active to prevent race)
   const newCount = currentCount + 1;
-  const newStatus = newCount >= limit ? 'used' : 'active'; 
+  const newStatus = newCount >= limit ? 'used' : 'active';
 
   const { data: updated, error: updateErr } = await admin
     .from('tickets')
@@ -140,12 +140,27 @@ export async function POST(req: NextRequest) {
         updated_at: new Date().toISOString()
     })
     .eq('id', ticket.id)
+    .eq('status', 'active')  // Optimistic lock: prevent concurrent double-redeem
     .select('id, status, redeemed_count, redeem_limit, redeemed_at')
-    .single();
+    .maybeSingle();
 
   if (updateErr) {
       console.error('[Redeem API] Update failed:', updateErr);
       return NextResponse.json({ error: 'Update failed', code: 'DB_UPDATE_ERROR' }, { status: 500 });
+  }
+
+  // Concurrent redeem: another request may have redeemed first
+  if (!updated) {
+      const { data: refetch } = await admin
+        .from('tickets')
+        .select('id, status, redeemed_count, redeem_limit, redeemed_at')
+        .eq('id', ticket.id)
+        .maybeSingle();
+      return NextResponse.json({
+          alreadyRedeemed: true,
+          code: 'CONCURRENT_REDEEM',
+          ticket: refetch
+      }, { status: 409 });
   }
 
   console.log(`[Redeem API] Success: Ticket ${updated.id} Count ${newCount}/${limit} Method: ${redeem_method} By: ${user.id}`);

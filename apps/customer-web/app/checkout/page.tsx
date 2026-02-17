@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Button from '../../components/ui/Button';
 import { getStripe } from '@/lib/stripe/client';
@@ -16,6 +16,7 @@ function CheckoutPageContent() {
   
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   // Invite Code State
   const [inviteCode, setInviteCode] = useState('');
@@ -75,16 +76,17 @@ function CheckoutPageContent() {
       }
 
       const items = JSON.parse(itemsJson);
+      idempotencyKeyRef.current ??= crypto.randomUUID();
 
-      // Call API to create Stripe checkout session (V2)
       const response = await fetch('/api/public/checkout-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             eventId, 
-            eventWeekId: eventWeekId, // We might need to ensure this is saved in previous flow
+            eventWeekId: eventWeekId,
             items, 
-            inviteCode: finalInviteCode || undefined
+            inviteCode: finalInviteCode || undefined,
+            idempotencyKey: idempotencyKeyRef.current,
         }),
       });
 
