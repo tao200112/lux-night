@@ -1236,7 +1236,7 @@ export async function POST(req: NextRequest) {
           ? await handleCheckoutSessionCompletedV2(session)
           : await handleCheckoutSessionCompleted(session);
         
-        if (!result.skipped) {
+        if (result && !result.skipped) {
           await markEventProcessed(event.id, result.orderId);
           console.log('[STRIPE WEBHOOK]', {
             debugId,
@@ -1250,7 +1250,7 @@ export async function POST(req: NextRequest) {
             debugId,
             step: 'event.skipped',
             eventId: event.id,
-            orderId: result.orderId,
+            orderId: result?.orderId,
             reason: 'Order already processed',
             version: isV2 ? 'v2' : 'v1',
           });
@@ -1288,7 +1288,7 @@ export async function POST(req: NextRequest) {
           const result = isV2
             ? await handleCheckoutSessionCompletedV2(session)
             : await handleCheckoutSessionCompleted(session);
-          if (!result.skipped) {
+          if (result && !result.skipped) {
             await markEventProcessed(event.id, result.orderId);
           }
         } else {
