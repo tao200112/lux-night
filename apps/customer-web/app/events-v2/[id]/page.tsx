@@ -38,6 +38,8 @@ interface DayConfig {
   date: string;
   valid_start_at: string;
   valid_end_at: string;
+  event_week_id?: string;
+  week_start_date?: string;
 }
 
 interface EventV2 {
@@ -95,25 +97,30 @@ export default function CustomerEventV2DetailPage() {
       setLoading(true);
       setError(null);
 
-      // Fetch event and week config in parallel
-      const [eventResponse, weekResponse] = await Promise.all([
+      // Fetch event and upcoming days (cross-week, always show ~3 slots)
+      const [eventResponse, upcomingResponse] = await Promise.all([
         fetch(`/api/public/events-v2/${eventId}`),
-        fetch(`/api/public/events-v2/${eventId}/week?date=${new Date().toISOString().split('T')[0]}`),
+        fetch(`/api/public/events-v2/${eventId}/upcoming-days?limit=3`),
       ]);
 
       const eventResult = await eventResponse.json();
-      const weekResult = await weekResponse.json();
+      const upcomingResult = await upcomingResponse.json();
 
       if (eventResult.error) {
         throw new Error(eventResult.error);
       }
 
-      if (weekResult.error) {
-        throw new Error(weekResult.error);
+      if (upcomingResult.error) {
+        throw new Error(upcomingResult.error);
       }
 
       setEvent(eventResult);
-      setWeekConfig(weekResult);
+      setWeekConfig({
+        event_week_id: upcomingResult.days?.[0]?.event_week_id ?? '',
+        week_start_date: upcomingResult.days?.[0]?.week_start_date ?? '',
+        days: upcomingResult.days ?? [],
+        event_status: upcomingResult.event_status ?? 'active',
+      });
     } catch (err: any) {
       console.error('[CUSTOMER EVENT V2] Error:', err);
       setError(err.message);
@@ -142,6 +149,17 @@ export default function CustomerEventV2DetailPage() {
         );
       }, 0)
     : 0;
+
+  const selectedWeekIds = weekConfig
+    ? [...new Set(
+        weekConfig.days.flatMap((day) => {
+          const weekId = (day as DayConfig & { event_week_id?: string }).event_week_id ?? weekConfig.event_week_id;
+          const hasSelection = day.tickets.some((t) => (selections[t.id] || 0) > 0);
+          return hasSelection ? [weekId] : [];
+        })
+      )]
+    : [];
+  const selectionsSpanMultipleWeeks = totalQuantity > 0 && selectedWeekIds.length > 1;
 
   const validateInviteCode = async () => {
     if (!inviteCode.trim()) {
@@ -179,23 +197,23 @@ export default function CustomerEventV2DetailPage() {
   const handleCheckout = async () => {
     if (!event || !weekConfig || totalQuantity === 0) return;
 
-    // Check if event is paused
     if (event.status === 'paused' || event.status === 'temp_closed') {
       alert('This event is temporarily closed. Please check back later.');
       return;
     }
 
     try {
-      // Build items array from selections (include validity snapshot for webhook consistency)
       const items: Array<{
         ticketTypeId: string;
         eventWeekDayId: string;
         quantity: number;
         valid_start_at?: string;
         valid_end_at?: string;
+        event_week_id: string;
       }> = [];
 
       weekConfig.days.forEach((day) => {
+        const weekId = (day as DayConfig & { event_week_id?: string }).event_week_id ?? weekConfig.event_week_id;
         day.tickets.forEach((ticket) => {
           const qty = selections[ticket.id] || 0;
           if (qty > 0) {
@@ -205,14 +223,22 @@ export default function CustomerEventV2DetailPage() {
               quantity: qty,
               valid_start_at: day.valid_start_at,
               valid_end_at: day.valid_end_at,
+              event_week_id: weekId,
             });
           }
         });
       });
 
-      if (items.length === 0) {
+      if (items.length === 0) return;
+
+      const weekIds = [...new Set(items.map((i) => i.event_week_id))];
+      if (weekIds.length > 1) {
+        alert('Please select tickets from one date group only. Clear selections and choose tickets from a single date.');
         return;
       }
+      const eventWeekId = weekIds[0];
+
+      const checkoutItems = items.map(({ event_week_id: _, ...rest }) => rest);
 
       idempotencyKeyRef.current ??= crypto.randomUUID();
       const response = await fetch('/api/public/checkout-v2', {
@@ -220,8 +246,8 @@ export default function CustomerEventV2DetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventId: event.id,
-          eventWeekId: weekConfig.event_week_id,
-          items,
+          eventWeekId,
+          items: checkoutItems,
           inviteCode: validatedInviteCode || undefined,
           idempotencyKey: idempotencyKeyRef.current,
         }),
@@ -356,9 +382,9 @@ export default function CustomerEventV2DetailPage() {
             <p className="text-gray-400 mb-6 leading-relaxed">{event.description}</p>
           )}
 
-          {/* Week Info */}
+          {/* Upcoming Info */}
           <div className="mb-6 text-sm text-gray-400">
-            Week of {new Date(weekConfig.week_start_date).toLocaleDateString()}
+            Upcoming dates
           </div>
 
           {/* Days with Tickets */}
@@ -379,7 +405,7 @@ export default function CustomerEventV2DetailPage() {
                 const dateHeader = dayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
                 return (
-                  <div key={day.dow} className="mb-8 last:mb-20">
+                  <div key={day.id} className="mb-8 last:mb-20">
                     <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 pl-1">
                       {dateHeader} <span className="font-normal opacity-50 ml-2">| {day.start_time}</span>
                     </h3>
@@ -508,6 +534,12 @@ export default function CustomerEventV2DetailPage() {
             )}
           </div>
 
+          {selectionsSpanMultipleWeeks && (
+            <div className="mb-3 text-xs text-amber-400 flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm">info</span>
+              Please select tickets from one date only
+            </div>
+          )}
           {/* Price and Checkout Button */}
           <div className="flex items-center justify-between">
             <div>
@@ -518,11 +550,15 @@ export default function CustomerEventV2DetailPage() {
             </div>
             <Button
               onClick={handleCheckout}
-              disabled={isPaused || totalQuantity === 0}
+              disabled={isPaused || totalQuantity === 0 || selectionsSpanMultipleWeeks}
               variant="primary"
               fullWidth={false}
             >
-              {isPaused ? 'Temporarily Closed' : 'Checkout'}
+              {isPaused
+                ? 'Temporarily Closed'
+                : selectionsSpanMultipleWeeks
+                ? 'Select one date only'
+                : 'Checkout'}
             </Button>
           </div>
         </div>

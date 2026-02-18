@@ -80,6 +80,7 @@ export default function WeekConfigPage() {
   const [weekStartDate, setWeekStartDate] = useState<string>(''); // Store week_start_date
   const [status, setStatus] = useState<'draft' | 'active' | 'temp_closed' | 'archived'>('draft');
   const [deletedTickets, setDeletedTickets] = useState<{ id: string; dow: number }[]>([]); // Track tickets to delete
+  const [selectedWeekDate, setSelectedWeekDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   
   // Event Info State
   const [activeTab, setActiveTab] = useState<'tickets' | 'info'>('tickets');
@@ -99,7 +100,7 @@ export default function WeekConfigPage() {
     const fetchConfig = async () => {
       try {
         const [weekRes, infoRes] = await Promise.all([
-           fetch(`/api/admin/events-v2/${eventId}/week`),
+           fetch(`/api/admin/events-v2/${eventId}/week?date=${selectedWeekDate}`),
            fetch(`/api/admin/events-v2/${eventId}`)
         ]);
         
@@ -175,7 +176,7 @@ export default function WeekConfigPage() {
       }
     };
     fetchConfig();
-  }, [eventId]);
+  }, [eventId, selectedWeekDate]);
 
   // --- Actions ---
 
@@ -638,6 +639,41 @@ export default function WeekConfigPage() {
         
         {activeTab === 'tickets' && (
          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Week Selector */}
+            <div className="flex items-center justify-between mb-4 p-3 bg-[#181820] rounded-xl border border-[#333]">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isDirty && !confirm('Unsaved changes will be lost. Continue?')) return;
+                  const d = new Date(selectedWeekDate);
+                  d.setDate(d.getDate() - 7);
+                  setSelectedWeekDate(d.toISOString().split('T')[0]);
+                  setIsDirty(false);
+                }}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                title="Previous week"
+              >
+                <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+              </button>
+              <span className="text-sm font-medium text-white">
+                Week of {new Date(weekStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isDirty && !confirm('Unsaved changes will be lost. Continue?')) return;
+                  const d = new Date(selectedWeekDate);
+                  d.setDate(d.getDate() + 7);
+                  setSelectedWeekDate(d.toISOString().split('T')[0]);
+                  setIsDirty(false);
+                }}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                title="Next week"
+              >
+                <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+              </button>
+            </div>
+
             {/* Helper Actions */}
             <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
                 {/* Can add Copy/Paste logic here later */}
