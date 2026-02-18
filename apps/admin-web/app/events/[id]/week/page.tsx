@@ -26,6 +26,7 @@ interface TicketUI {
   age: AgeRestriction;
   quantity: string; // "" = unlimited
   status: TicketStatus;
+  sortOrder?: number; // display order
 }
 
 interface DayUI {
@@ -150,7 +151,7 @@ export default function WeekConfigPage() {
                     startTime: d.start_time?.slice(0, 5) || '22:00',
                     endTime: d.end_time?.slice(0, 5) || '02:00',
                     endNextDay: d.end_next_day ?? true,
-                    tickets: dbTickets.map((t: any) => ({
+                    tickets: dbTickets.map((t: any, idx: number) => ({
                         id: t.id,
                         tempId: Math.random().toString(36).substr(2, 9),
                         name: t.name || 'Unnamed Ticket',
@@ -158,7 +159,8 @@ export default function WeekConfigPage() {
                         priceDollars: ((t.price_cents || 0) / 100).toFixed(2),
                         age: t.min_age === 21 ? '21' : t.min_age === 18 ? '18' : 'ALL',
                         quantity: t.inventory_limit === null ? '' : String(t.inventory_limit),
-                        status: t.status || 'active'
+                        status: t.status || 'active',
+                        sortOrder: t.sort_order ?? idx
                     }))
                 };
             });
@@ -187,6 +189,8 @@ export default function WeekConfigPage() {
 
   const addTicket = (dow: number, templateCat: TicketCategory = 'General') => {
     const template = DEFAULT_TICKET_TEMPLATES[templateCat];
+    const day = days[dow];
+    const maxOrder = Math.max(0, ...day.tickets.map(t => t.sortOrder ?? 0));
     const newTicket: TicketUI = {
       tempId: Math.random().toString(36).substr(2, 9),
       name: template.name || 'New Ticket',
@@ -195,6 +199,7 @@ export default function WeekConfigPage() {
       age: (template.age as AgeRestriction) || '21',
       quantity: template.quantity || '',
       status: 'active',
+      sortOrder: maxOrder + 100,
       ...template // spread remaining
     };
 
@@ -248,11 +253,13 @@ export default function WeekConfigPage() {
       const source = day.tickets.find(t => t.tempId === ticketTempId);
       if (!source) return;
 
+      const maxOrder = Math.max(0, ...day.tickets.map(t => t.sortOrder ?? 0));
       const newTicket: TicketUI = {
           ...source,
           id: undefined,
           tempId: Math.random().toString(36).substr(2, 9),
-          name: source.name + ' (Copy)'
+          name: source.name + ' (Copy)',
+          sortOrder: maxOrder + 100
       };
 
       setDays(prev => ({
@@ -263,6 +270,26 @@ export default function WeekConfigPage() {
           }
       }));
       setIsDirty(true);
+  };
+
+  const moveTicketUp = (dow: number, ticketTempId: string) => {
+    const day = days[dow];
+    const idx = day.tickets.findIndex(t => t.tempId === ticketTempId);
+    if (idx <= 0) return;
+    const tickets = [...day.tickets];
+    [tickets[idx - 1], tickets[idx]] = [tickets[idx], tickets[idx - 1]];
+    setDays(prev => ({ ...prev, [dow]: { ...prev[dow], tickets } }));
+    setIsDirty(true);
+  };
+
+  const moveTicketDown = (dow: number, ticketTempId: string) => {
+    const day = days[dow];
+    const idx = day.tickets.findIndex(t => t.tempId === ticketTempId);
+    if (idx < 0 || idx >= day.tickets.length - 1) return;
+    const tickets = [...day.tickets];
+    [tickets[idx], tickets[idx + 1]] = [tickets[idx + 1], tickets[idx]];
+    setDays(prev => ({ ...prev, [dow]: { ...prev[dow], tickets } }));
+    setIsDirty(true);
   };
 
 
@@ -377,8 +404,8 @@ export default function WeekConfigPage() {
       // Prepare Payload
       const daysPayload: Record<string, any> = {};
       Object.values(days).forEach(day => {
-        // Active tickets (upsert)
-        const activeTicketsPayload = day.tickets.map(t => ({
+        // Active tickets (upsert) - use array index as sort_order
+        const activeTicketsPayload = day.tickets.map((t, idx) => ({
             id: t.id,
             name: t.name,
             category: mapUiCategoryToDb(t.category),
@@ -387,6 +414,7 @@ export default function WeekConfigPage() {
             min_age: t.age === 'ALL' ? null : parseInt(t.age),
             inventory_limit: t.quantity === '' ? null : parseInt(t.quantity),
             status: t.status,
+            sort_order: (idx + 1) * 100,
             action: 'upsert'
         }));
 
@@ -805,6 +833,22 @@ export default function WeekConfigPage() {
 
                                  {/* Action Buttons */}
                                  <div className="flex items-center gap-1 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all">
+                                     <button
+                                        onClick={() => moveTicketUp(dow, ticket.tempId)}
+                                        disabled={tIdx <= 0}
+                                        className="bg-[#222] text-[#888] hover:text-white hover:bg-[#333] rounded-md p-1 border border-[#444] disabled:opacity-40 disabled:cursor-not-allowed"
+                                        title="Move up"
+                                     >
+                                        <span className="material-symbols-outlined text-[14px] block">arrow_upward</span>
+                                     </button>
+                                     <button
+                                        onClick={() => moveTicketDown(dow, ticket.tempId)}
+                                        disabled={tIdx >= day.tickets.length - 1}
+                                        className="bg-[#222] text-[#888] hover:text-white hover:bg-[#333] rounded-md p-1 border border-[#444] disabled:opacity-40 disabled:cursor-not-allowed"
+                                        title="Move down"
+                                     >
+                                        <span className="material-symbols-outlined text-[14px] block">arrow_downward</span>
+                                     </button>
                                      <button
                                         onClick={() => duplicateTicket(dow, ticket.tempId)}
                                         className="bg-[#222] text-[#888] hover:text-white hover:bg-[#333] rounded-md p-1 border border-[#444]"
