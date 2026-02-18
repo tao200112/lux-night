@@ -7,6 +7,10 @@ export interface Region {
   country: string;
   lat: number | null;
   lng: number | null;
+  /** Center point for geolocation matching */
+  center_lat: number | null;
+  center_lng: number | null;
+  city: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

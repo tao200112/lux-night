@@ -5,9 +5,10 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import Button from '@/components/ui/Button';
+import { useEventRealtime } from '@/hooks/useEventRealtime';
 import BackButton from '@/components/ui/BackButton';
 import PosterPreviewModal from '@/components/ui/PosterPreviewModal';
 
@@ -57,7 +58,10 @@ interface EventV2 {
     id: string;
     name: string;
     address: string | null;
+    city?: string | null;
+    state?: string | null;
   } | null;
+  region?: { id: string; name: string; city?: string | null; state?: string | null } | null;
 }
 
 interface WeekConfig {
@@ -69,7 +73,6 @@ interface WeekConfig {
 
 export default function CustomerEventV2DetailPage() {
   const params = useParams();
-  const router = useRouter();
   const eventId = params.id as string;
 
   const [loading, setLoading] = useState(true);
@@ -88,18 +91,12 @@ export default function CustomerEventV2DetailPage() {
   const [inviteMessage, setInviteMessage] = useState('');
   const [validatedInviteCode, setValidatedInviteCode] = useState('');
 
-  useEffect(() => {
-    if (eventId) {
-      fetchData();
-    }
-  }, [eventId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!eventId) return;
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch event and upcoming days (cross-week, always show ~3 slots)
       const [eventResponse, upcomingResponse] = await Promise.all([
         fetch(`/api/public/events-v2/${eventId}`),
         fetch(`/api/public/events-v2/${eventId}/upcoming-days?limit=3`),
@@ -108,13 +105,8 @@ export default function CustomerEventV2DetailPage() {
       const eventResult = await eventResponse.json();
       const upcomingResult = await upcomingResponse.json();
 
-      if (eventResult.error) {
-        throw new Error(eventResult.error);
-      }
-
-      if (upcomingResult.error) {
-        throw new Error(upcomingResult.error);
-      }
+      if (eventResult.error) throw new Error(eventResult.error);
+      if (upcomingResult.error) throw new Error(upcomingResult.error);
 
       setEvent(eventResult);
       setWeekConfig({
@@ -129,7 +121,13 @@ export default function CustomerEventV2DetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventId]);
+
+  useEffect(() => {
+    if (eventId) fetchData();
+  }, [eventId, fetchData]);
+
+  useEventRealtime(eventId, fetchData);
 
   const updateQuantity = (ticketTypeId: string, delta: number) => {
     setSelections((prev) => {
@@ -359,13 +357,7 @@ export default function CustomerEventV2DetailPage() {
         <div className="p-5">
           <h1 className="text-2xl font-bold text-white mb-0.5">{event.title}</h1>
           {event.subtitle && <p className="text-[#D4AF37] font-medium mb-2">{event.subtitle}</p>}
-          <div className="flex items-center gap-3 text-sm text-zinc-400 mb-4">
-            {event.venue?.name && event.venue.name !== 'Venue TBD' && (
-              <span className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-base">location_on</span>
-                {event.venue.name}
-              </span>
-            )}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-400 mb-4">
             <span className="text-[#D4AF37]">21+</span>
             {selectedDay?.tickets?.length ? (
               <span className="text-[#D4AF37] font-medium">
@@ -373,6 +365,44 @@ export default function CustomerEventV2DetailPage() {
               </span>
             ) : null}
           </div>
+          {/* Venue / City, State / View on Map */}
+          {(event.venue?.name || event.venue?.city || event.venue?.address) && (
+            <div className="mb-4 flex flex-col gap-1">
+              {event.venue.name && event.venue.name !== 'Venue TBD' && (
+                <div className="flex items-center gap-1.5 text-white font-medium">
+                  <span className="material-symbols-outlined text-base text-zinc-500">location_on</span>
+                  {event.venue.name}
+                </div>
+              )}
+              {(event.venue.city || event.venue.state || event.region?.name) && (
+                <div className="text-sm text-zinc-500 ml-6">
+                  {[event.venue.city ?? event.region?.city, event.venue.state ?? event.region?.state ?? event.region?.name]
+                    .filter(Boolean)
+                    .join(', ')}
+                </div>
+              )}
+              {(() => {
+                const q = event.venue.address
+                  || (event.venue.city && event.venue.state
+                    ? `${event.venue.name || ''} ${event.venue.city} ${event.venue.state}`.trim()
+                    : event.venue.name && event.venue.name !== 'Venue TBD'
+                      ? event.venue.name
+                      : null);
+                if (!q) return null;
+                return (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-6 inline-flex items-center gap-1 text-xs text-[#D4AF37] hover:underline"
+                  >
+                    View on Map
+                    <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  </a>
+                );
+              })()}
+            </div>
+          )}
 
           {event.description && (
             <div className="mb-5">

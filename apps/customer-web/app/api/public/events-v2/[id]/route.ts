@@ -1,6 +1,7 @@
 /**
  * Public Event V2 API
  * GET /api/public/events-v2/[id] - 获取活动详情（公开）
+ * Uses merchant → venue/region (events_v2 has no venue_id/region_id).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,26 +15,15 @@ export async function GET(
     const { id } = await params;
     const supabase = await createClient();
 
-    // 获取活动详情（仅 active/paused）
-    // 使用直接关联 (Proposed Plan A) 避免 PGRST201
     const { data: event, error } = await supabase
       .from('events_v2')
       .select(`
         *,
         merchant:merchants!events_v2_merchant_id_fkey (
           id,
-          name
-        ),
-        venue:venues!events_v2_venue_id_fkey (
-          id,
           name,
-          address,
-          city,
-          state
-        ),
-        region:regions!events_v2_region_id_fkey (
-          id,
-          name
+          region_id,
+          default_venue_id
         )
       `)
       .eq('id', id)
@@ -48,25 +38,61 @@ export async function GET(
       );
     }
 
-    // Direct venue access
-    const venue = event.venue;
-    const address = venue?.address || null;
+    const m = event.merchant as { id: string; name: string; region_id?: string; default_venue_id?: string } | null;
+    const merchantId = m?.id;
+
+    // Venue: merchant.default_venue_id or first venue for merchant
+    let venue: { id: string; name: string; address: string | null; city: string | null; state: string | null } | null = null;
+    if (merchantId) {
+      let venueId = m?.default_venue_id;
+      if (!venueId) {
+        const { data: vList } = await supabase
+          .from('venues')
+          .select('id')
+          .eq('merchant_id', merchantId)
+          .limit(1);
+        venueId = vList?.[0]?.id;
+      }
+      if (venueId) {
+        const { data: v } = await supabase
+          .from('venues')
+          .select('id, name, address, city, state')
+          .eq('id', venueId)
+          .single();
+        if (v) venue = { id: v.id, name: v.name, address: v.address ?? null, city: v.city ?? null, state: v.state ?? null };
+      }
+    }
+
+    // Region: merchant.region_id
+    let region: { id: string; name: string; city?: string | null; state?: string | null } | null = null;
+    if (m?.region_id) {
+      const { data: r } = await supabase
+        .from('regions')
+        .select('id, name, city, state')
+        .eq('id', m.region_id)
+        .single();
+      if (r) region = { id: r.id, name: r.name, city: r.city ?? null, state: r.state ?? null };
+    }
+
+    const venueName = (event as any).venue_name || venue?.name || 'Venue TBD';
+    const address = (event as any).address || venue?.address || null;
 
     return NextResponse.json({
       id: event.id,
       title: event.title,
+      subtitle: (event as any).subtitle ?? null,
       description: event.description,
       poster_url: event.poster_url,
       status: event.status,
-      merchant: {
-        id: event.merchant?.id,
-        name: event.merchant?.name,
+      merchant: { id: m?.id ?? '', name: m?.name ?? '' },
+      venue: {
+        id: venue?.id ?? '',
+        name: venueName,
+        address,
+        city: venue?.city ?? region?.city ?? null,
+        state: venue?.state ?? region?.state ?? null,
       },
-      venue: venue ? {
-        id: venue.id,
-        name: venue.name,
-        address: address,
-      } : null,
+      region,
     });
   } catch (error: any) {
     console.error('Error in GET /api/public/events-v2/[id]:', error);
