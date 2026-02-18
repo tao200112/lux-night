@@ -42,7 +42,7 @@ export async function GET(
     const merchantId = m?.id;
 
     // Venue: merchant.default_venue_id or first venue for merchant
-    let venue: { id: string; name: string; address: string | null; city: string | null; state: string | null } | null = null;
+    let venue: { id: string; name: string; address: string | null; formatted_address: string | null; city: string | null; state: string | null; postal_code: string | null } | null = null;
     if (merchantId) {
       let venueId = m?.default_venue_id;
       if (!venueId) {
@@ -56,10 +56,10 @@ export async function GET(
       if (venueId) {
         const { data: v } = await supabase
           .from('venues')
-          .select('id, name, address, city, state')
+          .select('id, name, address, formatted_address, city, state, postal_code')
           .eq('id', venueId)
           .single();
-        if (v) venue = { id: v.id, name: v.name, address: v.address ?? null, city: v.city ?? null, state: v.state ?? null };
+        if (v) venue = { id: v.id, name: v.name, address: v.address ?? null, formatted_address: v.formatted_address ?? null, city: v.city ?? null, state: v.state ?? null, postal_code: v.postal_code ?? null };
       }
     }
 
@@ -76,6 +76,8 @@ export async function GET(
 
     const venueName = (event as any).venue_name || venue?.name || 'Venue TBD';
     const address = (event as any).address || venue?.address || null;
+    const fullAddress = (event as any).address || venue?.formatted_address
+      || (venue ? [venue.address, [venue.city, venue.state, venue.postal_code].filter(Boolean).join(', ')].filter(Boolean).join(', ') : null);
 
     return NextResponse.json({
       id: event.id,
@@ -89,6 +91,7 @@ export async function GET(
         id: venue?.id ?? '',
         name: venueName,
         address,
+        full_address: fullAddress,
         city: venue?.city ?? region?.city ?? null,
         state: venue?.state ?? region?.state ?? null,
       },

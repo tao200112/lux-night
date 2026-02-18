@@ -58,6 +58,7 @@ interface EventV2 {
     id: string;
     name: string;
     address: string | null;
+    full_address?: string | null;
     city?: string | null;
     state?: string | null;
   } | null;
@@ -357,32 +358,27 @@ export default function CustomerEventV2DetailPage() {
           <h1 className="text-2xl font-bold text-white mb-2">{event.title}</h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-500 mb-4">
             <span>21+</span>
-            {selectedDay?.tickets?.length ? (
-              <span className="text-[#D4AF37] font-medium">
-                ${Math.min(...selectedDay.tickets.map((t) => t.price_cents)) / 100}+
-              </span>
-            ) : null}
           </div>
-          {/* Venue / City, State / View on Map */}
-          {(event.venue?.name || event.venue?.city || event.venue?.address) && (
-            <div className="mb-5 flex flex-col gap-1">
+          {/* Venue / Full Address / View on Map */}
+          {(event.venue?.name || event.venue?.full_address || event.venue?.address || event.venue?.city) && (
+            <div className="mb-5 flex flex-col gap-1.5">
               {event.venue.name && event.venue.name !== 'Venue TBD' && (
                 <div className="flex items-center gap-2 text-white font-medium text-base">
-                  <span className="material-symbols-outlined text-base text-zinc-500 leading-none">location_on</span>
+                  <span className="material-symbols-outlined text-base text-zinc-500 leading-none shrink-0">location_on</span>
                   <span className="leading-tight">{event.venue.name}</span>
                 </div>
               )}
-              {(event.venue.city || event.venue.state || event.region?.name) && (
-                <div className="text-sm text-zinc-500 ml-6">
-                  {[event.venue.city ?? event.region?.city, event.venue.state ?? event.region?.state ?? event.region?.name]
-                    .filter(Boolean)
-                    .join(', ')}
+              {(event.venue.full_address || event.venue.address || event.venue.city || event.venue.state) && (
+                <div className="text-sm text-zinc-500 ml-6 leading-relaxed">
+                  {event.venue.full_address
+                    || event.venue.address
+                    || [event.venue.city ?? event.region?.city, event.venue.state ?? event.region?.state ?? event.region?.name].filter(Boolean).join(', ')}
                 </div>
               )}
               {(() => {
-                const q = event.venue.address
-                  || (event.venue.city && event.venue.state
-                    ? `${event.venue.name || ''} ${event.venue.city} ${event.venue.state}`.trim()
+                const q = event.venue.full_address || event.venue.address
+                  || (event.venue.city || event.venue.state
+                    ? `${event.venue.name || ''} ${event.venue.city || ''} ${event.venue.state || ''}`.trim()
                     : event.venue.name && event.venue.name !== 'Venue TBD'
                       ? event.venue.name
                       : null);
