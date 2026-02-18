@@ -1,11 +1,11 @@
 /**
  * Admin Events V2 List Page
- * 活动列表页面（v2）— drag-and-drop sortable (native HTML5)
+ * 活动列表页面（v2）— sortable via up/down buttons
  */
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminBottomNav from '@/components/admin/AdminBottomNav';
 import ErrorState from '@/components/admin/ErrorState';
@@ -31,58 +31,50 @@ function EventCardRow({
   event,
   index,
   onStatusChange,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
-  isDragging,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
 }: {
   event: EventV2;
   index: number;
   onStatusChange: (id: string, status: string) => void;
-  onDragStart: (e: React.DragEvent, index: number) => void;
-  onDragOver: (e: React.DragEvent, index: number) => void;
-  onDrop: (e: React.DragEvent, index: number) => void;
-  onDragEnd: () => void;
-  isDragging: boolean;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-
   return (
-    <div
-      ref={cardRef}
-      onDragOver={(e) => onDragOver(e, index)}
-      onDrop={(e) => onDrop(e, index)}
-      onDragEnd={onDragEnd}
-      className={`bg-surface-dark rounded-lg p-4 hover:bg-surface-light transition ${
-        isDragging ? 'opacity-50' : ''
-      }`}
-    >
+    <div className="bg-surface-dark rounded-lg p-4 hover:bg-surface-light transition">
       <div className="flex gap-3">
-        <div
-          draggable
-          onDragStart={(e) => {
-            onDragStart(e, index);
-            const card = cardRef.current;
-            if (card) e.dataTransfer.setDragImage(card, 0, 0);
-          }}
-          className="shrink-0 mt-1 p-1 rounded cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-300 select-none touch-none"
-          title="Drag to reorder"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <circle cx="5" cy="4" r="1.2" />
-            <circle cx="11" cy="4" r="1.2" />
-            <circle cx="5" cy="8" r="1.2" />
-            <circle cx="11" cy="8" r="1.2" />
-            <circle cx="5" cy="12" r="1.2" />
-            <circle cx="11" cy="12" r="1.2" />
-          </svg>
+        <div className="shrink-0 flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => onMoveUp(index)}
+            disabled={!canMoveUp}
+            title="上移"
+            className="p-1 rounded text-gray-500 hover:text-gray-300 hover:bg-surface-dark disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 6L4 10h8L8 6z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => onMoveDown(index)}
+            disabled={!canMoveDown}
+            title="下移"
+            className="p-1 rounded text-gray-500 hover:text-gray-300 hover:bg-surface-dark disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 10L4 6h8l-4 4z" />
+            </svg>
+          </button>
         </div>
         <div className="flex-1 min-w-0">
           <div className="mb-4">
             {event.poster_url && (
               <img
-                draggable={false}
                 src={event.poster_url}
                 alt={event.title}
                 className="w-full h-48 object-cover rounded-lg mb-3"
@@ -112,7 +104,6 @@ function EventCardRow({
             </span>
             <div className="flex gap-2">
               <Link
-                draggable={false}
                 href={`/events-v2/${event.id}/week`}
                 className="px-3 py-1 bg-primary text-black rounded text-sm hover:bg-primary-hover transition"
               >
@@ -143,7 +134,6 @@ export default function AdminEventsV2Page() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'temp_closed' | 'archived' | 'draft'>('all');
   const [toast, setToast] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const persistOrder = useCallback(
     async (next: EventV2[]) => {
@@ -168,30 +158,22 @@ export default function AdminEventsV2Page() {
     [events]
   );
 
-  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
-    setDragIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', String(index));
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  const handleDragEnd = useCallback(() => {
-    setDragIndex(null);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent, toIndex: number) => {
-      e.preventDefault();
-      setDragIndex(null);
-      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
-      if (fromIndex === toIndex || isNaN(fromIndex)) return;
+  const handleMoveUp = useCallback(
+    (index: number) => {
+      if (index <= 0) return;
       const next = [...events];
-      const [removed] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, removed);
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      setEvents(next);
+      persistOrder(next);
+    },
+    [events, persistOrder]
+  );
+
+  const handleMoveDown = useCallback(
+    (index: number) => {
+      if (index >= events.length - 1) return;
+      const next = [...events];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
       setEvents(next);
       persistOrder(next);
     },
@@ -314,7 +296,7 @@ export default function AdminEventsV2Page() {
         {savingOrder && (
           <div className="mb-2 text-xs text-zinc-500">Saving order…</div>
         )}
-        {/* Events List - Drag & Drop Sortable */}
+        {/* Events List - Sortable via up/down buttons */}
         {events.length === 0 ? (
           <EmptyState title="No events found" />
         ) : (
@@ -325,11 +307,10 @@ export default function AdminEventsV2Page() {
                 event={event}
                 index={index}
                 onStatusChange={handleStatusChange}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onDragEnd={handleDragEnd}
-                isDragging={dragIndex === index}
+                onMoveUp={handleMoveUp}
+                onMoveDown={handleMoveDown}
+                canMoveUp={index > 0}
+                canMoveDown={index < events.length - 1}
               />
             ))}
           </div>
