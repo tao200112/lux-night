@@ -86,6 +86,7 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
     .from('events_v2')
     .select(selectStr)
     .eq('status', 'active')
+    .order('sort_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false });
 
   if (regionId) {

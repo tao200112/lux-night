@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getEventsByRegion } from '@/lib/data/events';
+import { useEventsRealtime } from '@/hooks/useEventsRealtime';
 import type { EventWithVenue } from '@/lib/data/events';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
@@ -41,17 +42,22 @@ export default function DiscoverPage() {
     return () => { cancelled = true; };
   }, [region, setRegion]);
 
-  useEffect(() => {
+  const fetchEvents = useCallback(() => {
     if (!region?.id) return;
-    let cancelled = false;
     setEventsError(null);
     setEventsLoading(true);
     getEventsByRegion(region.id)
-      .then((d) => { if (!cancelled) setEvents(d); })
-      .catch((e) => { if (!cancelled) setEventsError(e?.message || 'Failed to load'); })
-      .finally(() => { if (!cancelled) setEventsLoading(false); });
-    return () => { cancelled = true; };
+      .then(setEvents)
+      .catch((e) => setEventsError(e?.message || 'Failed to load'))
+      .finally(() => setEventsLoading(false));
   }, [region?.id]);
+
+  useEffect(() => {
+    if (!region?.id) return;
+    fetchEvents();
+  }, [region?.id, fetchEvents]);
+
+  useEventsRealtime(fetchEvents);
 
   if (authLoading) {
     return (

@@ -107,6 +107,7 @@ export async function GET(req: NextRequest) {
           region_id
         )
       `)
+      .order('sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
     if (merchantId) {
@@ -130,6 +131,43 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ events: events || [] });
   } catch (error: any) {
     console.error('Error in GET /api/admin/events-v2:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/admin/events-v2 - Batch update sort_order
+ * Body: { order: [{ id: string, sort_order: number }] }
+ */
+export async function PATCH(req: NextRequest) {
+  const authResult = await requireAdmin();
+  if ('error' in authResult) {
+    return authResult.error;
+  }
+
+  try {
+    const body = await req.json();
+    const order = body?.order;
+    if (!Array.isArray(order) || order.length === 0) {
+      return NextResponse.json(
+        { error: 'Missing or invalid order array' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createAdminClient();
+    for (const item of order) {
+      const { id, sort_order } = item;
+      if (!id || typeof sort_order !== 'number') continue;
+      await supabase.from('events_v2').update({ sort_order }).eq('id', id);
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error: any) {
+    console.error('Error in PATCH /api/admin/events-v2:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
