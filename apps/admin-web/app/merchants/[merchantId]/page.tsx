@@ -294,7 +294,7 @@ export default function AdminMerchantDetailPage() {
                   key={event.id}
                   href={`/events/${event.id}/week`}
                   title={event.title}
-                  subtitle={new Date(event.created_at || event.startAt || 0).toLocaleDateString()}
+                  subtitle={new Date(event.startAt || 0).toLocaleDateString()}
                   status={event.status as any}
                 />
               ))}
