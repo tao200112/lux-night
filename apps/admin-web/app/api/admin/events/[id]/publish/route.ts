@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/events-v2/[id]/publish
+ * POST /api/admin/events/[id]/publish
  * Publish event (Draft -> Active) with validation.
  */
 
@@ -20,7 +20,6 @@ export async function POST(
     const { id } = await params;
     const supabase = createAdminClient();
 
-    // 1. Validate
     const validation = await validateEventForPublish(supabase, id);
     if (!validation.valid) {
       return NextResponse.json(
@@ -29,7 +28,6 @@ export async function POST(
       );
     }
 
-    // 2. Update Status
     const { error: updateError } = await supabase
       .from('events_v2')
       .update({ status: 'active' })
@@ -42,21 +40,18 @@ export async function POST(
       );
     }
 
-    // 3. Trigger Stripe Sync (Async)
-    // Find the week ID to sync
     const { data: weeks } = await supabase
-        .from('event_weeks')
-        .select('id')
-        .eq('event_id', id)
-        .limit(1);
+      .from('event_weeks')
+      .select('id')
+      .eq('event_id', id)
+      .limit(1);
 
     if (weeks && weeks.length > 0) {
-        try {
-            await syncEventWeekStripe(weeks[0].id);
-        } catch (e) {
-            console.error('Stripe sync failed after publish:', e);
-            // Don't fail the request, just log
-        }
+      try {
+        await syncEventWeekStripe(weeks[0].id);
+      } catch (e) {
+        console.error('Stripe sync failed after publish:', e);
+      }
     }
 
     return NextResponse.json({ success: true, status: 'active' });

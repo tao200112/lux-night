@@ -280,7 +280,7 @@ export default function AdminMerchantDetailPage() {
               Events ({(merchant.events || []).length})
             </h3>
               <button
-                onClick={() => router.push(`/events-v2/new?merchant_id=${merchantId}`)}
+                onClick={() => router.push(`/events/new?merchant_id=${merchantId}`)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors"
               >
                 <span className="material-symbols-outlined text-sm">add</span>
@@ -292,9 +292,9 @@ export default function AdminMerchantDetailPage() {
               {merchant.events.map((event) => (
                 <ListItemCard
                   key={event.id}
-                  href={`/events-v2/${event.id}/week`}
+                  href={`/events/${event.id}/week`}
                   title={event.title}
-                  subtitle={new Date(event.startAt).toLocaleDateString()}
+                  subtitle={new Date(event.created_at || event.startAt || 0).toLocaleDateString()}
                   status={event.status as any}
                 />
               ))}

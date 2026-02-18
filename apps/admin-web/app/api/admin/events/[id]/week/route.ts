@@ -1,7 +1,7 @@
 /**
  * Admin Event Week Configuration API
- * GET /api/admin/events-v2/[id]/week?date= - 获取或创建本周配置
- * PUT /api/admin/events-v2/[id]/week - 保存本周配置
+ * GET /api/admin/events/[id]/week?date= - 获取或创建本周配置
+ * PUT /api/admin/events/[id]/week - 保存本周配置
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -22,19 +22,17 @@ export async function GET(
     const { id } = await params;
     const searchParams = req.nextUrl.searchParams;
     const dateParam = searchParams.get('date');
-    
-    // 默认使用今天
+
     const forDate = dateParam ? new Date(dateParam) : new Date();
     const timezone = 'America/New_York';
 
     const supabase = createAdminClient();
 
-    // 调用 RPC 获取或创建本周配置
     const { data: rpcResult, error: rpcError } = await supabase.rpc(
       'rpc_get_or_create_event_week',
       {
         p_event_id: id,
-        p_for_date: forDate.toISOString().split('T')[0], // YYYY-MM-DD
+        p_for_date: forDate.toISOString().split('T')[0],
         p_timezone: timezone,
       }
     );
@@ -56,13 +54,12 @@ export async function GET(
 
     const result = rpcResult[0];
 
-    // Fetch Event Status separately
     const { data: eventData } = await supabase
-        .from('events_v2')
-        .select('status')
-        .eq('id', id)
-        .single();
-    
+      .from('events_v2')
+      .select('status')
+      .eq('id', id)
+      .single();
+
     return NextResponse.json({
       event_week_id: result.event_week_id,
       week_start_date: result.week_start_date,
@@ -70,7 +67,7 @@ export async function GET(
       event_status: eventData?.status || 'draft'
     });
   } catch (error: any) {
-    console.error('Error in GET /api/admin/events-v2/[id]/week:', error);
+    console.error('Error in GET /api/admin/events/[id]/week:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
@@ -101,7 +98,6 @@ export async function PUT(
 
     const supabase = createAdminClient();
 
-    // 1. 获取或创建 event_week
     const { data: weekResult, error: weekError } = await supabase.rpc(
       'rpc_get_or_create_event_week',
       {
@@ -120,12 +116,10 @@ export async function PUT(
 
     const eventWeekId = weekResult[0].event_week_id;
 
-    // 2. 更新每个 day 的配置
     for (const [dowStr, dayData] of Object.entries(days)) {
       const dow = parseInt(dowStr);
       const dayConfig = dayData as any;
 
-      // 更新 event_week_days
       const { data: dayRecord, error: dayError } = await supabase
         .from('event_week_days')
         .select('id')
@@ -138,7 +132,6 @@ export async function PUT(
         continue;
       }
 
-      // 更新 day 配置
       await supabase
         .from('event_week_days')
         .update({
@@ -149,29 +142,21 @@ export async function PUT(
         })
         .eq('id', dayRecord.id);
 
-      // 3. 处理 tickets（新增/更新/删除）
       if (dayConfig.tickets && Array.isArray(dayConfig.tickets)) {
         for (const ticket of dayConfig.tickets) {
           if (ticket.action === 'delete' && ticket.id) {
-            // 删除
             const { error: deleteError } = await supabase
               .from('ticket_types_v2')
               .delete()
               .eq('id', ticket.id);
-            
-            if (deleteError) {
-              // 23503 = foreign_key_violation (used in tickets table usually)
-              if (deleteError.code === '23503') {
-                  console.warn(`[Ticket Delete] FK Violation for ${ticket.id}, falling back to soft delete (hidden).`);
-                  const { error: softDeleteError } = await supabase
-                    .from('ticket_types_v2')
-                    .update({ status: 'hidden' })
-                    .eq('id', ticket.id);
-                  
-                  if (softDeleteError) throw softDeleteError; // If this fails too, throw real error
-              } else {
-                  throw deleteError;
-              }
+
+            if (deleteError && deleteError.code === '23503') {
+              await supabase
+                .from('ticket_types_v2')
+                .update({ status: 'hidden' })
+                .eq('id', ticket.id);
+            } else if (deleteError) {
+              throw deleteError;
             }
           } else if (ticket.action === 'upsert') {
             const ticketData: any = {
@@ -187,14 +172,12 @@ export async function PUT(
             };
 
             if (ticket.id) {
-              // 更新
               const { error: updateError } = await supabase
                 .from('ticket_types_v2')
                 .update(ticketData)
                 .eq('id', ticket.id);
               if (updateError) throw updateError;
             } else {
-              // 新增
               const { error: insertError } = await supabase
                 .from('ticket_types_v2')
                 .insert(ticketData);
@@ -205,21 +188,18 @@ export async function PUT(
       }
     }
 
-    // 4. 同步 Stripe（为所有 active ticket_types 创建/更新 Product/Price）
     let stripeSync: { status: string; error?: string } = { status: 'skipped' };
     try {
       if (process.env.STRIPE_SECRET_KEY) {
-          await syncEventWeekStripe(eventWeekId);
-          stripeSync = { status: 'success' };
+        await syncEventWeekStripe(eventWeekId);
+        stripeSync = { status: 'success' };
       } else {
-          stripeSync = { status: 'failed', error: 'Missing STRIPE_SECRET_KEY' };
+        stripeSync = { status: 'failed', error: 'Missing STRIPE_SECRET_KEY' };
       }
     } catch (stripeError: any) {
-      console.error('Stripe sync error (non-fatal):', stripeError);
       stripeSync = { status: 'failed', error: stripeError.message || String(stripeError) };
     }
 
-    // 5. 返回更新后的配置
     const { data: finalResult, error: finalError } = await supabase.rpc(
       'rpc_get_or_create_event_week',
       {
@@ -236,12 +216,11 @@ export async function PUT(
       );
     }
 
-    // Fetch Event Status
     const { data: eventData } = await supabase
-        .from('events_v2')
-        .select('status')
-        .eq('id', eventId)
-        .single();
+      .from('events_v2')
+      .select('status')
+      .eq('id', eventId)
+      .single();
 
     return NextResponse.json({
       event_week_id: finalResult[0].event_week_id,
@@ -251,7 +230,7 @@ export async function PUT(
       stripe_sync: stripeSync
     });
   } catch (error: any) {
-    console.error('Error in PUT /api/admin/events-v2/[id]/week:', error);
+    console.error('Error in PUT /api/admin/events/[id]/week:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

@@ -1,6 +1,6 @@
 /**
- * Admin Events V2 List Page
- * 活动列表页面（v2）— sortable via up/down buttons
+ * Admin Events List Page
+ * 活动列表 — sortable via up/down buttons
  */
 
 'use client';
@@ -12,7 +12,7 @@ import ErrorState from '@/components/admin/ErrorState';
 import EmptyState from '@/components/admin/EmptyState';
 import { SkeletonList } from '@/components/admin/Skeleton';
 
-interface EventV2 {
+interface EventItem {
   id: string;
   title: string;
   description: string | null;
@@ -36,7 +36,7 @@ function EventCardRow({
   canMoveUp,
   canMoveDown,
 }: {
-  event: EventV2;
+  event: EventItem;
   index: number;
   onStatusChange: (id: string, status: string) => void;
   onMoveUp: (index: number) => void;
@@ -104,7 +104,7 @@ function EventCardRow({
             </span>
             <div className="flex gap-2">
               <Link
-                href={`/events-v2/${event.id}/week`}
+                href={`/events/${event.id}/week`}
                 className="px-3 py-1 bg-primary text-black rounded text-sm hover:bg-primary-hover transition"
               >
                 Configure
@@ -127,8 +127,8 @@ function EventCardRow({
   );
 }
 
-export default function AdminEventsV2Page() {
-  const [events, setEvents] = useState<EventV2[]>([]);
+export default function AdminEventsPage() {
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'temp_closed' | 'archived' | 'draft'>('all');
@@ -136,11 +136,11 @@ export default function AdminEventsV2Page() {
   const [savingOrder, setSavingOrder] = useState(false);
 
   const persistOrder = useCallback(
-    async (next: EventV2[]) => {
+    async (next: EventItem[]) => {
       const payload = next.map((e, i) => ({ id: e.id, sort_order: (i + 1) * 1000 }));
       setSavingOrder(true);
       try {
-        const res = await fetch('/api/admin/events-v2', {
+        const res = await fetch('/api/admin/events', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ order: payload }),
@@ -194,7 +194,7 @@ export default function AdminEventsV2Page() {
         params.set('status', statusFilter);
       }
 
-      const response = await fetch(`/api/admin/events-v2?${params.toString()}`);
+      const response = await fetch(`/api/admin/events?${params.toString()}`);
       const result = await response.json();
 
       if (result.error) {
@@ -203,7 +203,7 @@ export default function AdminEventsV2Page() {
 
       setEvents(result.events || []);
     } catch (err: any) {
-      console.error('[ADMIN EVENTS V2] Error:', err);
+      console.error('[ADMIN EVENTS] Error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -212,7 +212,7 @@ export default function AdminEventsV2Page() {
 
   const handleStatusChange = async (eventId: string, newStatus: string) => {
     try {
-      const response = await fetch(`/api/admin/events-v2/${eventId}/status`, {
+      const response = await fetch(`/api/admin/events/${eventId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -224,10 +224,9 @@ export default function AdminEventsV2Page() {
         throw new Error(result.error);
       }
 
-      // Refresh list
       fetchEvents();
     } catch (err: any) {
-      console.error('[ADMIN EVENTS V2] Error updating status:', err);
+      console.error('[ADMIN EVENTS] Error updating status:', err);
       alert('Failed to update status: ' + err.message);
     }
   };
@@ -237,7 +236,7 @@ export default function AdminEventsV2Page() {
       <div className="min-h-screen bg-background-dark text-white">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Events V2</h1>
+            <h1 className="text-2xl font-bold">Events</h1>
           </div>
           <SkeletonList count={5} />
         </div>
@@ -260,18 +259,16 @@ export default function AdminEventsV2Page() {
   return (
     <div className="min-h-screen bg-background-dark text-white">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Events V2</h1>
+          <h1 className="text-2xl font-bold">Events</h1>
           <Link
-            href="/events-v2/new"
+            href="/events/new"
             className="px-4 py-2 bg-primary text-black rounded-lg hover:bg-primary-hover transition"
           >
             + New Event
           </Link>
         </div>
 
-        {/* Filters */}
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
           {(['all', 'active', 'temp_closed', 'archived', 'draft'] as const).map((status) => (
             <button
@@ -296,7 +293,6 @@ export default function AdminEventsV2Page() {
         {savingOrder && (
           <div className="mb-2 text-xs text-zinc-500">Saving order…</div>
         )}
-        {/* Events List - Sortable via up/down buttons */}
         {events.length === 0 ? (
           <EmptyState title="No events found" />
         ) : (

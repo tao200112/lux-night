@@ -1,5 +1,5 @@
 /**
- * POST /api/admin/events-v2/[id]/status
+ * POST /api/admin/events/[id]/status
  * Update status (Active <-> Temp Closed <-> Archived).
  */
 
@@ -21,15 +21,11 @@ export async function POST(
 
     const allowedStatuses = ['active', 'temp_closed', 'archived', 'draft'];
     if (!allowedStatuses.includes(status)) {
-        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
     const supabase = createAdminClient();
 
-    // Direct update without deep validation (except maybe for Re-open?)
-    // User Requirement: "Re-open" (Temp -> Active). Requirement 4 mentions "active 需要校验吗? 建议也跑一次".
-    // Let's rely on simple update for now, to allow quick toggles. The "Publish" flow handles the strict initial check.
-    
     const { error: updateError } = await supabase
       .from('events_v2')
       .update({ status })

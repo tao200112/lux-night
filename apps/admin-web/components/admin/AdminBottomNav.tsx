@@ -30,6 +30,11 @@ export default function AdminBottomNav({ pendingCount = 0 }: AdminBottomNavProps
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
     {
+      href: '/events',
+      icon: 'event',
+      label: 'Events',
+    },
+    {
       href: '/merchants',
       icon: 'storefront',
       label: 'Merchants',
