@@ -9,11 +9,35 @@ import { getRegions, type Region } from '@/lib/data/regions';
 export default function TopBar() {
   const router = useRouter();
   const { user } = useAuth();
-  const { region, setRegion } = useRegion();
+  const { region, setRegion, selectCurrentLocation } = useRegion();
   
   const [isRegionOpen, setIsRegionOpen] = useState(false);
   const [regions, setRegions] = useState<Region[]>([]);
+  const [geoToast, setGeoToast] = useState<string | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
   const isSingleRegion = regions.length === 1;
+
+  useEffect(() => {
+    if (geoToast) {
+      const t = setTimeout(() => setGeoToast(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [geoToast]);
+
+  const handleCurrentLocation = async () => {
+    setGeoToast(null);
+    setGeoLoading(true);
+    try {
+      const result = await selectCurrentLocation();
+      if (result.success) {
+        setIsRegionOpen(false);
+      } else {
+        setGeoToast("We don't support your area yet. Please choose a city.");
+      }
+    } finally {
+      setGeoLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Lazy load regions or eager load
@@ -36,8 +60,8 @@ export default function TopBar() {
         <div className="fixed inset-0 z-[60] flex justify-center bg-black/80 backdrop-blur-sm">
            {/* Mobile Container */}
            <div className="w-full max-w-md h-full bg-black shadow-2xl overflow-hidden relative flex flex-col">
-             {/* Background Effects */}
-             <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#C5A028]/10 rounded-full blur-[100px] pointer-events-none z-0" />
+             {/* Subtle ambient */}
+             <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[400px] h-[200px] bg-[#C5A028]/5 rounded-full blur-[60px] pointer-events-none z-0" />
              
              {/* Main Content */}
              <main className="relative z-10 flex-1 flex flex-col overflow-y-auto no-scrollbar pb-safe-bottom">
@@ -60,6 +84,27 @@ export default function TopBar() {
                  <div className="flex items-center justify-between mb-4">
                    <h3 className="text-sm font-bold uppercase tracking-widest text-[#8A7E5E]">Regions</h3>
                  </div>
+                 {geoToast && (
+                   <div className="mb-4 py-3 px-4 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-sm">
+                     {geoToast}
+                   </div>
+                 )}
+                 {/* Current Location row */}
+                 <button
+                   type="button"
+                   onClick={handleCurrentLocation}
+                   disabled={geoLoading}
+                   className="w-full group flex items-center justify-between py-4 px-3 rounded-lg transition-all hover:bg-white/5 border border-transparent mb-2"
+                 >
+                   <div className="flex flex-col items-start">
+                     <span className="text-xl font-medium text-white">Current Location</span>
+                     <span className="text-xs text-zinc-500 mt-0.5">Use my location</span>
+                   </div>
+                   <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#8A7E5E] bg-[#8A7E5E]/15 px-2 py-1 rounded">
+                     <span className="material-symbols-outlined text-sm">location_on</span>
+                     {geoLoading ? '…' : 'AUTO'}
+                   </span>
+                 </button>
                  {regions.length === 0 ? (
                    <div className="text-center py-8 text-white/50">Loading regions...</div>
                  ) : (

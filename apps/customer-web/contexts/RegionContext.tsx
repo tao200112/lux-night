@@ -5,8 +5,8 @@ import type { Region } from '@/lib/data/regions';
 import { getRegions } from '@/lib/data/regions';
 
 const LUX_REGION_ID = 'lux_region_id';
-/** Distance threshold (km) for geolocation match */
-const GEO_MATCH_KM = 150;
+/** Distance threshold for geolocation match: ~30 miles ≈ 48 km */
+const GEO_MATCH_KM = 48;
 
 function haversineKm(
   lat1: number,
@@ -25,9 +25,12 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+export type SelectCurrentLocationResult = { success: true; matchedRegion: Region } | { success: false };
+
 interface RegionContextType {
   region: Region | null;
   setRegion: (regionId: string) => Promise<void>;
+  selectCurrentLocation: () => Promise<SelectCurrentLocationResult>;
   loading: boolean;
 }
 
@@ -78,6 +81,39 @@ export function RegionProvider({
       setLoading(false);
     }
   }, []);
+
+  const selectCurrentLocation = useCallback(async (): Promise<SelectCurrentLocationResult> => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return { success: false };
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          getRegions().then((regions) => {
+            let nearest: Region | null = null;
+            let minDist = Infinity;
+            for (const r of regions) {
+              const clat = r.center_lat ?? r.lat;
+              const clng = r.center_lng ?? r.lng;
+              if (clat == null || clng == null) continue;
+              const d = haversineKm(lat, lng, clat, clng);
+              if (d < minDist && d <= GEO_MATCH_KM) {
+                minDist = d;
+                nearest = r;
+              }
+            }
+            if (nearest) {
+              setRegion(nearest.id).then(() => resolve({ success: true, matchedRegion: nearest! }));
+            } else {
+              resolve({ success: false });
+            }
+          });
+        },
+        () => resolve({ success: false }),
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+      );
+    });
+  }, [setRegion]);
 
   // Rehydrate from localStorage or try geolocation (only when no region yet)
   useEffect(() => {
@@ -163,7 +199,7 @@ export function RegionProvider({
   }, [region, setRegion]);
 
   return (
-    <RegionContext.Provider value={{ region, setRegion, loading }}>
+    <RegionContext.Provider value={{ region, setRegion, selectCurrentLocation, loading }}>
       {children}
     </RegionContext.Provider>
   );

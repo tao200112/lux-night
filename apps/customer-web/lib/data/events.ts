@@ -53,49 +53,42 @@ export interface EventWithVenue extends Event {
 export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
   const supabase = createClient();
 
-  // Query V2 Events with explicit Foreign Keys to avoid PGRST201 Ambiguity
-  let query = supabase
-    .from('events_v2')
-    .select(`
-      *,
-      merchant:merchants!events_v2_merchant_id_fkey (
+  // Use !inner when filtering by region so PostgREST correctly filters parent rows
+  const merchantHint = regionId ? '!inner' : '';
+  const selectStr = `
+    *,
+    merchant:merchants!events_v2_merchant_id_fkey${merchantHint} (
+      id,
+      name,
+      region_id,
+      venue:venues!venues_merchant_id_fkey (
         id,
         name,
+        address,
+        address_line1,
+        formatted_address,
+        city,
+        state,
         region_id,
-        venue:venues!venues_merchant_id_fkey (
-          id,
-          name,
-          address,
-          address_line1,
-          formatted_address,
-          city,
-          state,
-          region_id,
-          lat,
-          lng
-        ),
-        region:regions!merchants_region_id_fkey (
-          id,
-          name,
-          city,
-          state
-        )
+        lat,
+        lng
+      ),
+      region:regions!merchants_region_id_fkey (
+        id,
+        name,
+        city,
+        state
       )
-    `)
+    )
+  `;
+
+  let query = supabase
+    .from('events_v2')
+    .select(selectStr)
     .eq('status', 'active')
     .order('created_at', { ascending: false });
 
   if (regionId) {
-    // Filter by merchant's region
-    // Note: Filtering on embedded resource requires !inner or correctly mapped filter
-    // 'merchants.region_id' works if alias is 'merchant'? PostgREST might expect 'merchant.region_id'.
-    // Safe bet: use the embedded resource filter syntax if possible, or dot notation.
-    // Supabase JS wrapper usually handles mapping?
-    // Actually, if I alias to 'merchant', the filter `merchants.region_id` might fail.
-    // I should use `merchant.region_id`?
-    // Let's try `merchants.region_id` first, often it targets table name or alias.
-    // Docs say: references embedded resource.
-    // If I alias, usually filter needs alias.
     query = query.eq('merchant.region_id', regionId);
   }
 
@@ -110,7 +103,16 @@ export async function getEvents(regionId?: string): Promise<EventWithVenue[]> {
   }
 
   const rows = data || [];
-  return rows.map((row: any) => {
+  // Client-side filter as safety net (PostgREST filter on nested resource can be unreliable)
+  const filtered = regionId
+    ? rows.filter((row: any) => {
+        const m = row.merchant;
+        const rid = Array.isArray(m) ? m[0]?.region_id : m?.region_id;
+        return rid === regionId;
+      })
+    : rows;
+
+  return filtered.map((row: any) => {
     // Flatten merchant/venue/region data
     const merchant = row.merchant;
     // Reverse FK usually returns array

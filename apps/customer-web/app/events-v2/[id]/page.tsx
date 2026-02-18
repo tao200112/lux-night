@@ -310,7 +310,7 @@ export default function CustomerEventV2DetailPage() {
   return (
     <div className="relative w-full min-h-screen flex flex-col pb-32 bg-background-dark text-white max-w-md mx-auto">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background-dark/95 backdrop-blur-xl border-b border-white/5 p-4">
+      <header className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-md border-b border-white/5 p-4">
         <BackButton />
       </header>
 
@@ -332,17 +332,16 @@ export default function CustomerEventV2DetailPage() {
               <button 
                   type="button"
                   onClick={() => setIsPosterModalOpen(true)}
-                  className="w-full relative block group cursor-zoom-in overflow-hidden active:opacity-95 transition-all"
+                  className="w-full relative block group cursor-zoom-in overflow-hidden"
               >
                   <img
                     src={event.poster_url}
                     alt={event.title}
-                    className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                   />
-                  {/* Overlay Hint */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                     <span className="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-full p-2 backdrop-blur-sm">zoom_in</span>
-                  </div>
+                  {/* Subtle top fade */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent pointer-events-none" />
+                  <span className="absolute bottom-2 right-2 material-symbols-outlined text-white/40 text-lg">zoom_in</span>
               </button>
 
               <PosterPreviewModal 
@@ -355,10 +354,9 @@ export default function CustomerEventV2DetailPage() {
 
         {/* Event Info */}
         <div className="p-5">
-          <h1 className="text-2xl font-bold text-white mb-0.5">{event.title}</h1>
-          {event.subtitle && <p className="text-[#D4AF37] font-medium mb-2">{event.subtitle}</p>}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-400 mb-4">
-            <span className="text-[#D4AF37]">21+</span>
+          <h1 className="text-2xl font-bold text-white mb-2">{event.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-500 mb-4">
+            <span>21+</span>
             {selectedDay?.tickets?.length ? (
               <span className="text-[#D4AF37] font-medium">
                 ${Math.min(...selectedDay.tickets.map((t) => t.price_cents)) / 100}+
@@ -367,11 +365,11 @@ export default function CustomerEventV2DetailPage() {
           </div>
           {/* Venue / City, State / View on Map */}
           {(event.venue?.name || event.venue?.city || event.venue?.address) && (
-            <div className="mb-4 flex flex-col gap-1">
+            <div className="mb-5 flex flex-col gap-1">
               {event.venue.name && event.venue.name !== 'Venue TBD' && (
-                <div className="flex items-center gap-1.5 text-white font-medium">
-                  <span className="material-symbols-outlined text-base text-zinc-500">location_on</span>
-                  {event.venue.name}
+                <div className="flex items-center gap-2 text-white font-medium text-base">
+                  <span className="material-symbols-outlined text-base text-zinc-500 leading-none">location_on</span>
+                  <span className="leading-tight">{event.venue.name}</span>
                 </div>
               )}
               {(event.venue.city || event.venue.state || event.region?.name) && (
@@ -406,16 +404,19 @@ export default function CustomerEventV2DetailPage() {
 
           {event.description && (
             <div className="mb-5">
+              <p
+                className={`text-zinc-400 text-sm ${descriptionExpanded ? '' : 'line-clamp-3'}`}
+                style={{ lineHeight: 1.6 }}
+              >
+                {event.description}
+              </p>
               <button
                 type="button"
                 onClick={() => setDescriptionExpanded((e) => !e)}
-                className="text-xs font-medium text-zinc-500 hover:text-zinc-400 uppercase tracking-wider"
+                className="mt-1 text-xs font-medium text-zinc-500 hover:text-zinc-400"
               >
-                {descriptionExpanded ? 'Hide details' : 'See details'}
+                {descriptionExpanded ? 'Less' : 'More'}
               </button>
-              {descriptionExpanded && (
-                <p className="mt-2 text-gray-400 text-sm leading-relaxed">{event.description}</p>
-              )}
             </div>
           )}
 
@@ -432,9 +433,9 @@ export default function CustomerEventV2DetailPage() {
                     key={day.id}
                     type="button"
                     onClick={() => setSelectedDayIndex(i)}
-                    className={`shrink-0 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-[120ms] ${
+                    className={`shrink-0 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 ${
                       selected
-                        ? 'bg-[#D4AF37] text-[#121212] shadow-[0_0_20px_-5px_rgba(212,175,55,0.4)] scale-105'
+                        ? 'bg-[#D4AF37] text-[#121212] scale-[1.02]'
                         : 'bg-white/5 text-zinc-400 hover:bg-white/10'
                     }`}
                   >
@@ -512,7 +513,7 @@ export default function CustomerEventV2DetailPage() {
 
       {/* Sticky Buy Bar */}
       {totalQuantity > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0A0A0A]/90 backdrop-blur-xl p-4 max-w-md mx-auto">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0A0A0A]/95 backdrop-blur-md border-t border-white/5 p-4 max-w-md mx-auto">
           {selectionsSpanMultipleWeeks && (
             <p className="mb-2 text-xs text-amber-400">Select tickets from one date only</p>
           )}
@@ -523,7 +524,7 @@ export default function CustomerEventV2DetailPage() {
             <button
               onClick={handleCheckout}
               disabled={isPaused || totalQuantity === 0 || selectionsSpanMultipleWeeks}
-              className="flex-1 py-3.5 rounded-xl font-bold text-[#121212] bg-[#D4AF37] hover:bg-[#E8B94B] active:scale-[0.98] transition-all duration-[120ms] shadow-[0_0_24px_-6px_rgba(212,175,55,0.4)] disabled:opacity-50 disabled:scale-100"
+              className="flex-1 py-3.5 rounded-xl font-bold text-[#121212] bg-[#D4AF37] hover:bg-[#E8B94B] active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:scale-100"
             >
               Buy Now
             </button>

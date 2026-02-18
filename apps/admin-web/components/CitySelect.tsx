@@ -93,7 +93,8 @@ export default function CitySelect({
     return <div className={`text-sm text-slate-500 ${className}`}>Loading cities…</div>;
   }
 
-  if (cities.length > 0) {
+  // 方式 A：有 DB cities 时显示下拉 + 始终提供 Google 添加新城市
+  if (cities.length > 0 && !showGoogle) {
     return (
       <div className={className}>
         <select
@@ -108,11 +109,21 @@ export default function CitySelect({
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
+        {hasPlacesKey && (
+          <button
+            type="button"
+            onClick={() => setShowGoogle(true)}
+            disabled={disabled}
+            className="mt-2 text-xs text-primary hover:underline"
+          >
+            Or add a new city (Google)
+          </button>
+        )}
       </div>
     );
   }
 
-  // 方式 B：无 DB cities，用 Google 选城市
+  // 方式 B：无 DB cities，或用户点击了 Google 添加新城市
   if (!showGoogle) {
     return (
       <div className={className}>
