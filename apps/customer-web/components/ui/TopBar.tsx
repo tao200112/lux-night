@@ -13,6 +13,7 @@ export default function TopBar() {
   
   const [isRegionOpen, setIsRegionOpen] = useState(false);
   const [regions, setRegions] = useState<Region[]>([]);
+  const isSingleRegion = regions.length === 1;
 
   useEffect(() => {
     // Lazy load regions or eager load
@@ -81,23 +82,21 @@ export default function TopBar() {
         </div>
       )}
 
-      {/* Header: Night UI */}
-      <header className="sticky top-0 z-50 flex flex-col w-full bg-[#050505]/95 backdrop-blur-md pb-4 pt-safe-top border-b border-white/5">
-        <div className="h-2 w-full"></div>
-        <div className="flex items-center justify-between px-6 pt-4 pb-2">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8A7E5E] mb-1">Current Location</span>
+      {/* Header: Slim when single region, full when multi-city */}
+      <header className="sticky top-0 z-50 flex flex-col w-full bg-[#050505]/90 backdrop-blur-xl pt-safe-top border-b border-white/5">
+        <div className={`flex items-center justify-between px-5 ${isSingleRegion ? 'py-3' : 'pt-4 pb-3'}`}>
+          {isSingleRegion ? (
+            <span className="text-sm text-zinc-400">{region?.name ?? ''}</span>
+          ) : (
             <button 
               onClick={() => setIsRegionOpen(true)}
-              className="group flex items-center gap-2 bg-transparent text-left transition-opacity active:opacity-70"
+              className="group flex items-center gap-2 bg-transparent text-left"
             >
-              <span className="text-2xl font-light tracking-tight text-white">
-                {region ? region.name : 'Select Area'}
-              </span>
-              <span className="material-symbols-outlined text-[#C5A028] text-[20px] transition-transform group-active:rotate-180">expand_more</span>
+              <span className="text-xl font-medium text-white">{region ? region.name : 'Select Area'}</span>
+              <span className="material-symbols-outlined text-[#C5A028] text-lg">expand_more</span>
             </button>
-          </div>
-          <div className="flex items-center gap-4">
+          )}
+          <div className="flex items-center gap-3">
             <button className="flex items-center justify-center text-white transition-colors hover:text-[#D4AF37]">
               <span className="material-symbols-outlined text-[24px] font-light">search</span>
             </button>

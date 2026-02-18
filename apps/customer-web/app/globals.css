@@ -5,6 +5,14 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --tap-scale: 0.98;
+  --transition-fast: 120ms;
+  --transition-normal: 180ms;
+  --blur-subtle: 12px;
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
 body {
   min-height: max(884px, 100dvh);
   -webkit-font-smoothing: antialiased;

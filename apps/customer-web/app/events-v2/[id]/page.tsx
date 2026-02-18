@@ -76,8 +76,10 @@ export default function CustomerEventV2DetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [event, setEvent] = useState<EventV2 | null>(null);
   const [weekConfig, setWeekConfig] = useState<WeekConfig | null>(null);
-  const [selections, setSelections] = useState<Record<string, number>>({}); // ticketTypeId -> quantity
+  const [selections, setSelections] = useState<Record<string, number>>({});
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   
   const idempotencyKeyRef = useRef<string | null>(null);
   // Invite Code State
@@ -304,13 +306,8 @@ export default function CustomerEventV2DetailPage() {
   }
 
   const isPaused = event.status === 'paused' || event.status === 'temp_closed';
-  
-  // Filter days: Only show future days (or active today)
-  // Assumption: week_start_date is YYYY-MM-DD local to venue. 
-  // We approximate using browser time.
-  // Filter days: API already filters enabled and past days.
-  // We double check here or just use it.
   const enabledDays = weekConfig?.days || [];
+  const selectedDay = enabledDays[Math.min(selectedDayIndex, Math.max(0, enabledDays.length - 1))] ?? null;
 
   return (
     <div className="relative w-full min-h-screen flex flex-col pb-32 bg-background-dark text-white max-w-md mx-auto">
@@ -359,67 +356,82 @@ export default function CustomerEventV2DetailPage() {
         )}
 
         {/* Event Info */}
-        <div className="p-4">
-          <h1 className="text-2xl font-bold mb-1">{event.title}</h1>
-          
-          {/* Subtitle */}
-          {event.subtitle && (
-             <h2 className="text-lg text-[#D4AF37] font-medium mb-3">{event.subtitle}</h2>
-          )}
-
-          {/* Venue & Address */}
-          <div className="mb-4 flex items-start gap-2 text-sm text-zinc-400">
-              <span className="material-symbols-outlined mt-0.5 text-lg">location_on</span>
-              <div>
-                  {event.venue?.name && event.venue.name !== 'Venue TBD' && (
-                      <div className="text-white font-semibold">{event.venue.name}</div>
-                  )}
-                  <div>{event.venue?.address || 'Venue TBD'}</div>
-              </div>
+        <div className="p-5">
+          <h1 className="text-2xl font-bold text-white mb-0.5">{event.title}</h1>
+          {event.subtitle && <p className="text-[#D4AF37] font-medium mb-2">{event.subtitle}</p>}
+          <div className="flex items-center gap-3 text-sm text-zinc-400 mb-4">
+            {event.venue?.name && event.venue.name !== 'Venue TBD' && (
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-base">location_on</span>
+                {event.venue.name}
+              </span>
+            )}
+            <span className="text-[#D4AF37]">21+</span>
+            {selectedDay?.tickets?.length ? (
+              <span className="text-[#D4AF37] font-medium">
+                ${Math.min(...selectedDay.tickets.map((t) => t.price_cents)) / 100}+
+              </span>
+            ) : null}
           </div>
 
           {event.description && (
-            <p className="text-gray-400 mb-6 leading-relaxed">{event.description}</p>
+            <div className="mb-5">
+              <button
+                type="button"
+                onClick={() => setDescriptionExpanded((e) => !e)}
+                className="text-xs font-medium text-zinc-500 hover:text-zinc-400 uppercase tracking-wider"
+              >
+                {descriptionExpanded ? 'Hide details' : 'See details'}
+              </button>
+              {descriptionExpanded && (
+                <p className="mt-2 text-gray-400 text-sm leading-relaxed">{event.description}</p>
+              )}
+            </div>
           )}
 
-          {/* Upcoming Info */}
-          <div className="mb-6 text-sm text-gray-400">
-            Upcoming dates
-          </div>
-
-          {/* Days with Tickets */}
-          {enabledDays.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <p>No tickets available for this week</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {enabledDays.map((day) => {
-                // Use date from API directly.
-                // Note: 'date' is YYYY-MM-DD.
-                // We split and construct local date to avoid timezone shifts in formatting.
+          {/* Date Pills */}
+          {enabledDays.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-4 -mx-1 no-scrollbar">
+              {enabledDays.map((day, i) => {
                 const [y, m, d] = day.date.split('-').map(Number);
                 const dayDate = new Date(y, m - 1, d);
-                
-                // Simple Date Header
-                const dateHeader = dayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-
+                const label = dayDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                const selected = i === selectedDayIndex;
                 return (
-                  <div key={day.id} className="mb-8 last:mb-20">
-                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 pl-1">
-                      {dateHeader} <span className="font-normal opacity-50 ml-2">| {day.start_time}</span>
-                    </h3>
+                  <button
+                    key={day.id}
+                    type="button"
+                    onClick={() => setSelectedDayIndex(i)}
+                    className={`shrink-0 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-[120ms] ${
+                      selected
+                        ? 'bg-[#D4AF37] text-[#121212] shadow-[0_0_20px_-5px_rgba(212,175,55,0.4)] scale-105'
+                        : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-                    {day.tickets.length === 0 ? (
-                      <p className="text-sm text-zinc-600 pl-1">No tickets available</p>
-                    ) : (
-                      <div className="bg-[#1A1A1A] rounded-xl overflow-hidden border border-white/5 divide-y divide-white/5">
-                        {day.tickets.map((ticket) => {
+          {/* Tickets for selected day */}
+          {enabledDays.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <p>No tickets available</p>
+            </div>
+          ) : !selectedDay ? null : (
+            <div className="space-y-4">
+              {selectedDay.tickets.length === 0 ? (
+                <p className="text-sm text-zinc-500">No tickets for this date</p>
+              ) : (
+                <div className="space-y-3">
+                        {selectedDay.tickets.map((ticket) => {
                           const qty = selections[ticket.id] || 0;
                           const isAvailable = ticket.status === 'active' && !isPaused;
 
                           return (
-                            <div key={ticket.id} className="flex items-center justify-between p-4 active:bg-white/[0.02]">
+                            <div key={ticket.id} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors duration-[120ms] active:scale-[0.995]">
                               {/* Left: Info */}
                               <div className="flex-1 min-w-0 pr-4">
                                 <div className="font-medium text-white text-[15px]">{ticket.name}</div>
@@ -454,113 +466,59 @@ export default function CustomerEventV2DetailPage() {
                                     </button>
                                   </div>
                               ) : (
-                                  <div className="text-[10px] text-zinc-500 font-bold px-2 py-1 bg-white/5 rounded uppercase tracking-wider">
-                                      {isPaused ? 'Closed' : ticket.status === 'sold_out' ? 'Sold Out' : 'N/A'}
-                                  </div>
+                                  <span className="text-[10px] text-zinc-500 font-medium uppercase">
+                                    {isPaused ? 'Closed' : ticket.status === 'sold_out' ? 'Sold Out' : 'N/A'}
+                                  </span>
                               )}
                             </div>
                           );
                         })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                </div>
+              )}
             </div>
           )}
         </div>
       </main>
 
-      {/* Checkout Footer */}
+      {/* Sticky Buy Bar */}
       {totalQuantity > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background-dark/95 backdrop-blur-xl border-t border-white/5 p-4 max-w-md mx-auto">
-          {/* Invite Code Section */}
-          <div className="mb-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="material-symbols-outlined text-[16px] text-zinc-400">confirmation_number</span>
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                Invite Code (Optional)
-              </label>
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0A0A0A]/90 backdrop-blur-xl p-4 max-w-md mx-auto">
+          {selectionsSpanMultipleWeeks && (
+            <p className="mb-2 text-xs text-amber-400">Select tickets from one date only</p>
+          )}
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-zinc-400">
+              {totalQuantity} {totalQuantity === 1 ? 'Ticket' : 'Tickets'} · <span className="text-white font-bold">${totalPrice.toFixed(0)}</span>
             </div>
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  onBlur={validateInviteCode}
-                  placeholder="Enter code"
-                  disabled={inviteStatus === 'validating'}
-                  className={`w-full px-3 py-2.5 rounded-lg bg-white/5 border text-sm font-mono uppercase transition-all focus:outline-none focus:ring-2 ${
-                    inviteStatus === 'valid'
-                      ? 'border-green-500/50 focus:ring-green-500/20 text-green-400'
-                      : inviteStatus === 'invalid'
-                      ? 'border-red-500/50 focus:ring-red-500/20 text-red-400'
-                      : 'border-white/10 focus:ring-primary/20 text-white'
-                  }`}
-                />
-                {inviteStatus === 'validating' && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                  </div>
-                )}
-                {inviteStatus === 'valid' && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <span className="material-symbols-outlined text-green-500 text-[20px]">check_circle</span>
-                  </div>
-                )}
-                {inviteStatus === 'invalid' && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <span className="material-symbols-outlined text-red-500 text-[20px]">cancel</span>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={validateInviteCode}
-                disabled={!inviteCode.trim() || inviteStatus === 'validating'}
-                className="px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-sm font-medium transition-all active:scale-95"
-              >
+            <button
+              onClick={handleCheckout}
+              disabled={isPaused || totalQuantity === 0 || selectionsSpanMultipleWeeks}
+              className="flex-1 py-3.5 rounded-xl font-bold text-[#121212] bg-[#D4AF37] hover:bg-[#E8B94B] active:scale-[0.98] transition-all duration-[120ms] shadow-[0_0_24px_-6px_rgba(212,175,55,0.4)] disabled:opacity-50 disabled:scale-100"
+            >
+              Buy Now
+            </button>
+          </div>
+          {/* Collapsible invite code */}
+          <details className="mt-2 group">
+            <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">Have a code?</summary>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                onBlur={validateInviteCode}
+                placeholder="Code"
+                disabled={inviteStatus === 'validating'}
+                className={`flex-1 px-3 py-2 rounded-lg bg-white/5 text-sm font-mono uppercase ${
+                  inviteStatus === 'valid' ? 'border border-green-500/50 text-green-400' : inviteStatus === 'invalid' ? 'border border-red-500/50' : 'border border-white/10'
+                }`}
+              />
+              <button onClick={validateInviteCode} disabled={!inviteCode.trim()} className="px-3 py-2 rounded-lg bg-white/10 text-sm font-medium disabled:opacity-40">
                 Apply
               </button>
             </div>
-            {inviteMessage && (
-              <div
-                className={`mt-1.5 text-xs ${
-                  inviteStatus === 'valid' ? 'text-green-400' : 'text-red-400'
-                }`}
-              >
-                {inviteMessage}
-              </div>
-            )}
-          </div>
-
-          {selectionsSpanMultipleWeeks && (
-            <div className="mb-3 text-xs text-amber-400 flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm">info</span>
-              Please select tickets from one date only
-            </div>
-          )}
-          {/* Price and Checkout Button */}
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-gray-400">
-                {totalQuantity} {totalQuantity === 1 ? 'ticket' : 'tickets'}
-              </div>
-              <div className="text-xl font-bold">${totalPrice.toFixed(2)}</div>
-            </div>
-            <Button
-              onClick={handleCheckout}
-              disabled={isPaused || totalQuantity === 0 || selectionsSpanMultipleWeeks}
-              variant="primary"
-              fullWidth={false}
-            >
-              {isPaused
-                ? 'Temporarily Closed'
-                : selectionsSpanMultipleWeeks
-                ? 'Select one date only'
-                : 'Checkout'}
-            </Button>
-          </div>
+            {inviteMessage && <p className={`mt-1 text-xs ${inviteStatus === 'valid' ? 'text-green-400' : 'text-red-400'}`}>{inviteMessage}</p>}
+          </details>
         </div>
       )}
     </div>

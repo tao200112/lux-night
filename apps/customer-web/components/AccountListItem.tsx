@@ -13,7 +13,7 @@ interface AccountListItemProps {
 }
 
 export default function AccountListItem({ icon, label, href, subtitle, onClick }: AccountListItemProps) {
-  const cn = "flex items-center justify-between p-4 rounded-xl bg-[#1E2224]/80 border border-white/5 hover:border-primary/20 hover:bg-white/[0.02] active:bg-white/[0.04] transition-colors";
+  const cn = "flex items-center justify-between p-4 rounded-xl hover:bg-white/[0.04] active:scale-[0.995] transition-all duration-[120ms]";
   const inner = (
     <>
       <div className="flex items-center gap-4">

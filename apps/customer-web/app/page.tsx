@@ -6,14 +6,15 @@ import type { EventWithVenue } from '@/lib/data/events';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { useRouter } from 'next/navigation';
+import { getRegions } from '@/lib/data/regions';
 import BottomTabBar from '@/components/ui/BottomTabBar';
 import TopBar from '@/components/ui/TopBar';
-import EventGlassCard from '@/components/EventGlassCard';
+import EventCard from '@/components/discover/EventCard';
 
 export default function DiscoverPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { region } = useRegion();
+  const { region, setRegion } = useRegion();
   const [events, setEvents] = useState<EventWithVenue[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
@@ -25,6 +26,20 @@ export default function DiscoverPage() {
       return;
     }
   }, [user, authLoading, router]);
+
+  // If only one region exists, auto-select and skip Choose Area
+  useEffect(() => {
+    if (region) return;
+    let cancelled = false;
+    getRegions()
+      .then((regions) => {
+        if (!cancelled && regions.length === 1) {
+          setRegion(regions[0].id);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [region, setRegion]);
 
   useEffect(() => {
     if (!region?.id) return;
@@ -106,9 +121,9 @@ export default function DiscoverPage() {
         )}
 
         {region && !eventsLoading && !eventsError && events.length > 0 && (
-          <section className="px-4 py-4 space-y-3">
+          <section className="px-4 py-4 space-y-4">
             {events.map((event) => (
-              <EventGlassCard key={event.id} event={event} />
+              <EventCard key={event.id} event={event} />
             ))}
           </section>
         )}

@@ -99,12 +99,12 @@ export default function ProfilePage() {
           />
         </section>
 
-        <section className="flex flex-col gap-3 mb-6">
-          <AccountListItem icon="share" label="Share" onClick={handleShare} subtitle="Invite friends" />
+        <section className="flex flex-col gap-4 mb-8">
           <AccountListItem icon="receipt_long" label="My Orders" href="/orders" />
           <AccountListItem icon="credit_card" label="Payment Methods" href="/settings" subtitle="Coming soon" />
-          <AccountListItem icon="contact_support" label="Help & Support" href="/help" />
+          <AccountListItem icon="contact_support" label="Support" href="/help" />
           <AccountListItem icon="settings" label="Settings" href="/settings" />
+          <AccountListItem icon="share" label="Share" onClick={handleShare} subtitle="Invite friends" />
         </section>
 
         {isStaff && (
@@ -144,7 +144,7 @@ export default function ProfilePage() {
 
         <button
           onClick={handleLogout}
-          className="w-full py-3 text-center text-sm font-medium text-white/70 hover:text-white border border-white/20 hover:border-white/30 rounded-xl transition-colors"
+          className="text-sm font-medium text-white/50 hover:text-white/70 transition-colors"
         >
           Log out
         </button>

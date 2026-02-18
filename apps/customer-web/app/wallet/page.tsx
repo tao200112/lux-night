@@ -78,9 +78,9 @@ export default function WalletPage() {
     <div className="relative flex h-auto min-h-screen w-full max-w-md mx-auto flex-col overflow-x-hidden shadow-2xl border-x border-white/5 bg-background-dark text-white">
       <TopBar />
 
-      {/* Segmented Control */}
-      <div className="px-6 py-4">
-        <div className="flex h-12 w-full items-center rounded-xl bg-[#1E2224] p-1 border border-white/5">
+      {/* Segmented Control - no borders */}
+      <div className="px-5 py-4">
+        <div className="flex h-12 w-full items-center rounded-xl bg-white/[0.04] p-1 backdrop-blur-sm">
           {/* Active Tab */}
           <button 
             onClick={() => setActiveTab('active')}
@@ -139,7 +139,7 @@ export default function WalletPage() {
                   return (
                     <Link href={`/ticket/${ticket.id}`} key={ticket.id} className="block group mb-4 last:mb-0">
                       <div
-                        className={`relative w-full flex flex-row h-40 rounded-xl overflow-hidden shadow-lg transition-transform hover:scale-[1.01] active:scale-[0.99] ${isUsedOrRefunded ? 'opacity-60 grayscale-[0.8]' : ''}`}
+                        className={`relative w-full flex flex-row h-40 rounded-2xl overflow-hidden backdrop-blur-md bg-white/[0.06] shadow-[0_4px_24px_-4px_rgba(0,0,0,0.4)] transition-transform duration-[180ms] active:scale-[0.99] ${isUsedOrRefunded ? 'opacity-60 grayscale-[0.8]' : ''}`}
                       >
                         {/* Ticket Left Side */}
                         <div className="relative flex-grow flex flex-col justify-end p-4 bg-[#1E2224]">

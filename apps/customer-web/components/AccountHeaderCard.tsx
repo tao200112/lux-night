@@ -35,7 +35,7 @@ export default function AccountHeaderCard({
   return (
     <Link
       href={href}
-      className="flex items-center gap-5 p-6 rounded-2xl bg-[#1A1D1F] border border-white/10 backdrop-blur-sm hover:border-primary/30 transition-all"
+      className="flex items-center gap-5 p-6 rounded-2xl bg-white/[0.04] backdrop-blur-sm hover:bg-white/[0.06] transition-all duration-[180ms]"
     >
       <div className="relative flex-shrink-0">
         {avatarUrl ? (
