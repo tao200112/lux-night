@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import AdminBottomNav from '@/components/admin/AdminBottomNav';
 import ErrorState from '@/components/admin/ErrorState';
@@ -46,10 +46,11 @@ function EventCardRow({
   onDragEnd: () => void;
   isDragging: boolean;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
   return (
     <div
-      draggable
-      onDragStart={(e) => onDragStart(e, index)}
+      ref={cardRef}
       onDragOver={(e) => onDragOver(e, index)}
       onDrop={(e) => onDrop(e, index)}
       onDragEnd={onDragEnd}
@@ -59,7 +60,13 @@ function EventCardRow({
     >
       <div className="flex gap-3">
         <div
-          className="shrink-0 mt-1 p-1 rounded cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-300 select-none"
+          draggable
+          onDragStart={(e) => {
+            onDragStart(e, index);
+            const card = cardRef.current;
+            if (card) e.dataTransfer.setDragImage(card, 0, 0);
+          }}
+          className="shrink-0 mt-1 p-1 rounded cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-300 select-none touch-none"
           title="Drag to reorder"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -75,6 +82,7 @@ function EventCardRow({
           <div className="mb-4">
             {event.poster_url && (
               <img
+                draggable={false}
                 src={event.poster_url}
                 alt={event.title}
                 className="w-full h-48 object-cover rounded-lg mb-3"
@@ -104,6 +112,7 @@ function EventCardRow({
             </span>
             <div className="flex gap-2">
               <Link
+                draggable={false}
                 href={`/events-v2/${event.id}/week`}
                 className="px-3 py-1 bg-primary text-black rounded text-sm hover:bg-primary-hover transition"
               >
@@ -147,11 +156,11 @@ export default function AdminEventsV2Page() {
           body: JSON.stringify({ order: payload }),
         });
         const data = await res.json();
-        if (data.error) throw new Error(data.error);
+        if (!res.ok || data.error) throw new Error(data.error || data.details?.join?.(', ') || 'Save failed');
       } catch (err: any) {
         setEvents(events);
-        setToast('Failed to save order. Reverted.');
-        setTimeout(() => setToast(null), 3000);
+        setToast(err?.message || 'Failed to save order. Reverted.');
+        setTimeout(() => setToast(null), 5000);
       } finally {
         setSavingOrder(false);
       }

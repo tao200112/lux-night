@@ -159,10 +159,21 @@ export async function PATCH(req: NextRequest) {
     }
 
     const supabase = createAdminClient();
+    const errors: string[] = [];
     for (const item of order) {
       const { id, sort_order } = item;
       if (!id || typeof sort_order !== 'number') continue;
-      await supabase.from('events_v2').update({ sort_order }).eq('id', id);
+      const { error } = await supabase.from('events_v2').update({ sort_order }).eq('id', id);
+      if (error) {
+        errors.push(`${id}: ${error.message}`);
+      }
+    }
+    if (errors.length > 0) {
+      console.error('[PATCH events-v2 order] Supabase errors:', errors);
+      return NextResponse.json(
+        { error: 'Failed to update sort_order', details: errors },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });
