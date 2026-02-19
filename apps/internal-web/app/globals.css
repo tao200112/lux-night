@@ -11,14 +11,16 @@ body {
   font-family: 'Lexend', sans-serif;
 }
 
-/* 移动端强制样式 - 390px 视口基准 */
-@media (min-width: 430px) {
+/* 移动端/平板：居中 430px 卡片式布局 */
+@media (min-width: 430px) and (max-width: 1023px) {
   body {
     max-width: 430px;
     margin: 0 auto;
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 }
+
+/* Desktop ≥1024px：不限制宽度，使用桌面布局 */
 
 /* 禁用 hover 效果（移动端优先） */
 @media (hover: hover) {
