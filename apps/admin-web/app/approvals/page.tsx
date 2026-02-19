@@ -361,7 +361,7 @@ export default function AdminApprovalsPage() {
   const { todayItems, yesterdayItems, olderItems } = groupByDate(approvals);
   
   return (
-    <div className="relative flex min-h-screen w-full flex-col mx-auto max-w-[480px] bg-background-light dark:bg-background-dark border-x border-slate-200 dark:border-slate-800 shadow-2xl">
+    <div className="relative flex min-h-screen w-full flex-col mx-auto max-w-[480px] lg:max-w-none bg-background-light dark:bg-background-dark border-x border-slate-200 dark:border-slate-800 lg:border-x-0 shadow-2xl lg:shadow-none">
       {/* Top App Bar - 完全按照 UI 文档 */}
       <header className="bg-surface-light dark:bg-surface-dark border-b border-gray-200 dark:border-gray-800 z-50 shrink-0">
         <div className="h-safe-top w-full"></div>

@@ -185,7 +185,7 @@ export default function AdminOrdersPage() {
   };
   
   return (
-    <div className="relative flex h-full min-h-screen w-full flex-col overflow-hidden max-w-md mx-auto shadow-2xl bg-background-light dark:bg-background-dark">
+    <div className="relative flex h-full min-h-screen w-full flex-col overflow-hidden max-w-md lg:max-w-none mx-auto shadow-2xl bg-background-light dark:bg-background-dark">
       {/* Header - 完全按照 UI 文档 */}
       <header className="flex-none bg-primary text-white pt-safe-top pb-2 sticky top-0 z-20 shadow-md">
         <div className="pt-12 px-4 pb-2 flex items-center justify-between">

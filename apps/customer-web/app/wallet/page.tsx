@@ -163,7 +163,7 @@ export default function WalletPage() {
                             <h3 className="font-display text-lg font-bold text-white leading-tight mb-1 truncate">{ticket.eventName}</h3>
                             <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium mb-1">
                               <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                              <span>{ticket.date} • {ticket.time}</span>
+                              <span>{ticket.date}</span>
                             </div>
                             <div className="text-[10px] text-gray-500 uppercase tracking-wider truncate">{ticket.venue}</div>
                           </div>

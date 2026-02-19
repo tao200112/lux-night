@@ -35,7 +35,7 @@ export default async function AdminDashboardPage() {
   };
   
   return (
-    <div className="relative flex min-h-screen w-full flex-col mx-auto max-w-[480px] bg-background-light dark:bg-background-dark border-x border-slate-200 dark:border-slate-800 shadow-2xl">
+    <div className="relative flex min-h-screen w-full flex-col mx-auto max-w-[480px] lg:max-w-none bg-background-light dark:bg-background-dark border-x border-slate-200 dark:border-slate-800 lg:border-x-0 shadow-2xl lg:shadow-none">
       {/* Header - 完全按照 UI 文档 */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#1f2937]/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between transition-colors duration-300">
         <div className="flex items-center gap-3">

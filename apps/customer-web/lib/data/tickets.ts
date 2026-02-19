@@ -112,23 +112,15 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
     const ev = t.event; 
     const ven = ev?.venue;
     
-    // Formatting Date logic (local display)
+    // Formatting Date logic: display start date only (no time), UTC
     let displayDate = '';
-    let displayTime = '';
     let startAtISO = t.valid_start_at;
 
     if (t.valid_start_at) {
        const d = new Date(t.valid_start_at);
-       
-       // Format using UTC methods to avoid timezone conversion issues
-       // The database stores times in UTC, but they represent local event times
-       // We need to display them as-is without timezone conversion
        const month = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
        const day = d.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'UTC' });
-       const hour = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
-       
        displayDate = `${month} ${day}`;
-       displayTime = hour;
     }
 
     return {
@@ -137,7 +129,7 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
       eventName: ev?.title || '—',
       venue: ven?.name || '—',
       date: displayDate,
-      time: displayTime,
+      time: '', // Deprecated: no time shown in list; date only
       startAt: startAtISO, 
       validStartAt: t.valid_start_at,
       validEndAt: t.valid_end_at,
@@ -215,21 +207,15 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
   const token = data.public_token || data.qr_seed;
   const base = getAppBaseUrl();
 
-  // Formatting Date logic
+  // Formatting Date logic: display start date only (no time), UTC
   let displayDate = '';
-  let displayTime = '';
   let startAtISO = data.valid_start_at;
 
   if (data.valid_start_at) {
       const d = new Date(data.valid_start_at);
-      
-      // Format using UTC methods to avoid timezone conversion issues
       const month = d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' });
       const day = d.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'UTC' });
-      const hour = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
-      
       displayDate = `${month} ${day}`;
-      displayTime = hour;
   }
 
   return {
@@ -238,7 +224,7 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
     eventName: ev?.title || 'Event',
     venue: venueName,
     date: displayDate,
-    time: displayTime,
+    time: '', // Deprecated: no time in date display
     startAt: startAtISO,
     validStartAt: data.valid_start_at,
     validEndAt: data.valid_end_at,

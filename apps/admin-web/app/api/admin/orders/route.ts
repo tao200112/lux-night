@@ -72,10 +72,11 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     const inviteIds = [...new Set(rawOrders.map((o: any) => o.invite_id).filter(Boolean))];
     const itemOrderIds = rawOrders.map((o: any) => o.id);
 
-    // Batch Fetches
+    // Batch Fetches (use RPC for auth.users email - more reliable than schema('auth') across Supabase configs)
     const pProfiles = userIds.length > 0 ? adminClient.from('profiles').select('id, display_name').in('id', userIds) : Promise.resolve({ data: [] });
-    // @ts-ignore
-    const pAuthUsers = userIds.length > 0 ? adminClient.schema('auth').from('users').select('id, email').in('id', userIds) : Promise.resolve({ data: [] });
+    const pAuthEmails = userIds.length > 0
+      ? adminClient.rpc('get_user_emails', { p_user_ids: userIds }).then((r: any) => ({ data: r.data || [] }))
+      : Promise.resolve({ data: [] });
     
     const pMerchants = merchantIds.length > 0 ? adminClient.from('merchants').select('id, name').in('id', merchantIds) : Promise.resolve({ data: [] });
     
@@ -89,13 +90,16 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         ? adminClient.from('order_items').select('order_id, valid_start_at, valid_end_at, ticket_type_v2_id').in('order_id', itemOrderIds)
         : Promise.resolve({ data: [] });
 
-    const [profilesRes, authRes, merchantsRes, invitesRes, itemsRes] = await Promise.all([
-        pProfiles, pAuthUsers, pMerchants, pInvites, pItems
+    const [profilesRes, authEmailsRes, merchantsRes, invitesRes, itemsRes] = await Promise.all([
+        pProfiles, pAuthEmails, pMerchants, pInvites, pItems
     ]);
 
-    // Lookup Maps
+    // Lookup Maps (auth email from RPC get_user_emails - auth.users registration email)
+    const authMap = (authEmailsRes.data || []).reduce((acc: any, row: any) => {
+      acc[row.user_id] = row.email || null;
+      return acc;
+    }, {} as Record<string, string | null>);
     const profilesMap = (profilesRes.data || []).reduce((acc: any, p: any) => { acc[p.id] = p; return acc; }, {});
-    const authMap = (authRes.data || []).reduce((acc: any, u: any) => { acc[u.id] = u.email; return acc; }, {});
     const merchantsMap = (merchantsRes.data || []).reduce((acc: any, m: any) => { acc[m.id] = m; return acc; }, {});
     const invitesMap = (invitesRes.data || []).reduce((acc: any, i: any) => { acc[i.id] = i; return acc; }, {});
     
@@ -119,7 +123,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         
         // Buyer
         const buyerName = profilesMap[order.user_id]?.display_name || 'Unknown User';
-        const buyerEmail = authMap[order.user_id] || 'Unknown Email';
+        const buyerEmail = (authMap[order.user_id] && String(authMap[order.user_id]).trim()) || 'Unknown Email';
         
         // Dates (From Items)
         const items = itemsByOrder[order.id] || [];

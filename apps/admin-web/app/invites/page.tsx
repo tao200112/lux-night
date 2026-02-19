@@ -222,7 +222,7 @@ export default function AdminInviteManagerPage() {
   const activeCount = invites.filter((invite) => invite.isActive).length;
   
   return (
-    <div className="relative mx-auto flex h-screen w-full max-w-md flex-col overflow-hidden bg-background-light dark:bg-background-dark shadow-2xl">
+    <div className="relative mx-auto flex h-screen w-full max-w-md lg:max-w-none flex-col overflow-hidden bg-background-light dark:bg-background-dark shadow-2xl">
       {/* Header - 完全按照 UI 文档 */}
       <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-gray-200 dark:border-gray-800 bg-surface-light/95 dark:bg-background-dark/95 backdrop-blur-sm px-4">
         <h1 className="text-xl font-bold tracking-tight text-primary dark:text-white">Invite Manager</h1>

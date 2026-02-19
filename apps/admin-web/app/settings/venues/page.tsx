@@ -158,7 +158,7 @@ export default function SettingsVenuesPage() {
   };
 
   return (
-    <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto bg-background-light dark:bg-background-dark border-x border-border-light dark:border-border-dark shadow-2xl">
+    <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden max-w-md lg:max-w-none mx-auto bg-background-light dark:bg-background-dark border-x border-border-light dark:border-border-dark lg:border-x-0 shadow-2xl lg:shadow-none">
       <header className="sticky top-0 z-50 flex items-center justify-between bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md px-4 py-3 border-b border-border-light dark:border-border-dark">
         <button onClick={() => router.back()} className="flex size-10 items-center justify-center rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-primary dark:text-white">
           <span className="material-symbols-outlined text-[24px]">arrow_back</span>

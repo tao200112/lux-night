@@ -255,7 +255,7 @@ export default function AdminApprovalDetailPage() {
   
   if (loading) {
     return (
-      <div className="relative flex min-h-screen flex-col pb-[240px] max-w-[480px] mx-auto bg-background-light dark:bg-background-dark">
+      <div className="relative flex min-h-screen flex-col pb-[240px] max-w-[480px] lg:max-w-none mx-auto bg-background-light dark:bg-background-dark">
         <div className="sticky top-0 z-30 bg-primary shadow-md">
           <div className="flex items-center justify-between px-4 py-3">
             <button className="flex size-10 items-center justify-center rounded-full text-white hover:bg-white/10 transition-colors">
@@ -277,7 +277,7 @@ export default function AdminApprovalDetailPage() {
   
   if (error || !approval) {
     return (
-      <div className="relative flex min-h-screen flex-col pb-[240px] max-w-[480px] mx-auto bg-background-light dark:bg-background-dark">
+      <div className="relative flex min-h-screen flex-col pb-[240px] max-w-[480px] lg:max-w-none mx-auto bg-background-light dark:bg-background-dark">
         <div className="sticky top-0 z-30 bg-primary shadow-md">
           <div className="flex items-center justify-between px-4 py-3">
             <button
@@ -302,7 +302,7 @@ export default function AdminApprovalDetailPage() {
   const diffFields = getDiffFields();
   
   return (
-    <div className="relative flex min-h-screen flex-col pb-[240px] max-w-[480px] mx-auto bg-background-light dark:bg-background-dark">
+      <div className="relative flex min-h-screen flex-col pb-[240px] max-w-[480px] lg:max-w-none mx-auto bg-background-light dark:bg-background-dark">
       {/* Top App Bar - 完全按照 UI 文档 */}
       <header className="sticky top-0 z-30 bg-primary shadow-md">
         <div className="flex items-center justify-between px-4 py-3">

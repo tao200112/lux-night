@@ -279,7 +279,7 @@ export default function AdminMerchantsPage() {
   };
   
   return (
-    <div className="relative flex min-h-screen w-full flex-col mx-auto max-w-[480px] bg-background-light dark:bg-background-dark border-x border-slate-200 dark:border-slate-800 shadow-2xl">
+    <div className="relative flex min-h-screen w-full flex-col mx-auto max-w-[480px] lg:max-w-none bg-background-light dark:bg-background-dark border-x border-slate-200 dark:border-slate-800 lg:border-x-0 shadow-2xl lg:shadow-none">
       {/* Global Header - 完全按照 UI 文档 */}
       <header className="sticky top-0 z-40 w-full bg-surface-light/95 dark:bg-background-dark/95 backdrop-blur-md border-b border-border-light dark:border-border-dark transition-colors duration-200">
         <div className="flex items-center justify-between px-4 h-14">

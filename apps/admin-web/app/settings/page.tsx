@@ -161,7 +161,7 @@ export default function AdminSettingsPage() {
   };
   
   return (
-    <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden max-w-md mx-auto bg-background-light dark:bg-background-dark border-x border-border-light dark:border-border-dark shadow-2xl">
+    <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden max-w-md lg:max-w-none mx-auto bg-background-light dark:bg-background-dark border-x border-border-light dark:border-border-dark lg:border-x-0 shadow-2xl lg:shadow-none">
       {/* Top App Bar - 完全按照 UI 文档 */}
       <header className="sticky top-0 z-50 flex items-center justify-between bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md px-4 py-3 border-b border-border-light dark:border-border-dark">
         <button

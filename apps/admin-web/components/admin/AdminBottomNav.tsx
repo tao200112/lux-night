@@ -58,9 +58,9 @@ export default function AdminBottomNav({ pendingCount = 0 }: AdminBottomNavProps
     return pathname.startsWith(href);
   };
 
-  // 完全按照 UI 文档的结构和样式
+  // Mobile only (lg:hidden); desktop uses AdminSidebar
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface-light dark:bg-background-dark border-t border-border-light dark:border-border-dark safe-area-bottom max-w-[480px] mx-auto">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface-light dark:bg-background-dark border-t border-border-light dark:border-border-dark safe-area-bottom max-w-[480px] mx-auto">
       <div className="flex justify-around items-center h-16 px-1">
         {navItems.map((item) => {
           const active = isActive(item.href, item.exact);
