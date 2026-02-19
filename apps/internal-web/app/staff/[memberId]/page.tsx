@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import PageContainer from '@/components/layout/PageContainer';
 
 interface StaffMember {
   id: string;
@@ -132,15 +133,15 @@ export default function StaffDetailPage() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+      <PageContainer className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      </PageContainer>
     );
   }
 
   if (error || !staff) {
     return (
-      <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto min-h-screen bg-background-light dark:bg-background-dark p-8 flex flex-col items-center justify-center">
+      <PageContainer className="min-h-screen bg-background-light dark:bg-background-dark p-8 flex flex-col items-center justify-center">
         <p className="text-alert-red text-center mb-4">{error || 'Staff member not found'}</p>
         <button
           onClick={() => router.back()}
@@ -148,7 +149,7 @@ export default function StaffDetailPage() {
         >
           Go Back
         </button>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -177,7 +178,7 @@ export default function StaffDetailPage() {
   const avatarUrl = staff.user?.profile?.avatar_url;
 
   return (
-    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white min-h-screen pb-32">
+    <PageContainer className="bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white min-h-screen pb-32">
       {/* Top Navigation Bar */}
       <nav className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between p-4">
@@ -200,7 +201,7 @@ export default function StaffDetailPage() {
         </div>
       </nav>
 
-      <main className="p-4 flex flex-col gap-6 max-w-md mx-auto pb-32">
+      <main className="p-4 flex flex-col gap-6 pb-32">
         {/* Profile Header Card */}
         <section className="bg-white dark:bg-[#1a2e2e] rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
           <div className="flex flex-col items-center gap-4">
@@ -336,6 +337,6 @@ export default function StaffDetailPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

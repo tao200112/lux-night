@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PageContainer from '@/components/layout/PageContainer';
 
 type FilterType = 'All Members' | 'Managers' | 'Staff' | 'Security';
 
@@ -110,10 +111,10 @@ export default function StaffPage() {
   });
 
   return (
-    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark font-display text-[#0f171a] dark:text-gray-100 min-h-screen pb-32">
+    <PageContainer className="bg-background-light dark:bg-background-dark font-display text-[#0f171a] dark:text-gray-100 min-h-screen pb-32">
       {/* Top Navigation Bar */}
       <nav className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center p-4 justify-between max-w-md mx-auto">
+        <div className="flex items-center p-4 justify-between">
           <button 
             onClick={() => router.back()}
             className="w-10 flex items-center justify-start"
@@ -127,7 +128,7 @@ export default function StaffPage() {
         </div>
       </nav>
 
-      <main className="max-w-md mx-auto px-4 pt-6">
+      <main className="px-4 pt-6">
         {/* Search Bar */}
         <div className="mb-6">
           <label className="flex items-center h-12 w-full bg-gray-100 dark:bg-gray-800 rounded-xl px-4 focus-within:ring-2 ring-primary/50 transition-all">
@@ -246,8 +247,8 @@ export default function StaffPage() {
       </main>
 
       {/* Fixed Bottom CTA - 位于 Bottom Nav 上方 */}
-      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:bottom-4 lg:max-w-6xl px-4 z-40">
-        <div className="max-w-md mx-auto">
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:bottom-4 lg:left-1/2 lg:-translate-x-1/2 lg:max-w-6xl 2xl:max-w-7xl px-4 z-40">
+        <div className="w-full">
           <Link 
             href="/invites/create"
             className="w-full bg-primary hover:bg-primary/90 text-white font-semibold h-14 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
@@ -257,6 +258,6 @@ export default function StaffPage() {
           </Link>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

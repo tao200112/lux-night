@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMerchantContext } from '@/contexts/MerchantContext';
 import { signOut } from '@/lib/auth/client';
+import PageContainer from '@/components/layout/PageContainer';
 
 export default function SelectVenuePage() {
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function SelectVenuePage() {
   const userEmail = 'user@example.com'; // TODO: 从 context 获取
 
   return (
-    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-gray-100 min-h-screen flex flex-col">
+    <PageContainer className="bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-gray-100 min-h-screen flex flex-col">
       {/* iOS Status Bar Spacer */}
       <div className="h-[44px] w-full bg-background-light dark:bg-background-dark"></div>
 
@@ -104,7 +105,7 @@ export default function SelectVenuePage() {
         </div>
       </header>
 
-      <main className="flex-1 px-6 pb-24 max-w-md mx-auto w-full">
+      <main className="flex-1 px-6 pb-24 w-full">
         {/* Section: Venue Selection */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
@@ -190,6 +191,6 @@ export default function SelectVenuePage() {
           </label>
         </div>
       </main>
-    </div>
+    </PageContainer>
   );
 }

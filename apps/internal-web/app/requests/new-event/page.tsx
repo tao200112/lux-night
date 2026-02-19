@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMerchantContext } from '@/contexts/MerchantContext';
+import PageContainer from '@/components/layout/PageContainer';
 
 interface Venue {
   id: string;
@@ -100,10 +101,10 @@ export default function NewEventRequestPage() {
   };
 
   return (
-    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white min-h-screen flex flex-col pb-32">
+    <PageContainer className="bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white min-h-screen flex flex-col pb-32">
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center p-4 justify-between max-w-lg mx-auto w-full">
+        <div className="flex items-center p-4 justify-between w-full">
           <button
             onClick={() => router.back()}
             className="flex items-center gap-2"
@@ -138,7 +139,7 @@ export default function NewEventRequestPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-lg mx-auto w-full pb-32">
+      <main className="flex-1 w-full pb-32">
         <form onSubmit={handleSubmit}>
           {/* Section: Event Details */}
           <section className="mt-4">
@@ -258,7 +259,7 @@ export default function NewEventRequestPage() {
       </main>
 
       {/* Persistent Bottom Action */}
-      <footer className="fixed bottom-20 lg:bottom-0 inset-x-0 p-4 bg-background-light dark:bg-background-dark/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 z-50 max-w-[430px] lg:max-w-6xl mx-auto">
+      <footer className="fixed bottom-20 lg:bottom-0 inset-x-0 p-4 bg-background-light dark:bg-background-dark/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 z-50 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:max-w-6xl 2xl:max-w-7xl">
         <button
           onClick={handleSubmit}
           disabled={loading || !title.trim() || !startDate || !startTime || !venueId}
@@ -269,6 +270,6 @@ export default function NewEventRequestPage() {
         </button>
         <p className="text-[10px] text-center text-gray-400 mt-2 uppercase tracking-widest font-bold">Step 1 of 3: General Information</p>
       </footer>
-    </div>
+    </PageContainer>
   );
 }
