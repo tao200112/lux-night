@@ -1,6 +1,6 @@
 /**
  * Merchant Top Bar
- * 全屏顶栏，仅在 merchant 页面显示，桌面端全宽
+ * 全屏顶栏，仅在 merchant 页面显示，桌面端全宽；hidden 时仅 CSS 隐藏，不 unmount
  */
 
 'use client';
@@ -8,12 +8,15 @@
 import Link from 'next/link';
 import { useMerchantContext } from '../contexts/MerchantContext';
 
-export default function MerchantTopBar() {
+export default function MerchantTopBar({ hidden }: { hidden?: boolean }) {
   const { workspace } = useMerchantContext();
   const displayName = workspace?.merchantName || workspace?.venueName || 'Merchant';
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
+    <header
+      className={`sticky top-0 z-40 w-full bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 ${hidden ? 'invisible opacity-0 pointer-events-none' : ''}`}
+      aria-hidden={hidden}
+    >
       <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         <Link
           href="/dashboard"

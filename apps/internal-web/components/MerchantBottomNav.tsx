@@ -1,6 +1,6 @@
 /**
  * Merchant Bottom Navigation
- * 固定在 layout，跨页面不 remount；仅 mobile 显示
+ * 固定在 layout，永不 unmount（Shell 用 hidden 控制显隐）；仅 mobile 显示
  */
 
 'use client';
@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function MerchantBottomNav() {
+export default function MerchantBottomNav({ hidden }: { hidden?: boolean }) {
   const pathname = usePathname();
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -27,7 +27,7 @@ export default function MerchantBottomNav() {
   const isActive = (path: string) => pathname === path || pathname?.startsWith(path + '/');
 
   const iconCls = (filled: boolean, active: boolean) =>
-    `inline-flex items-center justify-center w-10 h-10 shrink-0 leading-none material-symbols-outlined text-2xl ${
+    `inline-flex items-center justify-center w-10 h-10 shrink-0 leading-[0] material-symbols-outlined text-2xl ${
       filled && active ? 'filled' : ''
     } ${!filled && active ? 'font-bold' : ''}`;
 
@@ -39,14 +39,17 @@ export default function MerchantBottomNav() {
       }`}
     >
       <span className={iconCls(filled, isActive(href))}>{icon}</span>
-      <span className="block text-[10px] font-bold leading-tight text-center min-w-0 w-full truncate">
+      <span className="block text-[10px] font-bold leading-[1.2] text-center min-w-0 w-full truncate">
         {label}
       </span>
     </Link>
   );
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:hidden bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-1 py-2 flex items-stretch justify-between gap-0 z-50 pb-[env(safe-area-inset-bottom)]">
+    <nav
+      className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:hidden bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-1 py-2 flex items-stretch justify-between gap-0 z-[60] pb-[env(safe-area-inset-bottom)] ${hidden ? 'invisible opacity-0 pointer-events-none' : ''}`}
+      aria-hidden={hidden}
+    >
       {navItem('/dashboard', 'dashboard', 'Dashboard')}
       {navItem('/events', 'event', 'Events', true)}
       <Link
@@ -55,10 +58,10 @@ export default function MerchantBottomNav() {
           isActive('/scan') ? 'text-primary' : 'text-gray-400'
         }`}
       >
-        <span className="inline-flex items-center justify-center w-10 h-10 shrink-0 leading-none rounded-full bg-primary text-white">
-          <span className="material-symbols-outlined text-2xl">qr_code_scanner</span>
+        <span className="inline-flex items-center justify-center w-10 h-10 shrink-0 leading-[0] rounded-full bg-primary text-white material-symbols-outlined text-2xl">
+          qr_code_scanner
         </span>
-        <span className="block text-[10px] font-bold leading-tight text-center min-w-0 w-full truncate">
+        <span className="block text-[10px] font-bold leading-[1.2] text-center min-w-0 w-full truncate">
           Scan
         </span>
       </Link>

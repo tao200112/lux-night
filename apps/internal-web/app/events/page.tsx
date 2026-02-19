@@ -270,7 +270,7 @@ export default function EventsPage() {
                             ></div>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                           <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
                             <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Tickets Sold</p>
                             <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{soldCount}</p>

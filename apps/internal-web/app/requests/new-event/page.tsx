@@ -258,7 +258,7 @@ export default function NewEventRequestPage() {
       </main>
 
       {/* Persistent Bottom Action */}
-      <footer className="fixed bottom-0 inset-x-0 p-4 bg-background-light dark:bg-background-dark/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 z-50 max-w-[430px] lg:max-w-6xl mx-auto">
+      <footer className="fixed bottom-20 lg:bottom-0 inset-x-0 p-4 bg-background-light dark:bg-background-dark/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 z-50 max-w-[430px] lg:max-w-6xl mx-auto">
         <button
           onClick={handleSubmit}
           disabled={loading || !title.trim() || !startDate || !startTime || !venueId}

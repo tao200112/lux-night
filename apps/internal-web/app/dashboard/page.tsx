@@ -138,7 +138,7 @@ export default function DashboardPage() {
       <main className="pb-24">
         {/* KPI Grid */}
         <section className="p-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             <div className="flex flex-col gap-1 rounded-xl p-4 bg-card-light dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-sm">
               <p className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">Sales (GMV)</p>
               <div className="flex items-end gap-2">
