@@ -22,7 +22,12 @@ interface ChangeRequest {
   events?: {
     id: string;
     title: string;
-    start_at: string;
+    start_at?: string;
+  };
+  events_v2?: {
+    id: string;
+    title: string;
+    poster_url?: string;
   };
   merchants?: {
     id: string;
