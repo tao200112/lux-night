@@ -216,18 +216,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 拉取当前目标数据作为 before_snapshot（供 Admin diff 展示）
+    let beforeSnapshot: Record<string, unknown> | null = null;
+    if (normalizedRequestType === 'poster' && (payload as Record<string, unknown>).poster_url !== undefined) {
+      const { data: ev } = await supabase.from('events_v2').select('poster_url').eq('id', event_id).single();
+      if (ev) beforeSnapshot = { poster_url: ev.poster_url };
+    } else if (normalizedRequestType === 'price') {
+      const ids = Array.isArray((payload as { prices?: Array<{ ticket_type_id: string }> }).prices)
+        ? (payload as { prices: Array<{ ticket_type_id: string }> }).prices.map((p) => p.ticket_type_id)
+        : (payload as { ticket_type_id?: string }).ticket_type_id ? [(payload as { ticket_type_id: string }).ticket_type_id] : [];
+      if (ids.length > 0) {
+        const { data: tickets } = await supabase.from('ticket_types_v2').select('id, price_cents').in('id', ids);
+        if (tickets?.length) beforeSnapshot = { prices: tickets.map((t) => ({ ticket_type_id: t.id, price_cents: t.price_cents })) };
+      }
+    } else if (normalizedRequestType === 'inventory') {
+      const ids = Array.isArray((payload as { quantities?: Array<{ ticket_type_id: string }> }).quantities)
+        ? (payload as { quantities: Array<{ ticket_type_id: string }> }).quantities.map((q) => q.ticket_type_id)
+        : (payload as { ticket_type_id?: string }).ticket_type_id ? [(payload as { ticket_type_id: string }).ticket_type_id] : [];
+      if (ids.length > 0) {
+        const { data: tickets } = await supabase.from('ticket_types_v2').select('id, inventory_limit').in('id', ids);
+        if (tickets?.length) beforeSnapshot = { quantities: tickets.map((t) => ({ ticket_type_id: t.id, inventory_limit: t.inventory_limit })) };
+      }
+    } else if (normalizedRequestType === 'general') {
+      const { data: ev } = await supabase
+        .from('events_v2')
+        .select('title, description, start_at, end_at, poster_url, age_policy, refund_policy')
+        .eq('id', event_id)
+        .single();
+      if (ev) beforeSnapshot = ev as Record<string, unknown>;
+    }
+
     // 构造 insertData (merchant_change_requests 表)
     const insertData = {
       event_id,
       merchant_id: workspace.merchantId,
-      target_week_start_date: null, // nullable for price/inventory/poster requests
+      target_week_start_date: null,
       payload: payload as object,
+      before_snapshot: beforeSnapshot,
       request_type: normalizedRequestType,
       submitted_by: user.id,
       status: 'pending' as const,
     };
 
-    console.log('[event-change-requests][POST] insertData=', insertData);
+    console.log('[event-change-requests][POST] insertData=', { ...insertData, before_snapshot: beforeSnapshot ? 'present' : 'null' });
 
     // 使用 merchant_change_requests 表
     let { data: request, error: createError } = await supabase
