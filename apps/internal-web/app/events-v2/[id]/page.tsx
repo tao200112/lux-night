@@ -172,11 +172,11 @@ export default function InternalEventV2DetailPage() {
                   {day.tickets.map((ticket) => (
                     <div
                       key={ticket.id}
-                      className="bg-surface-light rounded p-3 flex items-center justify-between"
+                      className="bg-surface-light text-gray-900 rounded p-3 flex items-center justify-between"
                     >
                       <div className="flex-1">
                         <div className="font-medium">{ticket.name}</div>
-                        <div className="text-sm text-gray-400">
+                        <div className="text-sm text-gray-600">
                           {ticket.category} • ${(ticket.price_cents / 100).toFixed(2)}
                           {ticket.min_age && ` • ${ticket.min_age}+`}
                           {ticket.inventory_limit !== null &&

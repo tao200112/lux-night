@@ -306,7 +306,7 @@ export default function InternalRequestChangePage() {
                           type="time"
                           value={day.start_time}
                           onChange={(e) => updateDay(day.dow, { start_time: e.target.value })}
-                          className="w-full px-3 py-2 bg-surface-light rounded border border-gray-600"
+                          className="w-full px-3 py-2 bg-surface-light text-gray-900 rounded border border-gray-600"
                         />
                       </div>
                       <div>
@@ -315,7 +315,7 @@ export default function InternalRequestChangePage() {
                           type="time"
                           value={day.end_time}
                           onChange={(e) => updateDay(day.dow, { end_time: e.target.value })}
-                          className="w-full px-3 py-2 bg-surface-light rounded border border-gray-600"
+                          className="w-full px-3 py-2 bg-surface-light text-gray-900 rounded border border-gray-600"
                         />
                       </div>
                       <div className="flex items-end">
@@ -337,21 +337,21 @@ export default function InternalRequestChangePage() {
                         .map((ticket, idx) => (
                           <div
                             key={idx}
-                            className="bg-surface-light rounded p-3 flex flex-wrap items-center gap-3 min-w-0"
+                            className="bg-surface-light text-gray-900 rounded p-3 flex flex-wrap items-center gap-3 min-w-0"
                           >
                             <input
                               type="text"
                               value={ticket.name}
                               onChange={(e) => updateTicket(day.dow, idx, { name: e.target.value })}
                               placeholder="Ticket Name"
-                              className="flex-1 min-w-0 basis-24 px-3 py-1 bg-background-dark rounded border border-gray-600"
+                              className="flex-1 min-w-0 basis-24 px-3 py-1 bg-background-dark text-white rounded border border-gray-600 placeholder:text-gray-400"
                             />
                             <select
                               value={ticket.category}
                               onChange={(e) =>
                                 updateTicket(day.dow, idx, { category: e.target.value as any })
                               }
-                              className="flex-shrink-0 px-3 py-1 bg-background-dark rounded border border-gray-600"
+                              className="flex-shrink-0 px-3 py-1 bg-background-dark text-white rounded border border-gray-600"
                             >
                               <option value="entry">Entry</option>
                               <option value="vip">VIP</option>
@@ -368,7 +368,7 @@ export default function InternalRequestChangePage() {
                                 })
                               }
                               placeholder="Price ($)"
-                              className="w-24 flex-shrink-0 px-3 py-1 bg-background-dark rounded border border-gray-600"
+                              className="w-24 flex-shrink-0 px-3 py-1 bg-background-dark text-white rounded border border-gray-600 placeholder:text-gray-400"
                             />
                             <button
                               type="button"
