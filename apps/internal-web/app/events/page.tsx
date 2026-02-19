@@ -103,7 +103,7 @@ export default function EventsPage() {
   };
 
   return (
-    <div className="relative flex h-screen w-full max-w-[430px] mx-auto flex-col overflow-hidden bg-background-light dark:bg-background-dark">
+    <div className="relative flex h-screen w-full max-w-[430px] lg:max-w-6xl mx-auto flex-col overflow-hidden bg-background-light dark:bg-background-dark">
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-20 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 pt-6 pb-2 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center justify-between">
@@ -234,7 +234,7 @@ export default function EventsPage() {
                     <div className="flex justify-between items-start">
                       <h3 className="text-base font-bold text-gray-900 dark:text-white">{event.title}</h3>
                       <Link
-                        href={`/events-v2/${event.id}`}
+                        href={`/events/${event.id}`}
                         className="text-xs font-medium text-primary hover:underline"
                       >
                         View
@@ -285,7 +285,7 @@ export default function EventsPage() {
                             Scan Tickets
                           </Link>
                           <Link
-                            href={`/events-v2/${event.id}`}
+                            href={`/events/${event.id}`}
                             className="w-12 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center"
                           >
                             <span className="material-symbols-outlined text-base">analytics</span>
@@ -309,7 +309,7 @@ export default function EventsPage() {
                         </div>
                         <div className="flex justify-between items-center pt-1">
                           <Link
-                            href={`/events-v2/${event.id}`}
+                            href={`/events/${event.id}`}
                             className="px-4 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center"
                           >
                             {event.status === 'draft' ? 'Edit' : 'Manage'}

@@ -57,7 +57,7 @@ export default function SelectVenuePage() {
   const userEmail = 'user@example.com'; // TODO: 从 context 获取
 
   return (
-    <div className="w-full max-w-[430px] mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-gray-100 min-h-screen flex flex-col">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-gray-100 min-h-screen flex flex-col">
       {/* iOS Status Bar Spacer */}
       <div className="h-[44px] w-full bg-background-light dark:bg-background-dark"></div>
 

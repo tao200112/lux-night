@@ -128,7 +128,7 @@ export default function AdminEventChangeRequestsPage() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-[430px] mx-auto min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+      <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
@@ -136,7 +136,7 @@ export default function AdminEventChangeRequestsPage() {
 
   if (error) {
     return (
-      <div className="w-full max-w-[430px] mx-auto min-h-screen bg-background-light dark:bg-background-dark p-8 flex flex-col items-center justify-center">
+      <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto min-h-screen bg-background-light dark:bg-background-dark p-8 flex flex-col items-center justify-center">
         <p className="text-alert-red text-center mb-4">{error}</p>
         <button
           onClick={loadRequests}
@@ -149,7 +149,7 @@ export default function AdminEventChangeRequestsPage() {
   }
 
   return (
-    <div className="w-full max-w-[430px] mx-auto min-h-screen bg-background-light dark:bg-background-dark">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto min-h-screen bg-background-light dark:bg-background-dark">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center justify-between p-4 h-16">
@@ -262,8 +262,41 @@ export default function AdminEventChangeRequestsPage() {
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
                   <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Changes:</p>
                   <div className="space-y-1 text-sm">
+                    {/* Week Config (days structure) */}
+                    {request.payload_json?.days && Object.keys(request.payload_json.days).length > 0 && (
+                      <div className="space-y-2">
+                        <p className="font-semibold text-gray-900 dark:text-white">Week configuration</p>
+                        {Object.entries(request.payload_json.days as Record<string, { enabled?: boolean; start_time?: string; end_time?: string; end_next_day?: boolean; tickets?: any[] }>).map(([dowStr, day]) => {
+                          const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                          const dayName = dayNames[parseInt(dowStr, 10)] || dowStr;
+                          const tickets = (day.tickets || []).filter((t: any) => t.action !== 'delete');
+                          return (
+                            <div key={dowStr} className="pl-2 border-l-2 border-primary/30 space-y-1">
+                              <p><span className="font-semibold">{dayName}:</span> {day.enabled ? 'Enabled' : 'Disabled'}
+                                {day.enabled && day.start_time && (
+                                  <span className="ml-2 text-gray-600 dark:text-gray-400">
+                                    {day.start_time}–{day.end_time}{day.end_next_day ? ' (next day)' : ''}
+                                  </span>
+                                )}
+                              </p>
+                              {tickets.length > 0 && (
+                                <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                                  {tickets.map((t: any, i: number) => (
+                                    <p key={i}>
+                                      • {t.name} ({t.category}) ${((t.price_cents || 0) / 100).toFixed(2)}
+                                      {t.min_age ? ` ${t.min_age}+` : ''}
+                                      {t.inventory_limit != null ? ` Limit: ${t.inventory_limit}` : ''}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     {/* Event Edit / General */}
-                    {request.payload_json.title && (
+                    {request.payload_json?.title && (
                       <p><span className="font-semibold">Title:</span> {request.payload_json.title}</p>
                     )}
                     {request.payload_json.start_at && (

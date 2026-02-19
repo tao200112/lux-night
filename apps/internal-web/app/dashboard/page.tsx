@@ -111,7 +111,7 @@ export default function DashboardPage() {
   const merchantName = workspace?.merchantName || 'Merchant';
 
   return (
-    <div className="relative w-full max-w-[430px] mx-auto min-h-screen bg-background-light dark:bg-background-dark font-display text-[#0c1d1d] dark:text-gray-100 antialiased">
+    <div className="relative w-full max-w-[430px] lg:max-w-6xl mx-auto min-h-screen bg-background-light dark:bg-background-dark font-display text-[#0c1d1d] dark:text-gray-100 antialiased">
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center justify-between px-4 py-3">
@@ -216,7 +216,7 @@ export default function DashboardPage() {
               stats.tonightEvents.map((event) => (
                 <Link
                   key={event.id}
-                  href={`/events-v2/${event.id}`}
+                  href={`/events/${event.id}`}
                   className="bg-card-light dark:bg-card-dark rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm flex hover:border-primary/50 transition-colors cursor-pointer"
                 >
                   <div className="w-24 h-auto relative shrink-0 bg-gray-200 dark:bg-gray-700">

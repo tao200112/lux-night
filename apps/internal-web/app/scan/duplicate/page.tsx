@@ -22,7 +22,7 @@ function DuplicatePageContent() {
   };
 
   return (
-    <div className="w-full max-w-[430px] mx-auto bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display">
       {/* Top Navigation Bar */}
       <nav className="flex items-center justify-between px-6 py-4 bg-background-light dark:bg-background-dark">
         <button

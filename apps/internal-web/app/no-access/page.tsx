@@ -19,7 +19,7 @@ export default function NoAccessPage() {
   };
 
   return (
-    <div className="w-full max-w-[430px] mx-auto bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300">
       {/* Top Navigation */}
       <div className="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10 border-b border-gray-100 dark:border-gray-800">
         <div className="w-12 flex justify-start">

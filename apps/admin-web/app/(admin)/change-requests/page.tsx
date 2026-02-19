@@ -10,12 +10,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import PageContainer from '@/components/admin/PageContainer';
 
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
 interface ChangeRequest {
   id: string;
   merchant_id: string;
   event_id: string;
   target_week_start_date: string;
   payload: any;
+  before_snapshot?: any;
   note: string | null;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   reviewed_by_admin: string | null;
@@ -31,6 +34,83 @@ interface ChangeRequest {
     id: string;
     name: string;
   };
+}
+
+function WeekConfigDiff({ before, after }: { before: any; after: any }) {
+  const beforeDays = before?.days || {};
+  const afterDays = after?.days || {};
+  const allDows = new Set([...Object.keys(beforeDays), ...Object.keys(afterDays)]);
+  const sortedDows = Array.from(allDows).map(Number).sort((a, b) => a - b);
+
+  return (
+    <div className="space-y-3 text-sm">
+      {sortedDows.map((dow) => {
+        const b = beforeDays[String(dow)];
+        const a = afterDays[String(dow)];
+        const dayName = DAY_NAMES[dow];
+        const enabledB = b?.enabled ?? false;
+        const enabledA = a?.enabled ?? false;
+        const timeB = b ? `${b.start_time}-${b.end_time}${b.end_next_day ? ' (next day)' : ''}` : '—';
+        const timeA = a ? `${a.start_time}-${a.end_time}${a.end_next_day ? ' (next day)' : ''}` : '—';
+        const ticketsB = (b?.tickets || []).filter((t: any) => t.action !== 'delete');
+        const ticketsA = (a?.tickets || []).filter((t: any) => t.action !== 'delete');
+
+        const hasEnabledChange = enabledB !== enabledA;
+        const hasTimeChange = timeB !== timeA;
+        const ticketDiffs: { name: string; change: string }[] = [];
+
+        const byId = (arr: any[]) => {
+          const m: Record<string, any> = {};
+          (arr || []).forEach((t) => {
+            if (t.id) m[t.id] = t;
+            else m[`new-${t.name}-${t.category}`] = t;
+          });
+          return m;
+        };
+        const beforeById = byId(ticketsB);
+        const afterById = byId(ticketsA);
+        const allIds = new Set([...Object.keys(beforeById), ...Object.keys(afterById)]);
+
+        allIds.forEach((id) => {
+          const tb = beforeById[id];
+          const ta = afterById[id];
+          if (!ta) ticketDiffs.push({ name: tb?.name || id, change: 'Deleted' });
+          else if (!tb) ticketDiffs.push({ name: ta.name || 'New', change: 'Added' });
+          else {
+            const parts: string[] = [];
+            if (tb.price_cents !== ta.price_cents) parts.push(`$${(tb.price_cents/100).toFixed(2)} → $${(ta.price_cents/100).toFixed(2)}`);
+            if (tb.inventory_limit !== ta.inventory_limit) parts.push(`Limit: ${tb.inventory_limit ?? '—'} → ${ta.inventory_limit ?? '—'}`);
+            if (tb.name !== ta.name) parts.push(`"${tb.name}" → "${ta.name}"`);
+            if (tb.status !== ta.status) parts.push(`Status: ${tb.status} → ${ta.status}`);
+            if (parts.length) ticketDiffs.push({ name: ta.name, change: parts.join('; ') });
+          }
+        });
+
+        const hasChanges = hasEnabledChange || hasTimeChange || ticketDiffs.length > 0;
+        if (!hasChanges) return null;
+
+        return (
+          <div key={dow} className="rounded-lg border border-gray-600 p-3 bg-background-dark/50">
+            <h4 className="font-semibold text-white mb-2">{dayName}</h4>
+            <div className="space-y-1 text-gray-300">
+              {hasEnabledChange && (
+                <p>Enabled: <span className="text-red-400">{enabledB ? 'Yes' : 'No'}</span> → <span className="text-green-400">{enabledA ? 'Yes' : 'No'}</span></p>
+              )}
+              {hasTimeChange && (
+                <p>Time: <span className="text-red-400">{timeB}</span> → <span className="text-green-400">{timeA}</span></p>
+              )}
+              {ticketDiffs.map((d, i) => (
+                <p key={i}><span className="font-medium">{d.name}:</span> {d.change}</p>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {sortedDows.length === 0 && (
+        <p className="text-gray-400">No day-level changes (raw payload only)</p>
+      )}
+    </div>
+  );
 }
 
 export default function AdminChangeRequestsPage() {
@@ -239,29 +319,26 @@ export default function AdminChangeRequestsPage() {
                   </span>
                 </div>
 
-                {/* Payload Preview */}
-                <div className="mb-4">
-                  <details className="text-sm">
-                    <summary className="cursor-pointer text-gray-400 hover:text-white">
-                      View Changes
-                    </summary>
-                    <pre className="mt-2 p-3 bg-background-dark rounded text-xs overflow-auto max-h-64">
-                      {JSON.stringify(request.payload, null, 2)}
-                    </pre>
-                  </details>
-                </div>
-
                 {/* Actions */}
-                {request.status === 'pending' && (
-                  <div className="flex gap-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedRequest(request)}
+                    className="px-4 py-2 bg-primary text-black rounded-lg hover:bg-primary-hover transition"
+                  >
+                    View Details
+                  </button>
+                  {request.status === 'pending' && (
                     <button
-                      onClick={() => setSelectedRequest(request)}
-                      className="px-4 py-2 bg-primary text-black rounded-lg hover:bg-primary-hover transition"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setReviewNote('');
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition"
                     >
-                      Review
+                      Review & Approve
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Review Info */}
                 {request.status !== 'pending' && request.review_note && (
@@ -305,25 +382,28 @@ export default function AdminChangeRequestsPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Review Note</label>
-                <textarea
-                  value={reviewNote}
-                  onChange={(e) => setReviewNote(e.target.value)}
-                  className="w-full px-4 py-2 bg-background-dark rounded-lg border border-gray-700"
-                  rows={3}
-                  placeholder="Optional note for the merchant..."
-                />
+                <h3 className="text-sm font-bold text-white mb-2">Change Summary</h3>
+                {selectedRequest.payload?.days ? (
+                  <WeekConfigDiff
+                    before={selectedRequest.before_snapshot || {}}
+                    after={selectedRequest.payload}
+                  />
+                ) : (
+                  <pre className="p-3 bg-background-dark rounded text-xs overflow-auto max-h-64 text-gray-300">
+                    {JSON.stringify(selectedRequest.payload, null, 2)}
+                  </pre>
+                )}
               </div>
 
               <div className="mb-4">
-                <details className="text-sm">
-                  <summary className="cursor-pointer text-gray-400 hover:text-white mb-2">
-                    View Full Payload
-                  </summary>
-                  <pre className="p-3 bg-background-dark rounded text-xs overflow-auto max-h-64">
-                    {JSON.stringify(selectedRequest.payload, null, 2)}
-                  </pre>
-                </details>
+                <label className="block text-sm font-medium mb-2">Review Note (optional)</label>
+                <textarea
+                  value={reviewNote}
+                  onChange={(e) => setReviewNote(e.target.value)}
+                  className="w-full px-4 py-2 bg-background-dark rounded-lg border border-gray-700 text-white"
+                  rows={3}
+                  placeholder="Optional note for the merchant..."
+                />
               </div>
 
               {error && (

@@ -110,7 +110,7 @@ export default function StaffPage() {
   });
 
   return (
-    <div className="w-full max-w-[430px] mx-auto bg-background-light dark:bg-background-dark font-display text-[#0f171a] dark:text-gray-100 min-h-screen pb-32">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark font-display text-[#0f171a] dark:text-gray-100 min-h-screen pb-32">
       {/* Top Navigation Bar */}
       <nav className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center p-4 justify-between max-w-md mx-auto">
@@ -246,7 +246,7 @@ export default function StaffPage() {
       </main>
 
       {/* Fixed Bottom CTA - 位于 Bottom Nav 上方 */}
-      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:bottom-4 lg:max-w-md px-4 z-40">
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:bottom-4 lg:max-w-6xl px-4 z-40">
         <div className="max-w-md mx-auto">
           <Link 
             href="/invites/create"

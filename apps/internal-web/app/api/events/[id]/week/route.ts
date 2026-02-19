@@ -1,6 +1,6 @@
 /**
  * Internal Event Week API (Read-only)
- * GET /api/events-v2/[id]/week?date= - 获取本周配置（只读）
+ * GET /api/events/[id]/week?date= - 获取本周配置（只读）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -32,7 +32,6 @@ export async function GET(
 
     const supabase = await createClient();
 
-    // 验证活动属于当前 merchant
     const { data: event, error: eventError } = await supabase
       .from('events_v2')
       .select('id, merchant_id')
@@ -47,7 +46,6 @@ export async function GET(
       );
     }
 
-    // 调用 RPC 获取本周配置（只读）
     const { data: rpcResult, error: rpcError } = await supabase.rpc(
       'rpc_get_or_create_event_week',
       {
@@ -73,22 +71,16 @@ export async function GET(
     }
 
     const result = rpcResult[0];
-
     return NextResponse.json({
       event_week_id: result.event_week_id,
       week_start_date: result.week_start_date,
       days: result.days,
     });
   } catch (error: any) {
-    console.error('Error in GET /api/events-v2/[id]/week:', error);
-    
+    console.error('Error in GET /api/events/[id]/week:', error);
     if (error.message === 'UNAUTHORIZED') {
-      return NextResponse.json(
-        { error: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
     }
-
     return NextResponse.json(
       { error: 'FETCH_FAILED', message: error.message },
       { status: 500 }

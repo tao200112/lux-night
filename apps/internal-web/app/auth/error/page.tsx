@@ -71,7 +71,7 @@ function AuthErrorContent() {
   const errorDetails = getErrorDetails(error);
 
   return (
-    <div className="relative flex h-full min-h-screen w-full max-w-[430px] mx-auto flex-col bg-background-light dark:bg-background-dark">
+    <div className="relative flex h-full min-h-screen w-full max-w-[430px] lg:max-w-6xl mx-auto flex-col bg-background-light dark:bg-background-dark">
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         {/* Error Icon */}
         <div className="text-6xl mb-6">{errorDetails.icon}</div>

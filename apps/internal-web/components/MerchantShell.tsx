@@ -7,11 +7,11 @@
 
 import { usePathname } from 'next/navigation';
 import MerchantBottomNav from './MerchantBottomNav';
+import MerchantTopBar from './MerchantTopBar';
 
 const MERCHANT_NAV_PATHS = [
   '/dashboard',
   '/events',
-  '/events-v2',
   '/staff',
   '/settings',
   '/scan',
@@ -33,6 +33,7 @@ export default function MerchantShell({ children }: { children: React.ReactNode 
 
   return (
     <>
+      {showNav && <MerchantTopBar />}
       <div className={showNav ? 'pb-24 lg:pb-6' : ''}>{children}</div>
       {showNav && <MerchantBottomNav />}
     </>

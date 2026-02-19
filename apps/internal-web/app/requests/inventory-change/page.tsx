@@ -126,7 +126,7 @@ function InventoryChangeRequestPageContent() {
 
       // 成功，返回事件详情页
       alert(`Submitted (Pending Approval)\nRequest ID: ${data.request.id}`);
-      router.push(`/events-v2/${selectedEventId}`);
+      router.push(`/events/${selectedEventId}`);
     } catch (err: any) {
       console.error('Error submitting request:', err);
       alert(err.message || 'Failed to submit request');
@@ -136,7 +136,7 @@ function InventoryChangeRequestPageContent() {
   };
 
   return (
-    <div className="w-full max-w-[430px] mx-auto min-h-screen bg-background-light dark:bg-background-dark text-[#1a1c1e] dark:text-gray-100 pb-10">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto min-h-screen bg-background-light dark:bg-background-dark text-[#1a1c1e] dark:text-gray-100 pb-10">
       {/* TopAppBar */}
       <header className="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-4 flex items-center justify-between border-b border-gray-200/50 dark:border-gray-800/50">
         <button

@@ -21,7 +21,7 @@ export default function NewEventPage() {
   }, [router]);
 
   return (
-    <div className="relative w-full max-w-[430px] mx-auto min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center p-8">
+    <div className="relative w-full max-w-[430px] lg:max-w-6xl mx-auto min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center p-8">
       <div className="text-center">
         <span className="material-symbols-outlined text-gray-400 text-6xl mb-4 block">block</span>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Event Creation Disabled</h1>

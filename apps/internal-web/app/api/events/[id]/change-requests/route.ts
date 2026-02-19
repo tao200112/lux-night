@@ -1,6 +1,6 @@
 /**
  * Internal Change Request API
- * POST /api/events-v2/[id]/change-requests - 提交修改申请
+ * POST /api/events/[id]/change-requests - 提交修改申请
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -36,7 +36,6 @@ export async function POST(
 
     const supabase = await createClient();
 
-    // 验证活动属于当前 merchant
     const { data: event, error: eventError } = await supabase
       .from('events_v2')
       .select('id, merchant_id')
@@ -51,16 +50,35 @@ export async function POST(
       );
     }
 
-    // 获取当前用户
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json(
-        { error: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    // 创建修改申请
+    let beforeSnapshot: Record<string, unknown> | null = null;
+    const { data: rpcResult } = await supabase.rpc('rpc_get_or_create_event_week', {
+      p_event_id: eventId,
+      p_for_date: target_week_start_date,
+      p_timezone: 'America/New_York',
+    });
+    if (rpcResult && rpcResult.length > 0) {
+      const result = rpcResult[0];
+      const daysArray = result.days as Array<{ dow: number; enabled: boolean; start_time: string; end_time: string; end_next_day: boolean; tickets?: unknown[] }> | null;
+      const daysObj: Record<string, unknown> = {};
+      if (Array.isArray(daysArray)) {
+        for (const d of daysArray) {
+          daysObj[String(d.dow)] = {
+            enabled: d.enabled,
+            start_time: d.start_time,
+            end_time: d.end_time,
+            end_next_day: d.end_next_day,
+            tickets: d.tickets || [],
+          };
+        }
+      }
+      beforeSnapshot = { week_start_date: result.week_start_date, days: daysObj };
+    }
+
     const { data: request, error: insertError } = await supabase
       .from('merchant_change_requests')
       .insert({
@@ -68,6 +86,7 @@ export async function POST(
         event_id: eventId,
         target_week_start_date,
         payload,
+        before_snapshot: beforeSnapshot,
         note: note || null,
         status: 'pending',
       })
@@ -84,15 +103,10 @@ export async function POST(
 
     return NextResponse.json({ request });
   } catch (error: any) {
-    console.error('Error in POST /api/events-v2/[id]/change-requests:', error);
-    
+    console.error('Error in POST /api/events/[id]/change-requests:', error);
     if (error.message === 'UNAUTHORIZED') {
-      return NextResponse.json(
-        { error: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
     }
-
     return NextResponse.json(
       { error: 'FETCH_FAILED', message: error.message },
       { status: 500 }

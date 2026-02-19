@@ -33,7 +33,7 @@ export default function OfflinePage() {
   }
 
   return (
-    <div className="w-full max-w-[430px] mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white font-display overflow-hidden min-h-screen">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white font-display overflow-hidden min-h-screen">
       {/* Offline Banner */}
       <div className="bg-status-amber w-full py-2.5 px-4 flex items-center justify-center sticky top-0 z-50">
         <div className="flex items-center gap-2">

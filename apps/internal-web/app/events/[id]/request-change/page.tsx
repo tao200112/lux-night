@@ -1,6 +1,5 @@
 /**
- * Internal Request Change Page
- * 提交修改申请页面
+ * Request Change Page - 提交修改申请
  */
 
 'use client';
@@ -40,7 +39,7 @@ interface WeekConfig {
   days: DayConfig[];
 }
 
-export default function InternalRequestChangePage() {
+export default function RequestChangePage() {
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
@@ -53,31 +52,23 @@ export default function InternalRequestChangePage() {
   const [note, setNote] = useState('');
 
   useEffect(() => {
-    if (eventId) {
-      fetchWeekConfig();
-    }
+    if (eventId) fetchWeekConfig();
   }, [eventId, selectedDate]);
 
   const fetchWeekConfig = async () => {
     try {
       setLoading(true);
       setError(null);
-
       const dateStr = selectedDate.toISOString().split('T')[0];
-      const response = await fetch(`/api/events-v2/${eventId}/week?date=${dateStr}`);
+      const response = await fetch(`/api/events/${eventId}/week?date=${dateStr}`);
       const result = await response.json();
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
+      if (result.error) throw new Error(result.error);
       setWeekConfig({
         event_week_id: result.event_week_id,
         week_start_date: result.week_start_date,
         days: result.days || [],
       });
     } catch (err: any) {
-      console.error('[INTERNAL REQUEST CHANGE] Error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -87,12 +78,9 @@ export default function InternalRequestChangePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!weekConfig) return;
-
     try {
       setSaving(true);
       setError(null);
-
-      // Prepare payload (only changes)
       const daysPayload: Record<string, any> = {};
       weekConfig.days.forEach((day) => {
         daysPayload[day.dow.toString()] = {
@@ -100,36 +88,23 @@ export default function InternalRequestChangePage() {
           start_time: day.start_time,
           end_time: day.end_time,
           end_next_day: day.end_next_day,
-          tickets: day.tickets.map((ticket) => ({
-            ...ticket,
-            action: ticket.action || 'upsert',
-          })),
+          tickets: day.tickets.map((t) => ({ ...t, action: t.action || 'upsert' })),
         };
       });
-
-      const response = await fetch(`/api/events-v2/${eventId}/change-requests`, {
+      const response = await fetch(`/api/events/${eventId}/change-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           target_week_start_date: weekConfig.week_start_date,
-          payload: {
-            week_start_date: weekConfig.week_start_date,
-            days: daysPayload,
-          },
+          payload: { week_start_date: weekConfig.week_start_date, days: daysPayload },
           note: note || null,
         }),
       });
-
       const result = await response.json();
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
+      if (result.error) throw new Error(result.error);
       alert('Change request submitted successfully! Waiting for admin approval.');
-      router.push(`/events-v2/${eventId}`);
+      router.push(`/events/${eventId}`);
     } catch (err: any) {
-      console.error('[INTERNAL REQUEST CHANGE] Submit error:', err);
       setError(err.message);
     } finally {
       setSaving(false);
@@ -138,27 +113,21 @@ export default function InternalRequestChangePage() {
 
   const updateDay = (dow: number, updates: Partial<DayConfig>) => {
     if (!weekConfig) return;
-
     setWeekConfig({
       ...weekConfig,
-      days: weekConfig.days.map((day) =>
-        day.dow === dow ? { ...day, ...updates } : day
-      ),
+      days: weekConfig.days.map((d) => (d.dow === dow ? { ...d, ...updates } : d)),
     });
   };
 
   const updateTicket = (dow: number, ticketIndex: number, updates: Partial<TicketType>) => {
     if (!weekConfig) return;
-
     setWeekConfig({
       ...weekConfig,
       days: weekConfig.days.map((day) =>
         day.dow === dow
           ? {
               ...day,
-              tickets: day.tickets.map((ticket, idx) =>
-                idx === ticketIndex ? { ...ticket, ...updates } : ticket
-              ),
+              tickets: day.tickets.map((t, i) => (i === ticketIndex ? { ...t, ...updates } : t)),
             }
           : day
       ),
@@ -167,7 +136,7 @@ export default function InternalRequestChangePage() {
 
   const addTicket = (dow: number) => {
     if (!weekConfig) return;
-
+    const day = weekConfig.days.find((d) => d.dow === dow);
     const newTicket: TicketType = {
       name: 'New Ticket',
       category: 'entry',
@@ -176,28 +145,21 @@ export default function InternalRequestChangePage() {
       min_age: null,
       inventory_limit: null,
       status: 'active',
-      sort_order: weekConfig.days.find((d) => d.dow === dow)?.tickets.length || 0,
+      sort_order: day?.tickets.length || 0,
       action: 'upsert',
     };
-
-    updateDay(dow, {
-      tickets: [...(weekConfig.days.find((d) => d.dow === dow)?.tickets || []), newTicket],
-    });
+    updateDay(dow, { tickets: [...(day?.tickets || []), newTicket] });
   };
 
   const deleteTicket = (dow: number, ticketIndex: number) => {
     if (!weekConfig) return;
-
     const day = weekConfig.days.find((d) => d.dow === dow);
     if (!day) return;
-
     const ticket = day.tickets[ticketIndex];
     if (ticket.id) {
       updateTicket(dow, ticketIndex, { action: 'delete' });
     } else {
-      updateDay(dow, {
-        tickets: day.tickets.filter((_, idx) => idx !== ticketIndex),
-      });
+      updateDay(dow, { tickets: day.tickets.filter((_, i) => i !== ticketIndex) });
     }
   };
 
@@ -216,10 +178,7 @@ export default function InternalRequestChangePage() {
       <div className="min-h-screen bg-background-dark text-white">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-red-400">{error || 'Failed to load week configuration'}</div>
-          <Link
-            href={`/events-v2/${eventId}`}
-            className="mt-4 inline-block px-4 py-2 bg-primary text-black rounded-lg"
-          >
+          <Link href={`/events/${eventId}`} className="mt-4 inline-block px-4 py-2 bg-primary text-black rounded-lg">
             Back
           </Link>
         </div>
@@ -230,22 +189,15 @@ export default function InternalRequestChangePage() {
   return (
     <div className="min-h-screen bg-background-dark text-white">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-6">
-          <Link
-            href={`/events-v2/${eventId}`}
-            className="text-primary hover:text-primary-hover mb-4 inline-block"
-          >
+          <Link href={`/events/${eventId}`} className="text-primary hover:text-primary-hover mb-4 inline-block">
             ← Back to Event
           </Link>
           <h1 className="text-2xl font-bold">Request Changes</h1>
-          <p className="text-gray-400 mt-2">
-            Propose changes to week configuration (requires admin approval)
-          </p>
+          <p className="text-gray-400 mt-2">Propose changes to week configuration (requires admin approval)</p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Week Picker */}
           <div className="mb-6">
             <label className="block text-sm font-medium mb-2">Select Week</label>
             <input
@@ -255,8 +207,6 @@ export default function InternalRequestChangePage() {
               className="px-4 py-2 bg-surface-dark rounded-lg border border-gray-700"
             />
           </div>
-
-          {/* Note */}
           <div className="mb-6">
             <label className="block text-sm font-medium mb-2">Note (Optional)</label>
             <textarea
@@ -268,13 +218,9 @@ export default function InternalRequestChangePage() {
             />
           </div>
 
-          {/* Days Editor (same as admin but read-only indication) */}
           <div className="space-y-4 mb-6">
             {weekConfig.days.map((day) => (
-              <div
-                key={day.dow}
-                className="bg-surface-dark rounded-lg p-4 border border-gray-700"
-              >
+              <div key={day.dow} className="bg-surface-dark rounded-lg p-4 border border-gray-700">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
                     <h3 className="text-lg font-semibold">{DAY_NAMES[day.dow]}</h3>
@@ -296,7 +242,6 @@ export default function InternalRequestChangePage() {
                     + Add Ticket
                   </button>
                 </div>
-
                 {day.enabled && (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -330,7 +275,6 @@ export default function InternalRequestChangePage() {
                         </label>
                       </div>
                     </div>
-
                     <div className="space-y-2">
                       {day.tickets
                         .filter((t) => t.action !== 'delete')
@@ -348,9 +292,7 @@ export default function InternalRequestChangePage() {
                             />
                             <select
                               value={ticket.category}
-                              onChange={(e) =>
-                                updateTicket(day.dow, idx, { category: e.target.value as any })
-                              }
+                              onChange={(e) => updateTicket(day.dow, idx, { category: e.target.value as any })}
                               className="flex-shrink-0 px-3 py-1 bg-white/20 text-black rounded border border-black/30"
                             >
                               <option value="entry">Entry</option>
@@ -386,13 +328,9 @@ export default function InternalRequestChangePage() {
             ))}
           </div>
 
-          {/* Submit */}
           {error && (
-            <div className="mb-4 bg-red-500/20 border border-red-500 rounded-lg p-4 text-red-400">
-              {error}
-            </div>
+            <div className="mb-4 bg-red-500/20 border border-red-500 rounded-lg p-4 text-red-400">{error}</div>
           )}
-
           <div className="flex gap-4">
             <button
               type="submit"
@@ -401,10 +339,7 @@ export default function InternalRequestChangePage() {
             >
               {saving ? 'Submitting...' : 'Submit Change Request'}
             </button>
-            <Link
-              href={`/events-v2/${eventId}`}
-              className="px-6 py-3 bg-surface-dark rounded-lg hover:bg-surface-light transition"
-            >
+            <Link href={`/events/${eventId}`} className="px-6 py-3 bg-surface-dark rounded-lg hover:bg-surface-light transition">
               Cancel
             </Link>
           </div>

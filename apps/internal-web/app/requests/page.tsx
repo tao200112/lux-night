@@ -104,7 +104,7 @@ export default function RequestsPage() {
   };
 
   return (
-    <div className="w-full max-w-[430px] mx-auto bg-background-light dark:bg-background-dark font-display text-[#111827] dark:text-gray-100 antialiased min-h-screen overflow-x-hidden">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark font-display text-[#111827] dark:text-gray-100 antialiased min-h-screen overflow-x-hidden">
       {/* TopAppBar */}
       <header className="sticky top-0 z-50 flex items-center bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-4 justify-between border-b border-gray-200 dark:border-gray-800">
         <button
@@ -241,7 +241,7 @@ export default function RequestsPage() {
       </div>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 max-w-[430px] w-full px-4">
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 max-w-[430px] lg:max-w-6xl w-full px-4">
         <Link
           href="/requests/new-event"
           className="flex items-center justify-center gap-2 w-full h-14 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 font-bold active:scale-95 transition-transform"

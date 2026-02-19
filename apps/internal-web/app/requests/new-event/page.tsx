@@ -100,7 +100,7 @@ export default function NewEventRequestPage() {
   };
 
   return (
-    <div className="w-full max-w-[430px] mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white min-h-screen flex flex-col pb-32">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white min-h-screen flex flex-col pb-32">
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center p-4 justify-between max-w-lg mx-auto w-full">
@@ -258,7 +258,7 @@ export default function NewEventRequestPage() {
       </main>
 
       {/* Persistent Bottom Action */}
-      <footer className="fixed bottom-0 inset-x-0 p-4 bg-background-light dark:bg-background-dark/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 z-50 max-w-[430px] mx-auto">
+      <footer className="fixed bottom-0 inset-x-0 p-4 bg-background-light dark:bg-background-dark/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 z-50 max-w-[430px] lg:max-w-6xl mx-auto">
         <button
           onClick={handleSubmit}
           disabled={loading || !title.trim() || !startDate || !startTime || !venueId}

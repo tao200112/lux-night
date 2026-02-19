@@ -42,7 +42,7 @@ function InviteInvalidPageContent() {
   };
 
   return (
-    <div className="w-full max-w-[430px] mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white min-h-screen flex flex-col">
+    <div className="w-full max-w-[430px] lg:max-w-6xl mx-auto bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-white min-h-screen flex flex-col">
       {/* iOS Status Bar Spacer */}
       <div className="h-[44px] w-full flex justify-between items-end px-6 pb-2 bg-background-light dark:bg-background-dark">
         <span className="text-xs font-semibold">9:41</span>

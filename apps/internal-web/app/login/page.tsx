@@ -51,7 +51,7 @@ function InternalLoginPageContent() {
   };
 
   return (
-    <div className="relative flex h-full min-h-screen w-full max-w-[430px] mx-auto flex-col bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-gray-100">
+    <div className="relative flex h-full min-h-screen w-full max-w-[430px] lg:max-w-6xl mx-auto flex-col bg-background-light dark:bg-background-dark text-[#0c1d1d] dark:text-gray-100">
       {/* Top Logo/Brand Mark Section */}
       <div className="flex flex-col items-center pt-20 pb-10 px-4">
         <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mb-8">

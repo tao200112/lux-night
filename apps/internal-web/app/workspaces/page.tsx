@@ -265,7 +265,7 @@ export default function WorkspacesPage() {
   }
 
   return (
-    <div className="relative w-full max-w-[430px] mx-auto min-h-screen bg-background-dark text-white p-8">
+    <div className="relative w-full max-w-[430px] lg:max-w-6xl mx-auto min-h-screen bg-background-dark text-white p-8">
       <h1 className="text-2xl font-bold mb-8">Select Workspace</h1>
 
       <div className="space-y-4 mb-8">

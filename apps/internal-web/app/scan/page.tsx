@@ -33,7 +33,7 @@ export default function ScanPage() {
   };
 
   return (
-    <div className="relative flex h-screen w-full max-w-[430px] mx-auto flex-col overflow-hidden bg-background-dark text-white">
+    <div className="relative flex h-screen w-full max-w-[430px] lg:max-w-6xl mx-auto flex-col overflow-hidden bg-background-dark text-white">
       {/* Camera Background Simulation */}
       <div className="absolute inset-0 z-0">
         <div className="w-full h-full bg-slate-900 overflow-hidden">
