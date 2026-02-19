@@ -22,26 +22,17 @@ interface Approval {
   status: string;
   merchantId?: string;
   venueId?: string | null;
-  merchant?: {
-    id: string;
-    name: string;
-  } | null;
-  event?: {
-    id: string;
-    title: string;
-    start_at?: string;
-    venue_id?: string | null;
-  } | null;
-  venue?: {
-    id: string;
-    name: string;
-  } | null;
+  targetWeekStartDate?: string | null;
+  merchant?: { id: string; name: string } | null;
+  event?: { id: string; title: string; start_at?: string; venue_id?: string | null } | null;
+  venue?: { id: string; name: string } | null;
   requestedBy?: string;
   decidedBy?: string | null;
   createdAt: string;
   decidedAt: string | null;
   note?: string | null;
-  payload?: any; // Contains request details (before/after changes, etc.)
+  payload?: Record<string, unknown>;
+  beforeSnapshot?: Record<string, unknown> | null;
 }
 
 interface ApprovalCounts {
@@ -57,6 +48,8 @@ export default function AdminApprovalsPage() {
   const [counts, setCounts] = useState<ApprovalCounts>({ pending: 0, approved: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   
   useEffect(() => {
     fetchApprovals();
@@ -105,37 +98,33 @@ export default function AdminApprovalsPage() {
   
   const handleApprove = async (id: string) => {
     if (!confirm('Are you sure you want to approve this request?')) return;
-    
+
+    setActionError(null);
     try {
       const response = await fetch(`/api/admin/approvals/${id}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: '' }),
       });
-      
       const result = await response.json();
-      
+
       if (result.ok) {
-        // 成功或已批准（幂等）：立即刷新列表
+        setSelectedApproval(null);
         await fetchApprovals();
-        if (result.data?.already) {
-          // 已批准的情况，显示提示但不报错
-          console.log('[ADMIN APPROVALS] Request was already approved');
-        }
       } else {
-        // 失败：显示错误并刷新列表（因为可能是 UI 过期）
-        const errorMsg = result.message || result.error || 'Failed to approve request';
-        alert(errorMsg);
-        // 如果是 409 INVALID_STATUS，说明 UI 过期，立即刷新
-        if (result.code === 'INVALID_STATUS' || response.status === 409) {
-          console.log('[ADMIN APPROVALS] Status conflict, refreshing list...');
+        if (response.status === 404) {
+          setActionError('该请求不存在或已被处理');
+          setSelectedApproval(null);
           await fetchApprovals();
+        } else if (response.status === 409 || result.code === 'INVALID_STATUS') {
+          setActionError('请求已处理，请刷新列表');
+          await fetchApprovals();
+        } else {
+          setActionError(result.message || result.error || '审批失败，请查看日志');
         }
       }
     } catch (err: any) {
-      console.error('[ADMIN APPROVALS] Approve error:', err);
-      alert('Failed to approve request');
-      // 出错时也刷新列表
+      setActionError('审批失败：' + (err.message || '网络错误'));
       await fetchApprovals();
     }
   };
@@ -143,35 +132,63 @@ export default function AdminApprovalsPage() {
   const handleReject = async (id: string) => {
     const note = prompt('Please provide a reason for rejection:');
     if (!note) return;
-    
+
+    setActionError(null);
     try {
       const response = await fetch(`/api/admin/approvals/${id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note }),
       });
-      
       const result = await response.json();
-      
+
       if (result.ok) {
-        // 成功：立即刷新列表
+        setSelectedApproval(null);
         await fetchApprovals();
       } else {
-        // 失败：显示错误并刷新列表（因为可能是 UI 过期）
-        const errorMsg = result.message || result.error || 'Failed to reject request';
-        alert(errorMsg);
-        // 如果是 409，说明 UI 过期，立即刷新
-        if (result.code === 'INVALID_STATUS' || result.code === 'ALREADY_PROCESSED' || response.status === 409) {
-          console.log('[ADMIN APPROVALS] Status conflict, refreshing list...');
+        if (response.status === 404) {
+          setActionError('该请求不存在或已被处理');
+          setSelectedApproval(null);
           await fetchApprovals();
+        } else if (response.status === 409 || result.code === 'INVALID_STATUS' || result.code === 'ALREADY_PROCESSED') {
+          setActionError('请求已处理，请刷新列表');
+          await fetchApprovals();
+        } else {
+          setActionError(result.message || result.error || '拒绝失败');
         }
       }
     } catch (err: any) {
-      console.error('[ADMIN APPROVALS] Reject error:', err);
-      alert('Failed to reject request');
-      // 出错时也刷新列表
+      setActionError('拒绝失败：' + (err.message || '网络错误'));
       await fetchApprovals();
     }
+  };
+
+  /** Flatten object for diff; returns { "field": value, "field.sub": value } */
+  const flattenForDiff = (obj: Record<string, unknown> | null | undefined, prefix = ''): Array<{ field: string; value: unknown }> => {
+    if (!obj || typeof obj !== 'object') return [];
+    const rows: Array<{ field: string; value: unknown }> = [];
+    for (const [k, v] of Object.entries(obj)) {
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (v !== null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date)) {
+        rows.push(...flattenForDiff(v as Record<string, unknown>, key));
+      } else {
+        rows.push({ field: key, value: v });
+      }
+    }
+    return rows;
+  };
+
+  const getDiffRows = (approval: Approval): Array<{ field: string; before: unknown; after: unknown }> => {
+    const before = approval.beforeSnapshot || {};
+    const after = (approval.payload || {}) as Record<string, unknown>;
+    const beforeFlat = flattenForDiff(before as Record<string, unknown>);
+    const afterFlat = flattenForDiff(after);
+    const allFields = new Set([...beforeFlat.map((r) => r.field), ...afterFlat.map((r) => r.field)]);
+    return Array.from(allFields).map((field) => ({
+      field,
+      before: beforeFlat.find((r) => r.field === field)?.value ?? '—',
+      after: afterFlat.find((r) => r.field === field)?.value ?? '—',
+    })).filter((r) => String(r.before) !== String(r.after) || r.before === '—' || r.after === '—');
   };
   
   const getTypeIcon = (type: string) => {
@@ -266,9 +283,12 @@ export default function AdminApprovalsPage() {
     const label = getTypeLabel(approval.type);
     
     // 优先使用 API 返回的 merchant、event 和 venue 信息
-    const eventName = approval.event?.title || approval.payload?.title || approval.payload?.name || 'Unknown Event';
-    const merchantName = approval.merchant?.name || approval.payload?.merchant_name || (approval.merchantId ? `Merchant ${approval.merchantId.substring(0, 8)}...` : 'Unknown Merchant');
-    const venueName = approval.venue?.name || (approval.venueId ? `Venue ${approval.venueId.substring(0, 8)}...` : null);
+    const rawTitle = approval.event?.title || (approval.payload as Record<string, unknown>)?.title || (approval.payload as Record<string, unknown>)?.name;
+    const eventName = typeof rawTitle === 'string' ? rawTitle : String(rawTitle || 'Unknown Event');
+    const rawMerchant = approval.merchant?.name || (approval.payload as Record<string, unknown>)?.merchant_name || (approval.merchantId ? `Merchant ${approval.merchantId.substring(0, 8)}...` : 'Unknown Merchant');
+    const merchantName = typeof rawMerchant === 'string' ? rawMerchant : String(rawMerchant ?? 'Unknown Merchant');
+    const rawVenue = approval.venue?.name || (approval.venueId ? `Venue ${approval.venueId.substring(0, 8)}...` : null);
+    const venueName = rawVenue ? (typeof rawVenue === 'string' ? rawVenue : String(rawVenue)) : null;
     
     return (
       <div
@@ -315,9 +335,9 @@ export default function AdminApprovalsPage() {
           <div className="flex flex-col">
             <span className="text-xs text-gray-400">Submitted by</span>
             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              {approval.requestedBy 
-                ? `User ${approval.requestedBy.slice(0, 8)}...` 
-                : 'Unknown'}
+              {approval.requestedBy
+                ? (typeof approval.requestedBy === 'string' ? `User ${approval.requestedBy.slice(0, 8)}...` : 'Merchant Member')
+                : 'Merchant Member'}
             </span>
           </div>
           <div className="flex flex-col items-end">
@@ -327,26 +347,38 @@ export default function AdminApprovalsPage() {
             </span>
           </div>
         </div>
-        
-        {/* Actions */}
-        {showActions && approval.status === 'pending' && (
-          <div className="pl-2 grid grid-cols-2 gap-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
-            <button
-              onClick={() => handleReject(approval.id)}
-              className="flex items-center justify-center gap-2 h-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[18px]">close</span>
-              Reject
-            </button>
-            <button
-              onClick={() => handleApprove(approval.id)}
-              className="flex items-center justify-center gap-2 h-10 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm shadow-blue-900/20"
-            >
-              <span className="material-symbols-outlined text-[18px]">check</span>
-              Approve
-            </button>
-          </div>
-        )}
+
+        {/* View Changes + Actions */}
+        <div className="pl-2 flex flex-col gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+          <button
+            onClick={() => {
+              setActionError(null);
+              setSelectedApproval(approval);
+            }}
+            className="flex items-center justify-center gap-2 h-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">visibility</span>
+            View Changes
+          </button>
+          {showActions && approval.status === 'pending' && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleReject(approval.id)}
+                className="flex items-center justify-center gap-2 h-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+                Reject
+              </button>
+              <button
+                onClick={() => handleApprove(approval.id)}
+                className="flex items-center justify-center gap-2 h-10 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm shadow-blue-900/20"
+              >
+                <span className="material-symbols-outlined text-[18px]">check</span>
+                Approve
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -452,6 +484,104 @@ export default function AdminApprovalsPage() {
           olderItems.map((approval) => renderApprovalCard(approval, activeTab === 'pending'))
         )}
       </main>
+
+      {/* View Changes Drawer */}
+      {selectedApproval && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center"
+          onClick={() => {
+            setSelectedApproval(null);
+            setActionError(null);
+          }}
+        >
+          <div
+            className="bg-surface-light dark:bg-surface-dark w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-surface-light dark:bg-surface-dark">
+              <h2 className="text-lg font-bold text-primary dark:text-white">View Changes</h2>
+              <button
+                onClick={() => { setSelectedApproval(null); setActionError(null); }}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Event</p>
+                <p className="font-semibold">{selectedApproval.event?.title || 'Unknown'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Merchant</p>
+                <p className="font-semibold">{selectedApproval.merchant?.name || 'Unknown'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Type</p>
+                <p className="font-semibold">{getTypeLabel(selectedApproval.type)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Submitted</p>
+                <p className="text-sm">{new Date(selectedApproval.createdAt).toLocaleString()}</p>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold mb-2">Changes</h3>
+                {getDiffRows(selectedApproval).length > 0 ? (
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 dark:bg-gray-800">
+                          <th className="text-left p-2">Field</th>
+                          <th className="text-left p-2">Before</th>
+                          <th className="text-left p-2">After</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getDiffRows(selectedApproval).map((row, i) => (
+                          <tr key={i} className="border-t border-gray-100 dark:border-gray-700">
+                            <td className="p-2 font-mono text-xs">{row.field}</td>
+                            <td className="p-2 text-gray-600 dark:text-gray-400">{String(row.before)}</td>
+                            <td className="p-2 text-gray-900 dark:text-white">{String(row.after)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <pre className="p-3 bg-gray-50 dark:bg-gray-800 rounded text-xs overflow-auto max-h-48">
+                    {JSON.stringify(selectedApproval.payload || {}, null, 2)}
+                  </pre>
+                )}
+              </div>
+
+              {actionError && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
+                  {actionError}
+                </div>
+              )}
+
+              {selectedApproval.status === 'pending' && (
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => handleReject(selectedApproval.id)}
+                    className="flex-1 h-10 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => handleApprove(selectedApproval.id)}
+                    className="flex-1 h-10 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90"
+                  >
+                    Approve
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 }

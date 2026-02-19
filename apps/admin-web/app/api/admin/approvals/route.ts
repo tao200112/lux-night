@@ -69,7 +69,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     console.log('[ADMIN APPROVALS] NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING');
     console.log('[ADMIN APPROVALS] Has SUPABASE_SERVICE_ROLE_KEY:', hasServiceRoleKey);
     console.log('[ADMIN APPROVALS] Used Service Role:', true); // adminClient 来自 requireAdmin，已经是 service role
-    console.log('[ADMIN APPROVALS] Query Table:', 'event_change_requests');
+    console.log('[ADMIN APPROVALS] Query Table:', 'merchant_change_requests');
     console.log('[ADMIN APPROVALS] Status Filter:', status);
     console.log('[ADMIN APPROVALS] ===== DEBUG END =====');
 
@@ -89,16 +89,20 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
       } : null,
     });
 
-    // Query with merchant and event joins
+    // Query with merchant and event joins (events_v2:event_id since FK points to events_v2)
     let requestQuery = adminClient
       .from('merchant_change_requests')
       .select(`
         id,
         merchant_id,
         event_id,
+        request_type,
+        target_week_start_date,
         status,
         payload,
+        before_snapshot,
         note,
+        submitted_by,
         created_at,
         updated_at,
         reviewed_by_admin,
@@ -108,7 +112,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
           id,
           name
         ),
-        events:event_id (
+        events_v2:event_id (
           id,
           title,
           status,
@@ -158,7 +162,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
           message: requestsError.message,
           step,
           debug: {
-            table: 'event_change_requests',
+            table: 'merchant_change_requests',
             usedServiceRole: true,
             supabaseError: {
               code: requestsError.code,
@@ -174,20 +178,20 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
 
     step = 'requests_ok';
 
-    // STEP 4: 查询所有状态的计数（用于 tab 显示）
+    // STEP 4: 查询所有状态的计数（使用 merchant_change_requests）
     step = 'count_all_statuses';
     const { count: pendingCount } = await adminClient
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending');
-    
+
     const { count: approvedCount } = await adminClient
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'approved');
-    
+
     const { count: rejectedCount } = await adminClient
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'rejected');
 
@@ -195,27 +199,29 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     step = 'format_response';
     const approvals = (requests || []).map((req: any) => ({
       id: req.id,
-      type: 'update', // Merchant Change Requests are updates
+      type: req.request_type || 'update',
       status: req.status,
-      requestedBy: 'Merchant Member', // V2 table doesn't have submitted_by user ID in header usually, assumes generic
+      requestedBy: req.submitted_by || 'Merchant Member',
       decidedBy: req.reviewed_by_admin,
       createdAt: req.created_at,
       decidedAt: req.reviewed_at,
-      note: req.review_note || req.note, // Show merchant note or admin note
+      note: req.review_note || req.note,
       merchantId: req.merchant_id,
+      targetWeekStartDate: req.target_week_start_date,
       merchant: req.merchants ? {
         id: req.merchants.id,
         name: req.merchants.name,
       } : null,
-      event: req.events ? {
-        id: req.events.id,
-        title: req.events.title,
-        status: req.events.status
+      event: req.events_v2 ? {
+        id: req.events_v2.id,
+        title: req.events_v2.title,
+        status: req.events_v2.status,
+        poster_url: req.events_v2.poster_url,
       } : null,
-      venue: null, // V2 doesn't link venue in this view easily
+      venue: null,
       venueId: null,
-      // payload contains the change request details
       payload: req.payload || {},
+      beforeSnapshot: req.before_snapshot || null,
     }));
 
     // Debug 信息（包含详细日志）
