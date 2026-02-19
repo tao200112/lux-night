@@ -1,6 +1,6 @@
 /**
  * Merchant Bottom Navigation
- * 固定在 layout，永不 unmount（Shell 用 hidden 控制显隐）；仅 mobile 显示
+ * 固定在 layout，永不 unmount（Shell 用 hidden 控制显隐）；mobile + desktop 均显示
  * 统一 icon box + label 结构，Scan 同基线不破坏对齐
  */
 
@@ -53,7 +53,7 @@ export default function MerchantBottomNav({ hidden }: { hidden?: boolean }) {
 
   return (
     <nav
-      className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:hidden h-16 bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-1 flex items-center justify-between gap-0 z-[60] pb-[env(safe-area-inset-bottom)] ${hidden ? 'invisible opacity-0 pointer-events-none' : ''}`}
+      className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-1 flex items-center justify-between gap-0 z-[60] pb-[env(safe-area-inset-bottom)] ${hidden ? 'invisible opacity-0 pointer-events-none' : ''}`}
       aria-hidden={hidden}
     >
       {navItem('/dashboard', 'dashboard', 'Dashboard')}

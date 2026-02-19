@@ -18,7 +18,7 @@ export default function MerchantShell({ children }: { children: React.ReactNode 
   return (
     <>
       <MerchantTopBar hidden={!showNav} />
-      <div className={showNav ? 'pb-24 lg:pb-6' : ''}>{children}</div>
+      <div className={showNav ? 'pb-24' : ''}>{children}</div>
       <MerchantBottomNav hidden={!showNav} />
     </>
   );
