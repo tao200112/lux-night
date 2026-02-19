@@ -68,10 +68,10 @@ export async function getOrderList(userId: string): Promise<OrderListItem[]> {
       amount_cents,
       currency,
       created_at,
+      events_v2:event_v2_id (title, venue_name, poster_url),
       order_items (
         quantity,
-        ticket_types (name),
-        events (title, start_at, venues (name))
+        ticket_types_v2:ticket_type_v2_id (name)
       )
     `)
     .eq('user_id', userId)
@@ -84,15 +84,13 @@ export async function getOrderList(userId: string): Promise<OrderListItem[]> {
 
   return (data || []).map((o: any) => {
     const items = o.order_items || [];
-    const first = items[0];
-    const ev = first?.events;
+    const ev = o.events_v2;
     const event = Array.isArray(ev) ? ev[0] : ev;
-    const ven = event?.venues;
-    const venue = Array.isArray(ven) ? ven[0] : ven;
+    const venueName = event?.venue_name || '—';
     const ticketCount = items.reduce((sum: number, i: any) => sum + (Number(i?.quantity) || 0), 0);
     const itemsSummary = items
       .map((i: any) => {
-        const tt = Array.isArray(i?.ticket_types) ? i.ticket_types[0] : i?.ticket_types;
+        const tt = Array.isArray(i?.ticket_types_v2) ? i.ticket_types_v2[0] : i?.ticket_types_v2;
         const name = tt?.name || 'Ticket';
         return `${name} × ${Number(i?.quantity) || 0}`;
       })
@@ -104,8 +102,8 @@ export async function getOrderList(userId: string): Promise<OrderListItem[]> {
       currency: o.currency || 'usd',
       createdAt: o.created_at,
       eventName: event?.title || '—',
-      venueName: venue?.name || '—',
-      startAt: event?.start_at || null,
+      venueName: venueName || '—',
+      startAt: null,
       ticketCount,
       itemsSummary: itemsSummary || `${ticketCount} ticket(s)`,
     };
@@ -120,12 +118,15 @@ export async function getOrderDetail(orderId: string, userId: string): Promise<O
 
   const { data: order, error: orderErr } = await supabase
     .from('orders')
-    .select('id, status, amount_cents, currency, created_at')
+    .select('id, status, amount_cents, currency, created_at, event_v2_id, events_v2:event_v2_id (title, venue_name)')
     .eq('id', orderId)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (orderErr || !order) return null;
+
+  const ev = (order as any).events_v2;
+  const event = Array.isArray(ev) ? ev[0] : ev;
 
   const { data: oiRows } = await supabase
     .from('order_items')
@@ -134,27 +135,23 @@ export async function getOrderDetail(orderId: string, userId: string): Promise<O
       event_id,
       quantity,
       unit_price_cents,
-      events (title, start_at, venues (name)),
-      ticket_types (name)
+      ticket_types_v2:ticket_type_v2_id (name)
     `)
     .eq('order_id', orderId);
 
   const { data: ticketRows } = await supabase
     .from('tickets')
-    .select('id, status, ticket_types (name)')
+    .select('id, status, ticket_types_v2:ticket_type_id_v2 (name)')
     .eq('order_id', orderId);
 
   const items: OrderItemDetail[] = (oiRows || []).map((i: any) => {
-    const ev = Array.isArray(i.events) ? i.events[0] : i.events;
-    const ven = ev?.venues;
-    const v = Array.isArray(ven) ? ven[0] : ven;
-    const tt = Array.isArray(i.ticket_types) ? i.ticket_types[0] : i.ticket_types;
+    const tt = Array.isArray(i.ticket_types_v2) ? i.ticket_types_v2[0] : i.ticket_types_v2;
     return {
       id: i.id,
       eventId: i.event_id,
-      eventName: ev?.title || '—',
-      venueName: v?.name || '—',
-      startAt: ev?.start_at || null,
+      eventName: event?.title || '—',
+      venueName: event?.venue_name || '—',
+      startAt: null,
       ticketTypeName: tt?.name || '—',
       quantity: i.quantity ?? 0,
       unitPriceCents: i.unit_price_cents ?? 0,
@@ -162,7 +159,7 @@ export async function getOrderDetail(orderId: string, userId: string): Promise<O
   });
 
   const tickets: TicketInOrder[] = (ticketRows || []).map((t: any) => {
-    const tt = Array.isArray(t.ticket_types) ? t.ticket_types[0] : t.ticket_types;
+    const tt = Array.isArray(t.ticket_types_v2) ? t.ticket_types_v2[0] : t.ticket_types_v2;
     return {
       id: t.id,
       status: t.status,

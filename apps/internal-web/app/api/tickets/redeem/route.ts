@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
        status, 
        redeemed_count, 
        redeem_limit, 
+       redeemed_at,
+       redeemed_by,
        valid_start_at, 
        valid_end_at, 
        public_token,
@@ -86,9 +88,28 @@ export async function POST(req: NextRequest) {
   }
 
   // 6. Logic Checks
-  
-  // A. Check Logic Status
-  // If status is NOT active, reject. (Unless 'issued' is treated as active? assuming 'active')
+
+  // A. Already redeemed (status=used): hard block, 409
+  if (ticket.status === 'used') {
+    return NextResponse.json(
+      {
+        alreadyRedeemed: true,
+        code: 'ALREADY_REDEEMED',
+        error: 'Ticket already redeemed',
+        ticket: {
+          id: ticket.id,
+          status: 'used',
+          redeemed_at: ticket.redeemed_at,
+          redeemed_by: ticket.redeemed_by,
+          redeemed_count: ticket.redeemed_count,
+          redeem_limit: ticket.redeem_limit,
+        },
+      },
+      { status: 409 }
+    );
+  }
+
+  // B. Other invalid status
   if (ticket.status !== 'active') {
      return NextResponse.json({ 
          error: `Ticket cannot be redeemed (status: ${ticket.status})`, 
@@ -97,7 +118,7 @@ export async function POST(req: NextRequest) {
      }, { status: 409 });
   }
 
-  // B. Check Count Limit
+  // C. Check Count Limit
   const currentCount = ticket.redeemed_count || 0;
   const limit = ticket.redeem_limit || 1;
   
@@ -110,7 +131,7 @@ export async function POST(req: NextRequest) {
       }, { status: 409 });
   }
 
-  // C. Time Window Check
+  // D. Time Window Check
   const now = new Date();
   const start = ticket.valid_start_at ? new Date(ticket.valid_start_at) : null;
   const end = ticket.valid_end_at ? new Date(ticket.valid_end_at) : null;

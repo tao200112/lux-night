@@ -64,6 +64,8 @@ export async function GET(req: NextRequest) {
       ticket_type_id_v2,
       redeemed_count,
       redeem_limit,
+      redeemed_at,
+      redeemed_by,
       valid_start_at,
       valid_end_at,
       public_token,
@@ -129,6 +131,8 @@ export async function GET(req: NextRequest) {
       validEndAt: ticket.valid_end_at,
       redeemedCount: ticket.redeemed_count,
       redeemLimit: ticket.redeem_limit,
+      redeemedAt: ticket.redeemed_at || null,
+      redeemedBy: ticket.redeemed_by || null,
       posterUrl: ev?.poster_url || null,
       token: ticket.public_token
     },

@@ -87,17 +87,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Only staff can redeem tickets', code: 'FORBIDDEN' }, { status: 403 });
     }
 
-    // 3) 已 used：幂等，直接 200
+    // 3) 已 used：硬拦截，返回 409，不写库
     if ((ticket as any).status === 'used') {
-      return NextResponse.json({
-        alreadyRedeemed: true,
-        ticket: {
-          id: ticket.id,
-          status: 'used',
-          redeemed_at: ticket.redeemed_at,
-          redeemed_by: ticket.redeemed_by,
+      return NextResponse.json(
+        {
+          alreadyRedeemed: true,
+          code: 'ALREADY_REDEEMED',
+          error: 'Ticket already redeemed',
+          ticket: {
+            id: ticket.id,
+            status: 'used',
+            redeemed_at: ticket.redeemed_at,
+            redeemed_by: ticket.redeemed_by,
+          },
         },
-      });
+        { status: 409 }
+      );
     }
 
     // 3.5) Validity Window Check
@@ -220,10 +225,15 @@ export async function POST(req: NextRequest) {
           }, { status: 409 });
       }
       
-      return NextResponse.json({
-        alreadyRedeemed: true,
-        ticket: refetch
-      });
+      return NextResponse.json(
+        {
+          alreadyRedeemed: true,
+          code: 'ALREADY_REDEEMED',
+          error: 'Ticket already redeemed',
+          ticket: refetch,
+        },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json({

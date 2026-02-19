@@ -33,21 +33,32 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
     })();
   }, [params]);
 
-  // Prefetch public ticket for display
+  // Prefetch public ticket for display; pre-set redeemed if already used (block double redeem UI)
   useEffect(() => {
     if (!token) return;
     fetch(`/api/tickets/public?token=${encodeURIComponent(token)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
           if (d && d.ticket) {
+             const t = d.ticket;
              setInfo({ 
-                 eventName: d.ticket.eventName, 
-                 venueName: d.ticket.venueName, 
-                 status: d.ticket.status,
-                 validStartAt: d.ticket.validStartAt,
-                 validEndAt: d.ticket.validEndAt,
+                 eventName: t.eventName, 
+                 venueName: t.venueName, 
+                 status: t.status,
+                 validStartAt: t.validStartAt,
+                 validEndAt: t.validEndAt,
                  testConfig: d.meta?.testConfig
              });
+             // Already redeemed: pre-set state so Redeem button is hidden
+             if (t.status === 'used' || t.db_status === 'used') {
+               setRedeemed({
+                 redeemedAt: t.redeemedAt || new Date().toISOString(),
+                 redeemedBy: t.redeemedBy,
+                 already: true,
+                 count: t.redeemedCount,
+                 limit: t.redeemLimit
+               });
+             }
           }
       })
       .catch(() => {});
@@ -147,21 +158,18 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
 
            const code = (j as any).code;
            const debugInfo = (j as any).debugInfo;
-           
-           // Already Redeemed Handling (Map to Success View logic if needed, OR Error)
-           // Requirement: "Show 'Already redeemed' if server says so".
-           // Current logic maps LIMIT_REACHED to Error OR Success-like view.
-           if (code === 'LIMIT_REACHED' && (j as any).ticket) {
-               const t = (j as any).ticket;
+           const ticketData = (j as any).ticket;
+
+           // Already Redeemed (409): show "Ticket already redeemed" state, no error
+           if ((code === 'ALREADY_REDEEMED' || code === 'LIMIT_REACHED' || code === 'CONCURRENT_REDEEM') && ticketData) {
                setRedeemed({
-                   redeemedAt: t.redeemed_at,
-                   redeemedBy: t.redeemed_by,
+                   redeemedAt: ticketData.redeemed_at || ticketData.redeemedAt,
+                   redeemedBy: ticketData.redeemed_by || ticketData.redeemedBy,
                    already: true,
-                   count: t.redeemed_count,
-                   limit: t.redeem_limit
+                   count: ticketData.redeemed_count ?? ticketData.redeemedCount,
+                   limit: ticketData.redeem_limit ?? ticketData.redeemLimit
                });
-               // Do NOT throw error, this is a "valid" terminal state
-               return; 
+               return;
            }
 
            // Other Errors

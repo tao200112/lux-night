@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import AdminBottomNav from '@/components/admin/AdminBottomNav';
 import AdminSidebar from '@/components/admin/AdminSidebar';
-import '../../admin.css';
+import '../admin.css';
 
 export default async function AdminLayout({
   children,
@@ -38,7 +38,7 @@ export default async function AdminLayout({
   return (
     <div className="relative flex min-h-screen w-full flex-col lg:flex-row bg-background-light dark:bg-background-dark">
       <AdminSidebar pendingCount={pendingCount || 0} />
-      <div className="flex-1 flex flex-col min-w-0 max-w-[480px] lg:max-w-none mx-auto lg:mx-0 w-full border-x lg:border-x-0 border-slate-200 dark:border-slate-800 lg:border-0 shadow-2xl lg:shadow-none">
+      <div className="flex-1 flex flex-col min-w-0 w-full">
         <main className="flex-1 overflow-y-auto overflow-x-hidden pb-20 lg:pb-6">
           {children}
         </main>
