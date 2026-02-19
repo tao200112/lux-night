@@ -26,50 +26,35 @@ export default function MerchantBottomNav() {
   const showSettings = userRole && userRole !== 'staff';
   const isActive = (path: string) => pathname === path || pathname?.startsWith(path + '/');
 
+  const navItem = (href: string, icon: string, label: string, filled = false) => (
+    <Link
+      href={href}
+      className={`flex flex-col items-center justify-center gap-1 min-w-0 flex-1 ${isActive(href) ? 'text-primary' : 'text-gray-400'}`}
+    >
+      <span className={`flex items-center justify-center w-10 h-10 shrink-0 ${filled && isActive(href) ? 'material-symbols-outlined text-2xl filled' : 'material-symbols-outlined'} ${!filled && isActive(href) ? 'font-bold' : ''}`}>
+        {icon}
+      </span>
+      <span className="text-[10px] font-bold truncate w-full text-center">{label}</span>
+    </Link>
+  );
+
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:hidden bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-6 py-3 flex items-center justify-between z-50">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:hidden bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-2 py-2 flex items-center justify-between gap-0 z-50">
+      {navItem('/dashboard', 'dashboard', 'Dashboard')}
+      {navItem('/events', 'event', 'Events', true)}
       <Link
-        href="/dashboard"
-        className={`flex flex-col items-center gap-1 ${isActive('/dashboard') ? 'text-primary' : 'text-gray-400'}`}
+        href="/scan"
+        className={`flex flex-col items-center justify-center gap-1 min-w-0 flex-1 ${
+          isActive('/scan') ? 'text-primary' : 'text-gray-400'
+        }`}
       >
-        <span className={`material-symbols-outlined ${isActive('/dashboard') ? 'font-bold' : ''}`}>dashboard</span>
-        <span className="text-[10px] font-bold">Dashboard</span>
+        <span className="flex items-center justify-center w-10 h-10 shrink-0 rounded-full transition-colors bg-primary text-white">
+          <span className="material-symbols-outlined text-2xl">qr_code_scanner</span>
+        </span>
+        <span className="text-[10px] font-bold truncate w-full text-center">Scan</span>
       </Link>
-      <Link
-        href="/events"
-        className={`flex flex-col items-center gap-1 ${isActive('/events') ? 'text-primary' : 'text-gray-400'}`}
-      >
-        <span className={`material-symbols-outlined ${isActive('/events') ? 'text-2xl filled' : ''}`}>event</span>
-        <span className="text-[10px] font-bold">Events</span>
-      </Link>
-      <div className="relative -top-6">
-        <Link
-          href="/scan"
-          className={`w-14 h-14 rounded-full flex items-center justify-center border-4 transition-colors ${
-            isActive('/scan') ? 'bg-primary text-white border-primary/30' : 'bg-primary text-white border-background-light dark:border-background-dark'
-          }`}
-        >
-          <span className="material-symbols-outlined text-3xl">qr_code_scanner</span>
-        </Link>
-      </div>
-      <Link
-        href="/staff"
-        className={`flex flex-col items-center gap-1 ${isActive('/staff') ? 'text-primary' : 'text-gray-400'}`}
-      >
-        <span className={`material-symbols-outlined ${isActive('/staff') ? 'font-bold' : ''}`}>group</span>
-        <span className="text-[10px] font-bold">Staff</span>
-      </Link>
-      {showSettings ? (
-        <Link
-          href="/settings"
-          className={`flex flex-col items-center gap-1 ${isActive('/settings') ? 'text-primary' : 'text-gray-400'}`}
-        >
-          <span className={`material-symbols-outlined ${isActive('/settings') ? 'font-bold' : ''}`}>settings</span>
-          <span className="text-[10px] font-bold">Settings</span>
-        </Link>
-      ) : (
-        <div className="w-12" />
-      )}
+      {navItem('/staff', 'group', 'Staff')}
+      {showSettings ? navItem('/settings', 'settings', 'Settings') : <div className="min-w-0 flex-1" />}
     </nav>
   );
 }

@@ -172,11 +172,11 @@ export default function InternalEventV2DetailPage() {
                   {day.tickets.map((ticket) => (
                     <div
                       key={ticket.id}
-                      className="bg-surface-light text-gray-900 rounded p-3 flex items-center justify-between"
+                      className="bg-primary text-black rounded p-3 flex items-center justify-between"
                     >
                       <div className="flex-1">
                         <div className="font-medium">{ticket.name}</div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-black/80">
                           {ticket.category} • ${(ticket.price_cents / 100).toFixed(2)}
                           {ticket.min_age && ` • ${ticket.min_age}+`}
                           {ticket.inventory_limit !== null &&
@@ -184,12 +184,12 @@ export default function InternalEventV2DetailPage() {
                         </div>
                       </div>
                       <span
-                        className={`px-2 py-1 rounded text-xs ${
+                        className={`px-2 py-1 rounded text-xs font-medium ${
                           ticket.status === 'active'
-                            ? 'bg-green-500/20 text-green-400'
+                            ? 'bg-white/20 text-black'
                             : ticket.status === 'hidden'
-                            ? 'bg-yellow-500/20 text-yellow-400'
-                            : 'bg-red-500/20 text-red-400'
+                            ? 'bg-white/20 text-black'
+                            : 'bg-white/30 text-black'
                         }`}
                       >
                         {ticket.status}
