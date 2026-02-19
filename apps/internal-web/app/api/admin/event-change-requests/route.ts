@@ -52,38 +52,46 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const status = searchParams.get('status') || 'pending';
 
-    // 获取待审批请求，包含 event 和 merchant 信息
-    const { data: requests, error: fetchError } = await adminClient
-      .from('event_change_requests')
+    // 获取待审批请求 (merchant_change_requests)，包含 event 和 merchant 信息
+    const { data: rawRequests, error: fetchError } = await adminClient
+      .from('merchant_change_requests')
       .select(`
         id,
         merchant_id,
         event_id,
         request_type,
         status,
-        payload_json,
+        payload,
         submitted_by,
-        submitted_at,
-        approved_by,
-        approved_at,
-        rejection_reason,
+        created_at,
+        reviewed_by_admin,
+        reviewed_at,
+        review_note,
         updated_at,
-        events:event_id (
+        events_v2:event_id (
           id,
           title,
-          start_at
+          poster_url
         ),
         merchants:merchant_id (
           id,
           name
-        ),
-        submitted_user:submitted_by (
-          id,
-          email
         )
       `)
       .eq('status', status)
-      .order('submitted_at', { ascending: false });
+      .order('created_at', { ascending: false });
+
+    // 映射为前端期望的格式 (events, merchants, payload_json, submitted_at, approved_at, rejection_reason)
+    const requests = (rawRequests || []).map((r: any) => ({
+      ...r,
+      events: r.events_v2,
+      payload_json: r.payload,
+      submitted_at: r.created_at,
+      approved_at: r.reviewed_at,
+      rejection_reason: r.review_note,
+      merchants: r.merchants,
+      submitted_user: r.submitted_by ? { id: r.submitted_by } : null,
+    }));
 
     if (fetchError) {
       console.error('[ADMIN EVENT CHANGE REQUEST] Fetch error:', fetchError);

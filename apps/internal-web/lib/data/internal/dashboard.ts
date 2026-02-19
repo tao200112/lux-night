@@ -69,10 +69,17 @@ export async function getDashboardStats(
   const refundedOrders = allOrders?.filter((o: any) => o.status === 'refunded') || [];
   
   const refunds = refundedOrders.length;
-  // Approximation: Total tickets = number of orders * avg qty (or strictly query order_items)
-  // For standard dashboard, order count is a decent proxy, but let's try order_items if possible.
-  // We'll stick to order count or just paidOrders.length for "totalTickets" proxy or 0.
-  const totalTickets = paidOrders.length; // Simplified
+
+  // Total tickets: sum of order_items.quantity for paid orders
+  let totalTickets = 0;
+  if (paidOrders.length > 0) {
+    const paidOrderIds = paidOrders.map((o: any) => o.id);
+    const { data: orderItems } = await supabase
+      .from('order_items')
+      .select('quantity')
+      .in('order_id', paidOrderIds);
+    totalTickets = (orderItems || []).reduce((sum: number, oi: any) => sum + (oi.quantity || 0), 0);
+  }
 
   // Time ranges
   const now = new Date();
@@ -121,23 +128,41 @@ export async function getDashboardStats(
   // Map back to events
   const tonightEventIds = new Set(todayConfigs?.map((c: any) => c.event_weeks.event_id));
   
+  // Fetch ticket stats for today's event_week_days
+  const todayEwdIds = (todayConfigs || []).map((c: any) => c.id);
+  let ewdTicketStats: Record<string, { sold: number; total: number }> = {};
+  if (todayEwdIds.length > 0) {
+    const { data: ticketTypes } = await supabase
+      .from('ticket_types_v2')
+      .select('event_week_day_id, sold_count, inventory_limit')
+      .in('event_week_day_id', todayEwdIds);
+    for (const tt of ticketTypes || []) {
+      const ewdId = tt.event_week_day_id;
+      if (!ewdTicketStats[ewdId]) ewdTicketStats[ewdId] = { sold: 0, total: 0 };
+      ewdTicketStats[ewdId].sold += tt.sold_count || 0;
+      ewdTicketStats[ewdId].total += tt.inventory_limit ?? 0;
+    }
+  }
+
   const tonightEvents = (events || [])
     .filter((e: any) => tonightEventIds.has(e.id) && e.status === 'active')
     .map((e: any) => {
-        // Find specific config for time
-        const config = todayConfigs?.find((c: any) => c.event_weeks.event_id === e.id);
-        
-        // Calculate daily stats (simplified: just total for event)
+        const config = todayConfigs?.find((c: any) => c.event_weeks?.event_id === e.id);
+        const stats = config ? ewdTicketStats[config.id] : null;
         const eventOrders = paidOrders.filter((o: any) => o.event_id === e.id);
-        
+        const soldFromOrders = eventOrders.reduce((s, o) => s + 1, 0); // order count as fallback
+        const sold = stats?.sold ?? soldFromOrders;
+        const total = stats?.total ?? 0;
+        const checkinsForEvent = 0; // TODO: link checkins to event_id if available
+
         return {
             id: e.id,
             title: e.title,
             startAt: config?.start_time ? `${new Date().toISOString().split('T')[0]}T${config.start_time}` : e.created_at,
-            venue: 'Main Venue', // Placeholder
-            sold: eventOrders.length,
-            total: 100, // Mock cap or fetch from tickets
-            checkedIn: 0, // Checkins require switch to V2
+            venue: (e as any).venue_name || 'Venue',
+            sold,
+            total: total || 1,
+            checkedIn: checkinsForEvent,
             image: e.poster_url,
             badge: undefined 
         };

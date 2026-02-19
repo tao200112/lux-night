@@ -15,10 +15,8 @@ interface EventV2 {
   description: string | null;
   poster_url: string;
   status: 'active' | 'paused' | 'archived';
-  merchant: {
-    id: string;
-    name: string;
-  };
+  merchant?: { id: string; name: string };
+  merchants?: { id: string; name: string }; // Supabase returns table name
   created_at: string;
 }
 
@@ -124,7 +122,7 @@ export default function InternalEventsV2Page() {
                   >
                     {event.status}
                   </span>
-                  <span className="text-xs text-gray-500">{event.merchant.name}</span>
+                  <span className="text-xs text-gray-500">{(event.merchants || event.merchant)?.name ?? 'Unknown'}</span>
                 </div>
               </Link>
             ))}

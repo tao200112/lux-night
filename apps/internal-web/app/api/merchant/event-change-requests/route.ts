@@ -175,9 +175,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 验证 event 属于当前 merchant
+    // 验证 event 属于当前 merchant (events_v2)
     const { data: event, error: eventError } = await supabase
-      .from('events')
+      .from('events_v2')
       .select('id, merchant_id')
       .eq('id', event_id)
       .eq('merchant_id', workspace.merchantId)
@@ -216,23 +216,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 构造 insertData
+    // 构造 insertData (merchant_change_requests 表)
     const insertData = {
       event_id,
       merchant_id: workspace.merchantId,
+      target_week_start_date: null, // nullable for price/inventory/poster requests
+      payload: payload as object,
       request_type: normalizedRequestType,
-      payload_json: payload, // 统一使用 payload_json 字段
-      status: 'pending' as const,
       submitted_by: user.id,
+      status: 'pending' as const,
     };
 
     console.log('[event-change-requests][POST] insertData=', insertData);
 
-    // 先尝试使用普通 client 插入
+    // 使用 merchant_change_requests 表
     let { data: request, error: createError } = await supabase
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .insert(insertData)
-      .select('id, request_type, status, payload_json, submitted_at, approved_at, rejection_reason')
+      .select('id, request_type, status, payload, created_at, reviewed_at, review_note')
       .single();
 
     let usedServiceRole = false;
@@ -267,9 +268,9 @@ export async function POST(req: NextRequest) {
 
       usedServiceRole = true;
       const { data: adminRequest, error: adminError } = await adminClient
-        .from('event_change_requests')
+        .from('merchant_change_requests')
         .insert(insertData)
-        .select('id, request_type, status, payload_json, submitted_at, approved_at, rejection_reason')
+        .select('id, request_type, status, payload, created_at, reviewed_at, review_note')
         .single();
 
       if (adminError) {
@@ -353,10 +354,10 @@ export async function POST(req: NextRequest) {
         id: request.id,
         request_type: request.request_type,
         status: request.status,
-        payload_json: request.payload_json,
-        submitted_at: request.submitted_at,
-        approved_at: request.approved_at,
-        rejected_reason: (request as any).rejection_reason, // 映射：DB 字段 rejection_reason → API 响应 rejected_reason
+        payload_json: (request as any).payload,
+        submitted_at: (request as any).created_at,
+        approved_at: (request as any).reviewed_at,
+        rejected_reason: (request as any).review_note,
       },
       debug: {
         usedServiceRole,
@@ -463,7 +464,7 @@ export async function GET(req: NextRequest) {
 
     // 健康检查：先测试表是否存在
     const { data: healthCheck, error: healthError } = await supabase
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .select('id')
       .limit(1);
 
@@ -475,7 +476,7 @@ export async function GET(req: NextRequest) {
           message: healthError.message,
           details: healthError.details,
           hint: healthError.hint,
-          tableName: 'event_change_requests',
+          tableName: 'merchant_change_requests',
           schema: 'public',
         });
         return NextResponse.json(
@@ -483,9 +484,9 @@ export async function GET(req: NextRequest) {
             success: false,
             error: {
               code: 'TABLE_NOT_FOUND',
-              message: 'event_change_requests table does not exist',
+              message: 'merchant_change_requests table does not exist',
               details: {
-                tableName: 'event_change_requests',
+                tableName: 'merchant_change_requests',
                 schema: 'public',
                 supabaseError: {
                   code: healthError.code,
@@ -515,7 +516,7 @@ export async function GET(req: NextRequest) {
           success: false,
           error: {
             code: 'HEALTH_CHECK_FAILED',
-            message: 'Failed to access event_change_requests table',
+            message: 'Failed to access merchant_change_requests table',
             details: {
               supabaseError: {
                 code: healthError.code,
@@ -533,10 +534,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 健康检查通过，继续查询
+    // 健康检查通过，继续查询 (merchant_change_requests)
     let query = supabase
-      .from('event_change_requests')
-      .select('id, event_id, request_type, status, payload_json, submitted_at, approved_at, rejection_reason')
+      .from('merchant_change_requests')
+      .select('id, event_id, request_type, status, payload, created_at, reviewed_at, review_note')
       .eq('merchant_id', workspace.merchantId);
 
     if (eventId) {
@@ -550,9 +551,9 @@ export async function GET(req: NextRequest) {
     // 如果没有指定 status，优先返回 pending，然后按时间倒序
     if (!status) {
       query = query.order('status', { ascending: true }) // pending 在前
-                   .order('submitted_at', { ascending: false });
+                   .order('created_at', { ascending: false });
     } else {
-      query = query.order('submitted_at', { ascending: false });
+      query = query.order('created_at', { ascending: false });
     }
 
     let { data: requests, error: fetchError } = await query;
@@ -586,8 +587,8 @@ export async function GET(req: NextRequest) {
 
       usedServiceRole = true;
       let adminQuery = adminClient
-        .from('event_change_requests')
-        .select('id, event_id, request_type, status, payload_json, submitted_at, approved_at, rejection_reason')
+        .from('merchant_change_requests')
+        .select('id, event_id, request_type, status, payload, created_at, reviewed_at, review_note')
         .eq('merchant_id', workspace.merchantId);
 
       if (eventId) {
@@ -601,9 +602,9 @@ export async function GET(req: NextRequest) {
       // 如果没有指定 status，优先返回 pending，然后按时间倒序
       if (!status) {
         adminQuery = adminQuery.order('status', { ascending: true }) // pending 在前
-                             .order('submitted_at', { ascending: false });
+                             .order('created_at', { ascending: false });
       } else {
-        adminQuery = adminQuery.order('submitted_at', { ascending: false });
+        adminQuery = adminQuery.order('created_at', { ascending: false });
       }
 
       const { data: adminRequests, error: adminError } = await adminQuery;
@@ -671,10 +672,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 映射字段：DB 的 rejection_reason → API 响应的 rejected_reason（兼容前端）
+    // 映射字段：merchant_change_requests → 兼容 event_change_requests 的 API 响应
     const mappedRequests = (requests || []).map((req: any) => ({
-      ...req,
-      rejected_reason: req.rejection_reason, // 添加兼容字段
+      id: req.id,
+      event_id: req.event_id,
+      request_type: req.request_type,
+      status: req.status,
+      payload_json: req.payload,
+      submitted_at: req.created_at,
+      approved_at: req.reviewed_at,
+      rejection_reason: req.review_note,
+      rejected_reason: req.review_note,
     }));
 
     return NextResponse.json({

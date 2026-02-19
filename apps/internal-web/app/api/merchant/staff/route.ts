@@ -94,6 +94,7 @@ export async function GET(req: NextRequest) {
         user_id,
         role,
         is_active,
+        display_name,
         created_at,
         profiles:user_id (
           id,
@@ -184,9 +185,9 @@ export async function GET(req: NextRequest) {
 
     // 格式化返回数据
     const staffList = (members || []).map((member: any) => {
-      // 尝试从 join 的 profiles 获取信息，如果失败则使用降级数据
+      // merchant_members.display_name 覆盖 profiles.display_name
       const profile = member.profiles;
-      const name = profile?.display_name || profile?.email?.split('@')[0] || `User ${member.user_id.slice(0, 8)}`;
+      const name = member.display_name || profile?.display_name || profile?.email?.split('@')[0] || `User ${member.user_id.slice(0, 8)}`;
       const email = profile?.email || 'N/A';
       const avatar = profile?.avatar_url || null;
 

@@ -217,7 +217,7 @@ export default function AdminEventChangeRequestsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="font-bold text-gray-900 dark:text-white mb-1">
-                      {request.events?.title || 'Unknown Event'}
+                      {(request.events_v2 || request.events)?.title || 'Unknown Event'}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Merchant: {request.merchants?.name || 'Unknown'}

@@ -53,12 +53,14 @@ export async function POST(
     const { user, adminClient } = await requireAdmin();
     const { id } = await params;
 
-    // 获取请求详情
-    const { data: request, error: fetchError } = await adminClient
-      .from('event_change_requests')
-      .select('id, event_id, merchant_id, request_type, status, payload_json')
+    // 获取请求详情 (merchant_change_requests)
+    const { data: rawRequest, error: fetchError } = await adminClient
+      .from('merchant_change_requests')
+      .select('id, event_id, merchant_id, request_type, status, payload')
       .eq('id', id)
       .single();
+
+    const request = rawRequest ? { ...rawRequest, payload_json: rawRequest.payload } : null;
 
     if (fetchError || !request) {
       return NextResponse.json(
@@ -96,9 +98,9 @@ export async function POST(
 
     // 根据 request_type 应用不同的更新逻辑
     if (requestType === 'poster_change' || requestType === 'poster') {
-      // 更新 events.poster_url
+      // 更新 events_v2.poster_url
       const { error: updateError } = await adminClient
-        .from('events')
+        .from('events_v2')
         .update({
           poster_url: payload.poster_url,
           updated_at: new Date().toISOString(),
@@ -151,14 +153,14 @@ export async function POST(
 
       // 批量更新票种价格
       for (const priceUpdate of priceUpdates) {
+        // 尝试 ticket_types_v2 (event_week_day 关联) 或 ticket_types
         const { error: updateError } = await adminClient
-          .from('ticket_types')
+          .from('ticket_types_v2')
           .update({
             price_cents: priceUpdate.new_price,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', priceUpdate.ticket_type_id)
-          .eq('event_id', request.event_id);
+          .eq('id', priceUpdate.ticket_type_id);
 
         if (updateError) {
           console.error('[ADMIN EVENT CHANGE REQUEST] Update price error:', updateError);
@@ -206,13 +208,11 @@ export async function POST(
 
       // 批量更新票种库存
       for (const invUpdate of inventoryUpdates) {
-        // 计算新的 quantity_available
-        // 需要先获取当前的 quantity_sold
+        // 计算新的 quantity_available (ticket_types_v2 使用 inventory_limit)
         const { data: ticketType, error: fetchTicketError } = await adminClient
-          .from('ticket_types')
-          .select('quantity_sold, quantity_available')
+          .from('ticket_types_v2')
+          .select('sold_count, inventory_limit')
           .eq('id', invUpdate.ticket_type_id)
-          .eq('event_id', request.event_id)
           .single();
 
         if (fetchTicketError || !ticketType) {
@@ -229,17 +229,14 @@ export async function POST(
           );
         }
 
-        // 新的 quantity_available = new_capacity - quantity_sold
-        const newQuantityAvailable = Math.max(0, invUpdate.new_capacity - (ticketType.quantity_sold || 0));
-
+        // ticket_types_v2 使用 inventory_limit
         const { error: updateError } = await adminClient
-          .from('ticket_types')
+          .from('ticket_types_v2')
           .update({
-            quantity_available: newQuantityAvailable,
+            inventory_limit: invUpdate.new_capacity,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', invUpdate.ticket_type_id)
-          .eq('event_id', request.event_id);
+          .eq('id', invUpdate.ticket_type_id);
 
         if (updateError) {
           console.error('[ADMIN EVENT CHANGE REQUEST] Update inventory error:', updateError);
@@ -288,7 +285,7 @@ export async function POST(
       }
 
       const { error: updateError } = await adminClient
-        .from('events')
+        .from('events_v2')
         .update(updateData)
         .eq('id', request.event_id)
         .eq('merchant_id', request.merchant_id);
@@ -319,13 +316,13 @@ export async function POST(
       );
     }
 
-    // 更新请求状态为 approved
+    // 更新请求状态为 approved (merchant_change_requests)
     const { error: approveError } = await adminClient
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .update({
         status: 'approved',
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
+        reviewed_by_admin: user.id,
+        reviewed_at: new Date().toISOString(),
       })
       .eq('id', id);
 

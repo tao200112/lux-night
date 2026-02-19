@@ -14,6 +14,7 @@ interface StaffMember {
   userId: string;
   role: string;
   isActive: boolean;
+  displayName?: string;
   user?: {
     id: string;
     email: string;
@@ -38,6 +39,8 @@ export default function StaffDetailPage() {
   const [staff, setStaff] = useState<StaffMember | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [editNameOpen, setEditNameOpen] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
 
   useEffect(() => {
     if (memberId) {
@@ -149,7 +152,27 @@ export default function StaffDetailPage() {
     );
   }
 
-  const fullName = staff.user?.profile?.full_name || staff.user?.email?.split('@')[0] || 'Staff Member';
+  const fullName = staff.displayName || staff.user?.profile?.full_name || staff.user?.email?.split('@')[0] || 'Staff Member';
+
+  const handleSaveName = async () => {
+    if (!staff) return;
+    try {
+      setUpdating(true);
+      const res = await fetch(`/api/staff/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ displayName: editNameValue.trim() }),
+      });
+      if (!res.ok) throw new Error('Failed to update name');
+      setEditNameOpen(false);
+      await loadStaffDetail();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update name');
+    } finally {
+      setUpdating(false);
+    }
+  };
   const email = staff.user?.email || '';
   const avatarUrl = staff.user?.profile?.avatar_url;
 
@@ -165,7 +188,13 @@ export default function StaffDetailPage() {
             <span className="material-symbols-outlined text-primary">arrow_back_ios_new</span>
           </button>
           <h1 className="text-lg font-bold tracking-tight">Staff Detail</h1>
-          <button className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+          <button
+            onClick={() => {
+              setEditNameValue(fullName);
+              setEditNameOpen(true);
+            }}
+            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+          >
             <span className="material-symbols-outlined text-primary">edit</span>
           </button>
         </div>
@@ -277,6 +306,36 @@ export default function StaffDetailPage() {
           </button>
         </section>
       </main>
+
+      {/* Edit Name Modal */}
+      {editNameOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-lg font-bold mb-4">Edit Display Name</h3>
+            <input
+              value={editNameValue}
+              onChange={(e) => setEditNameValue(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white mb-4"
+              placeholder="Display name"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditNameOpen(false)}
+                className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveName}
+                disabled={updating || !editNameValue.trim()}
+                className="flex-1 py-2 rounded-lg bg-primary text-white font-semibold disabled:opacity-50"
+              >
+                {updating ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

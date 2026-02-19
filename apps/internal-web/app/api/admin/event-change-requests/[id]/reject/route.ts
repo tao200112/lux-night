@@ -56,9 +56,9 @@ export async function POST(
     const body = await req.json();
     const { rejection_reason } = body;
 
-    // 获取请求详情
+    // 获取请求详情 (merchant_change_requests)
     const { data: request, error: fetchError } = await adminClient
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .select('id, status')
       .eq('id', id)
       .single();
@@ -89,14 +89,14 @@ export async function POST(
       );
     }
 
-    // 更新请求状态为 rejected
+    // 更新请求状态为 rejected (merchant_change_requests)
     const { error: rejectError } = await adminClient
-      .from('event_change_requests')
+      .from('merchant_change_requests')
       .update({
         status: 'rejected',
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-        rejection_reason: rejection_reason || 'Rejected by admin', // 使用正确的字段名
+        reviewed_by_admin: user.id,
+        reviewed_at: new Date().toISOString(),
+        review_note: rejection_reason || 'Rejected by admin',
       })
       .eq('id', id);
 

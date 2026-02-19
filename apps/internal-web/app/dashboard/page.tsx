@@ -145,28 +145,28 @@ export default function DashboardPage() {
                 <p className="text-xl font-bold leading-tight">
                   ${((stats?.sales || 0) / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                 </p>
-                <p className="text-[#3CB371] text-xs font-bold pb-0.5">+12%</p>
+                <p className="text-gray-400 text-xs pb-0.5">—</p>
               </div>
             </div>
             <div className="flex flex-col gap-1 rounded-xl p-4 bg-card-light dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-sm">
               <p className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">Orders</p>
               <div className="flex items-end gap-2">
                 <p className="text-xl font-bold leading-tight">{stats?.orders || 0}</p>
-                <p className="text-[#3CB371] text-xs font-bold pb-0.5">+5%</p>
+                <p className="text-gray-400 text-xs pb-0.5">—</p>
               </div>
             </div>
             <div className="flex flex-col gap-1 rounded-xl p-4 bg-card-light dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-sm">
               <p className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">Check-ins</p>
               <div className="flex items-end gap-2">
                 <p className="text-xl font-bold leading-tight">{stats?.checkins || 0}</p>
-                <p className="text-[#3CB371] text-xs font-bold pb-0.5">+8%</p>
+                <p className="text-gray-400 text-xs pb-0.5">—</p>
               </div>
             </div>
             <div className="flex flex-col gap-1 rounded-xl p-4 bg-card-light dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-sm">
               <p className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wider">Refunds</p>
               <div className="flex items-end gap-2">
                 <p className="text-xl font-bold leading-tight">{stats?.refunds || 0}</p>
-                <p className="text-[#DC143C] text-xs font-bold pb-0.5">-1%</p>
+                <p className="text-gray-400 text-xs pb-0.5">—</p>
               </div>
             </div>
           </div>
