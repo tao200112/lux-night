@@ -245,8 +245,8 @@ export default function StaffPage() {
         )}
       </main>
 
-      {/* Fixed Bottom CTA - 移动端固定宽度 */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 p-4 pb-8 z-50">
+      {/* Fixed Bottom CTA - 位于 Bottom Nav 上方 */}
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-[430px] lg:bottom-4 lg:max-w-md px-4 z-40">
         <div className="max-w-md mx-auto">
           <Link 
             href="/invites/create"

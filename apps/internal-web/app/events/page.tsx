@@ -337,37 +337,6 @@ export default function EventsPage() {
           </button>
         </div>
       </div> */}
-
-      {/* Bottom Navigation Bar - 移动端固定宽度 */}
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 px-6 py-3 flex items-center justify-between z-50">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-gray-400">
-          <span className="material-symbols-outlined font-bold">dashboard</span>
-          <span className="text-[10px] font-bold">Dashboard</span>
-        </Link>
-        <Link href="/events" className="flex flex-col items-center gap-1 text-primary">
-          <span className="material-symbols-outlined text-2xl filled">event</span>
-          <span className="text-[10px] font-bold">Events</span>
-        </Link>
-        <div className="relative -top-6">
-          <Link 
-            href="/scan"
-            className="w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center border-4 border-background-light dark:border-background-dark"
-          >
-            <span className="material-symbols-outlined text-3xl">qr_code_scanner</span>
-          </Link>
-        </div>
-        <Link href="/staff" className="flex flex-col items-center gap-1 text-gray-400">
-          <span className="material-symbols-outlined">group</span>
-          <span className="text-[10px] font-bold">Staff</span>
-        </Link>
-        {/* 只有 owner/manager/admin 可以访问设置 */}
-        {userRole && userRole !== 'staff' && (
-          <Link href="/settings" className="flex flex-col items-center gap-1 text-gray-400">
-            <span className="material-symbols-outlined">settings</span>
-            <span className="text-[10px] font-bold">Settings</span>
-          </Link>
-        )}
-      </nav>
     </div>
   );
 }
