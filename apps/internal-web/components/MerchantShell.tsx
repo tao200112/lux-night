@@ -31,9 +31,9 @@ function shouldShowNav(pathname: string | null): boolean {
 
 export default function MerchantShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const lastShowNavRef = useRef(false);
+  const lastShowNavRef = useRef(true);
   const showNav = (() => {
-    if (pathname === null || pathname === '/') return lastShowNavRef.current;
+    if (pathname === null || pathname === '/') return true;
     const v = shouldShowNav(pathname);
     lastShowNavRef.current = v;
     return v;
