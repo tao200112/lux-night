@@ -20,6 +20,9 @@ importers:
 
   apps/admin-web:
     dependencies:
+      '@lux-night/security':
+        specifier: workspace:*
+        version: link:../../packages/security
       '@lux-night/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -75,6 +78,9 @@ importers:
 
   apps/customer-web:
     dependencies:
+      '@lux-night/security':
+        specifier: workspace:*
+        version: link:../../packages/security
       '@lux-night/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -133,6 +139,9 @@ importers:
 
   apps/internal-web:
     dependencies:
+      '@lux-night/security':
+        specifier: workspace:*
+        version: link:../../packages/security
       '@lux-night/shared':
         specifier: workspace:*
         version: link:../../packages/shared

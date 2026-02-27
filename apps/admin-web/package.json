@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@lux-night/shared": "workspace:*",
+    "@lux-night/security": "workspace:*",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.90.1",
     "next": "^15.1.4",
