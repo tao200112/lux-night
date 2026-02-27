@@ -9,6 +9,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+interface AnalyticsSeries {
+  label: string;
+  date: string;
+  revenue: number;
+  orders: number;
+}
+
 interface DashboardStats {
   sales: number;
   orders: number;
@@ -35,11 +42,31 @@ export default function DashboardPage() {
   const [workspace, setWorkspace] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<'day' | 'week' | 'month' | 'total'>('week');
+  const [analytics, setAnalytics] = useState<{ series: AnalyticsSeries[]; summary: { totalRevenue: number; totalOrders: number } } | null>(null);
 
   useEffect(() => {
     loadDashboard();
     loadUserRole();
   }, []);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [analyticsPeriod]);
+
+  const loadAnalytics = async () => {
+    try {
+      const res = await fetch(`/api/analytics?period=${analyticsPeriod}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.ok && json.data) {
+          setAnalytics({ series: json.data.series || [], summary: json.data.summary || { totalRevenue: 0, totalOrders: 0 } });
+        }
+      }
+    } catch {
+      setAnalytics(null);
+    }
+  };
 
   const loadUserRole = async () => {
     try {
@@ -177,26 +204,77 @@ export default function DashboardPage() {
           <div className="bg-card-light dark:bg-card-dark rounded-xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white">7-Day Revenue Trend</h3>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">Revenue Trend</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Total ${(stats?.revenueWeek || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  Total ${(analytics?.summary?.totalRevenue ?? stats?.revenueWeek ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
               <span className="material-symbols-outlined text-primary text-xl">insights</span>
             </div>
-            {/* 图表占位符 - 需要从 API 获取真实数据后渲染 */}
-            <div className="h-[140px] w-full relative flex items-center justify-center">
-              <p className="text-gray-400 text-sm">Chart visualization coming soon</p>
+            <div className="flex gap-1 mb-3">
+              {(['day', 'week', 'month', 'total'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setAnalyticsPeriod(p)}
+                  className={`px-2 py-1 rounded text-xs font-medium ${
+                    analyticsPeriod === p ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  {p === 'day' ? 'Daily' : p === 'week' ? 'Weekly' : p === 'month' ? 'Monthly' : 'Total'}
+                </button>
+              ))}
             </div>
-            <div className="flex justify-between mt-2 px-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Mon</span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Tue</span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Wed</span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Thu</span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase text-primary">Fri</span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Sat</span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Sun</span>
-            </div>
+            {analytics?.series && analytics.series.length > 0 ? (
+              <div className="h-[140px] flex items-end gap-1">
+                {(() => {
+                  const maxRev = Math.max(...analytics.series.map((s) => s.revenue), 1);
+                  return analytics.series.map((s, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                      <div
+                        className="w-full min-h-[4px] bg-primary/80 rounded-t"
+                        style={{ height: `${Math.max((s.revenue / maxRev) * 100, 2)}%` }}
+                        title={`${s.label}: $${s.revenue.toFixed(2)} · ${s.orders} orders`}
+                      />
+                      <span className="text-[10px] text-gray-400 truncate max-w-full text-center">{s.label}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            ) : (
+              <div className="h-[140px] flex items-center justify-center">
+                <p className="text-gray-400 text-sm">No data for this period</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Quick Links: Orders & Ambassadors */}
+        <section className="px-4 py-2">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => router.push('/orders')}
+              className="flex items-center gap-3 p-4 bg-card-light dark:bg-card-dark rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm hover:border-primary/50 transition-colors text-left"
+            >
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary">receipt_long</span>
+              </div>
+              <div>
+                <p className="font-bold text-sm text-gray-900 dark:text-white">Orders</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">View all sales</p>
+              </div>
+            </button>
+            <button
+              onClick={() => router.push('/ambassadors')}
+              className="flex items-center gap-3 p-4 bg-card-light dark:bg-card-dark rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm hover:border-primary/50 transition-colors text-left"
+            >
+              <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-purple-500">group</span>
+              </div>
+              <div>
+                <p className="font-bold text-sm text-gray-900 dark:text-white">Ambassadors</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Info & code usage</p>
+              </div>
+            </button>
           </div>
         </section>
 

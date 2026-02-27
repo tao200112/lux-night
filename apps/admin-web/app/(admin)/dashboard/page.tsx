@@ -22,15 +22,12 @@ export default async function AdminDashboardPage() {
     console.error('[ADMIN DASHBOARD] Error:', err);
   }
   
-  // 格式化金额显示
-  const formatCurrency = (value: number | undefined): string => {
-    const val = value || 0;
-    if (val >= 1000000) {
-      return `$${(val / 1000000).toFixed(2)}M`;
-    } else if (val >= 1000) {
-      return `$${(val / 1000).toFixed(1)}K`;
-    }
-    return `$${val.toFixed(0)}`;
+  // 格式化金额显示（后端 revenue 为美分 cents，需先除以 100 转为美元）
+  const formatCurrencyFromCents = (cents: number | undefined): string => {
+    const dollars = ((cents ?? 0) / 100);
+    if (dollars >= 1000000) return `$${(dollars / 1000000).toFixed(2)}M`;
+    if (dollars >= 1000) return `$${(dollars / 1000).toFixed(1)}K`;
+    return `$${dollars.toFixed(2)}`;
   };
   
   return (
@@ -302,7 +299,7 @@ export default async function AdminDashboardPage() {
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">
-                                  {formatCurrency(merchant.revenue)}
+                                  {merchant.revenueFormatted ?? formatCurrencyFromCents(merchant.revenue)}
                                 </span>
                               </td>
                             </tr>
@@ -338,7 +335,7 @@ export default async function AdminDashboardPage() {
                                     <tr key={idx}>
                                         <td className="px-4 py-2 text-sm font-mono font-bold text-slate-700 dark:text-slate-300">{inv.code}</td>
                                         <td className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{inv.ambassadorName}</td>
-                                        <td className="px-4 py-2 text-sm font-medium text-right text-slate-900 dark:text-white">{formatCurrency(inv.revenue)}</td>
+                                        <td className="px-4 py-2 text-sm font-medium text-right text-slate-900 dark:text-white">{formatCurrencyFromCents(inv.revenue)}</td>
                                     </tr>
                                 ))
                             ) : (
@@ -371,7 +368,7 @@ export default async function AdminDashboardPage() {
                                     <tr key={idx}>
                                         <td className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300">{amb.name}</td>
                                         <td className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">{amb.merchantName}</td>
-                                        <td className="px-4 py-2 text-sm font-medium text-right text-slate-900 dark:text-white">{formatCurrency(amb.revenue)}</td>
+                                        <td className="px-4 py-2 text-sm font-medium text-right text-slate-900 dark:text-white">{formatCurrencyFromCents(amb.revenue)}</td>
                                     </tr>
                                 ))
                             ) : (
