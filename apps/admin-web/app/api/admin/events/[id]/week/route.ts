@@ -53,6 +53,16 @@ export async function GET(
     }
 
     const result = rpcResult[0];
+    const needsSync = (result.days || []).some(
+      (d: any) => (d.tickets || []).some((t: any) => t.status === 'active' && !t.stripe_price_id)
+    );
+    if (needsSync && process.env.STRIPE_SECRET_KEY) {
+      try {
+        await syncEventWeekStripe(result.event_week_id);
+      } catch (e) {
+        console.error('[GET week] Stripe sync failed:', e);
+      }
+    }
 
     const { data: eventData } = await supabase
       .from('events_v2')

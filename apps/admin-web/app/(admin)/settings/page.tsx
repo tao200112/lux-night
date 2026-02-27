@@ -276,12 +276,6 @@ export default function AdminSettingsPage() {
                   Regional Config
                 </h3>
                 <div className="flex items-center gap-2">
-                  <Link
-                    href="/settings/venues"
-                    className="text-xs font-medium text-primary-active hover:underline"
-                  >
-                    Venues
-                  </Link>
                   <span className="text-xs font-medium text-primary-active bg-primary-active/10 px-2 py-0.5 rounded">
                     {regions.filter((r) => r.status === 'operational' || r.status === 'Operational').length} Active
                   </span>

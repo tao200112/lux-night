@@ -218,6 +218,27 @@ export const POST = handlerWrapper(async (
           return NextResponse.json<ApiResponse>({ ok: false, error: 'Update Failed', code: 'APPLY_ERROR', message: 'Failed to update price', step }, { status: 500 });
         }
       }
+      // Sync Stripe after price change (creates new Price when price_cents changes)
+      const ticketIds = [...new Set(updates.map((u) => u.ticket_type_id))];
+      const { data: ticketTypes } = await adminClient
+        .from('ticket_types_v2')
+        .select('event_week_day_id')
+        .in('id', ticketIds);
+      const dayIds = ticketTypes?.map((t: any) => t.event_week_day_id).filter(Boolean) ?? [];
+      if (dayIds.length > 0) {
+        const { data: days } = await adminClient
+          .from('event_week_days')
+          .select('event_week_id')
+          .in('id', dayIds);
+        const weekIds = [...new Set((days ?? []).map((d: any) => d.event_week_id))];
+        for (const wid of weekIds) {
+          try {
+            await syncEventWeekStripe(wid);
+          } catch (e) {
+            console.error('[ADMIN APPROVE] Stripe sync after price change (non-fatal):', e);
+          }
+        }
+      }
     } else if (requestType === 'inventory_change') {
       const updates = Array.isArray(payload.quantities)
         ? (payload.quantities as Array<{ ticket_type_id: string; new_capacity?: number; new_inventory?: number }>).map((q) => ({

@@ -128,7 +128,7 @@ export default function CitySelect({
     return (
       <div className={className}>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-          No cities in DB for this state. Create a Venue with an address here first, or:
+          No cities in DB for this state. Add a region with city first, or:
         </p>
         {hasPlacesKey ? (
           <button
@@ -141,7 +141,7 @@ export default function CitySelect({
           </button>
         ) : (
           <p className="text-sm text-amber-600 dark:text-amber-400">
-            GOOGLE_MAPS_API_KEY not configured. Set it in .env to select a city, or add a Venue with an address in this state first.
+            GOOGLE_MAPS_API_KEY not configured. Set it in .env to select a city.
           </p>
         )}
       </div>

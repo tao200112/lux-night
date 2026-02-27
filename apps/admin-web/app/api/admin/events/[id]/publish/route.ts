@@ -28,6 +28,27 @@ export async function POST(
       );
     }
 
+    // Sync ALL event weeks to Stripe before publish (required for checkout)
+    // Publish fails if any sync fails to prevent "missing Stripe Price ID" at checkout
+    const { data: weeks } = await supabase
+      .from('event_weeks')
+      .select('id')
+      .eq('event_id', id);
+
+    if (weeks && weeks.length > 0) {
+      try {
+        for (const w of weeks) {
+          await syncEventWeekStripe(w.id);
+        }
+      } catch (e: any) {
+        console.error('Stripe sync failed before publish:', e);
+        return NextResponse.json(
+          { error: 'Stripe sync failed', details: e?.message || String(e) },
+          { status: 500 }
+        );
+      }
+    }
+
     const { error: updateError } = await supabase
       .from('events_v2')
       .update({ status: 'active' })
@@ -38,20 +59,6 @@ export async function POST(
         { error: 'Failed to update status', details: updateError.message },
         { status: 500 }
       );
-    }
-
-    const { data: weeks } = await supabase
-      .from('event_weeks')
-      .select('id')
-      .eq('event_id', id)
-      .limit(1);
-
-    if (weeks && weeks.length > 0) {
-      try {
-        await syncEventWeekStripe(weeks[0].id);
-      } catch (e) {
-        console.error('Stripe sync failed after publish:', e);
-      }
     }
 
     return NextResponse.json({ success: true, status: 'active' });

@@ -27,7 +27,6 @@ interface MerchantDetail {
     country: string;
     status: string;
   } | null;
-  venues: Array<{ id: string; name: string; address: string | null; isActive: boolean }>;
   events: Array<{ id: string; title: string; status: string; startAt: string; endAt: string }>;
   members: Array<{
     id: string;
@@ -41,7 +40,6 @@ interface MerchantDetail {
     totalOrders: number;
     totalRevenue: number;
     totalRevenueFormatted: string;
-    venuesCount: number;
     eventsCount: number;
     membersCount: number;
   };
@@ -194,14 +192,6 @@ export default function AdminMerchantDetailPage() {
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
-              Venues
-            </p>
-            <p className="text-lg font-bold text-slate-900 dark:text-white">
-              {merchant.stats.venuesCount}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1">
               Members
             </p>
             <p className="text-lg font-bold text-slate-900 dark:text-white">
@@ -309,11 +299,33 @@ export default function AdminMerchantDetailPage() {
           )}
         </section>
         
+        {/* Sales Analytics Link */}
+        <section>
+          <button
+            onClick={() => router.push(`/merchants/${merchantId}/analytics`)}
+            className="w-full flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary">analytics</span>
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold text-slate-900 dark:text-white">Sales Analytics</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Revenue, ambassador orders, charts</p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-slate-400">chevron_right</span>
+          </button>
+        </section>
+
         {/* Recent Orders */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">Recent Orders</h3>
-            <button className="text-xs font-semibold text-accent hover:text-blue-700 transition-colors">
+            <button
+              onClick={() => router.push(`/orders?merchant=${merchantId}`)}
+              className="text-xs font-semibold text-accent hover:text-blue-700 transition-colors"
+            >
               View All
             </button>
           </div>
@@ -348,37 +360,6 @@ export default function AdminMerchantDetailPage() {
               icon="receipt_long"
               title="No Orders"
               description="No recent orders found."
-            />
-          )}
-        </section>
-        
-        {/* Venues */}
-        <section>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Venues ({merchant.venues.length})</h3>
-          {merchant.venues.length > 0 ? (
-            <div className="space-y-2">
-              {merchant.venues.map((venue) => (
-                <div
-                  key={venue.id}
-                  className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-3 shadow-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">{venue.name}</p>
-                      {venue.address && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{venue.address}</p>
-                      )}
-                    </div>
-                    <StatusBadge status={venue.isActive ? 'active' : 'closed'} size="sm" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon="storefront"
-              title="No Venues"
-              description="This merchant has no venues yet."
             />
           )}
         </section>

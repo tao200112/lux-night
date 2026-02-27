@@ -1,10 +1,12 @@
 /**
  * Public Event Week API
  * GET /api/public/events-v2/[id]/week?date= - 获取本周配置（公开，仅当前周）
+ * 新周首次创建时自动同步 Stripe，实现一次配置、无需每周处理
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { syncEventWeekStripeIfNeeded } from '@/lib/stripe/event-week-sync';
 
 export async function GET(
   req: NextRequest,
@@ -62,6 +64,12 @@ export async function GET(
     }
 
     const result = rpcResult[0];
+    const needsSync = (result.days || []).some(
+      (d: any) => (d.tickets || []).some((t: any) => t.status === 'active' && !t.stripe_price_id)
+    );
+    if (needsSync) {
+      await syncEventWeekStripeIfNeeded(result.event_week_id);
+    }
 
     // 5. 增强数据：计算绝对日期与有效性窗口 (Robust Fix)
     const [y, m, d] = result.week_start_date.split('-').map(Number);

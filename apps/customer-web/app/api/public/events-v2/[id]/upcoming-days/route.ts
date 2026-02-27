@@ -2,10 +2,12 @@
  * Public Upcoming Days API
  * GET /api/public/events-v2/[id]/upcoming-days?limit=3
  * 跨周返回接下来 N 个可购场次，保证始终显示例如周四周五周六的滚动窗口
+ * 新周首次创建时自动同步 Stripe，实现一次配置、无需每周处理
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { syncEventWeekStripeIfNeeded } from '@/lib/stripe/event-week-sync';
 
 const DEFAULT_LIMIT = 3;
 const MAX_WEEKS_TO_FETCH = 6;
@@ -76,6 +78,12 @@ export async function GET(
       }
 
       const result = rpcResult[0];
+      const needsSync = (result.days || []).some(
+        (d: any) => (d.tickets || []).some((t: any) => t.status === 'active' && !t.stripe_price_id)
+      );
+      if (needsSync) {
+        await syncEventWeekStripeIfNeeded(result.event_week_id);
+      }
       const [y, m, d] = String(result.week_start_date).split('-').map(Number);
       let weekStart = new Date(y, m - 1, d);
       if (weekStart.getDay() === 0) {

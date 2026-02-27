@@ -209,49 +209,38 @@ export default async function AdminDashboardPage() {
               </div>
             </section>
             
-            {/* Charts Section - 完全按照 UI 文档 */}
+            {/* Charts Section - 完全按照 UI 文档，使用真实数据 */}
             <section className="px-4 py-4 space-y-4">
               {/* Line Chart Card - Revenue Trends */}
               <div className="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-card border border-slate-100 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">Revenue Trends</h3>
-                  <select className="bg-slate-50 dark:bg-slate-700 border-none text-xs text-slate-600 dark:text-slate-300 rounded py-1 pl-2 pr-6 focus:ring-0 cursor-pointer">
-                    <option>Last 7 Days</option>
-                    <option>Last 30 Days</option>
-                  </select>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Last 7 Days</span>
                 </div>
-                {/* Chart SVG - 简化版，实际应基于数据生成 */}
-                <div className="relative h-48 w-full">
-                  <div className="absolute inset-0 flex flex-col justify-between text-[10px] text-slate-400 pointer-events-none">
-                    <div className="w-full border-b border-dashed border-slate-200 dark:border-slate-700 pb-1">$2M</div>
-                    <div className="w-full border-b border-dashed border-slate-200 dark:border-slate-700 pb-1">$1.5M</div>
-                    <div className="w-full border-b border-dashed border-slate-200 dark:border-slate-700 pb-1">$1M</div>
-                    <div className="w-full border-b border-dashed border-slate-200 dark:border-slate-700 pb-1">$500k</div>
-                    <div className="w-full border-b border-slate-200 dark:border-slate-700 pb-1">0</div>
+                {/* Chart from real data */}
+                {dashboardData.revenueTrend && dashboardData.revenueTrend.length > 0 ? (
+                  <div className="relative h-48 w-full flex items-end gap-1">
+                    {(() => {
+                      const maxVal = Math.max(...dashboardData.revenueTrend.map((d: any) => d.revenue), 1);
+                      return dashboardData.revenueTrend.map((d: any, i: number) => {
+                        const h = (d.revenue / maxVal) * 100;
+                        const dateLabel = d.date ? new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+                            <div
+                              className="w-full min-h-[4px] bg-primary/80 hover:bg-primary rounded-t transition-all"
+                              style={{ height: `${Math.max(h, 2)}%` }}
+                              title={`${dateLabel}: $${((d.revenue || 0) / 100).toFixed(2)}`}
+                            />
+                            <span className="text-[10px] text-slate-400 truncate max-w-full">{dateLabel}</span>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
-                  <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="gradient" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#2563EB" stopOpacity="0.2" />
-                        <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path
-                      className="drop-shadow-md"
-                      d="M0,140 C30,130 60,110 90,115 C120,120 150,80 180,70 C210,60 240,90 270,50 C300,10 330,30 360,20"
-                      fill="none"
-                      stroke="#2563EB"
-                      strokeLinecap="round"
-                      strokeWidth="2.5"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    <path
-                      d="M0,140 C30,130 60,110 90,115 C120,120 150,80 180,70 C210,60 240,90 270,50 C300,10 330,30 360,20 V192 H0 Z"
-                      fill="url(#gradient)"
-                      stroke="none"
-                    />
-                  </svg>
-                </div>
+                ) : (
+                  <div className="h-48 flex items-center justify-center text-slate-400 text-sm">No data</div>
+                )}
               </div>
               
               {/* Bar Chart Card - Orders by Region */}

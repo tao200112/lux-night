@@ -203,15 +203,38 @@ export async function getDashboardData(): Promise<DashboardData | null> {
         };
     });
 
-    // Dummy Region Data (Since we don't have region_id on orders yet? Oh wait, migration doesn't fill region_id? 
-    // Migration filled `merchant_id`. We can infer region from merchant.
-    // Let's rely on merchant aggregation -> region.
-    // Fetch region for all merchants in recent orders? Might be too many.
-    // Just map top merchants for now or return empty/simple logic.
-    // Previous logic grouped by region_id. I can do that if I had merchant list.
-    // Let's skip detailed region breakdown for now or keep it minimal.
-    // Implementation: simple placeholder or skip.
-    const ordersByRegion: any[] = []; // Skipping for simplicity in this turn unless requested.
+    // Orders by Region (via merchant.region_id)
+    const merchantIds = [...new Set(recentOrders.map((o: any) => o.merchant_id).filter(Boolean))];
+    const regionAgg: Record<string, { count: number; revenue: number }> = {};
+    let regionNameMap: Record<string, string> = {};
+    if (merchantIds.length > 0) {
+      const { data: merchants } = await adminClient
+        .from('merchants')
+        .select('id, region_id')
+        .in('id', merchantIds);
+      const merchantRegionMap: Record<string, string> = {};
+      (merchants || []).forEach((m: any) => {
+        if (m.region_id) merchantRegionMap[m.id] = m.region_id;
+      });
+      const regionIds = [...new Set(Object.values(merchantRegionMap))];
+      if (regionIds.length > 0) {
+        const { data: regions } = await adminClient.from('regions').select('id, name').in('id', regionIds);
+        (regions || []).forEach((r: any) => { regionNameMap[r.id] = r.name; });
+      }
+      recentOrders.forEach((o: any) => {
+        const rid = o.merchant_id ? merchantRegionMap[o.merchant_id] : null;
+        if (!rid) return;
+        if (!regionAgg[rid]) regionAgg[rid] = { count: 0, revenue: 0 };
+        regionAgg[rid].count++;
+        regionAgg[rid].revenue += o.amount_cents || 0;
+      });
+    }
+    const totalRegionOrders = Object.values(regionAgg).reduce((s, v) => s + v.count, 0);
+    const ordersByRegion = Object.entries(regionAgg).map(([rid, v]) => ({
+      name: regionNameMap[rid] || 'Unknown',
+      count: v.count,
+      percentage: totalRegionOrders > 0 ? Math.round((v.count / totalRegionOrders) * 100) : 0,
+    })).sort((a, b) => b.count - a.count);
 
     // Revenue Trend
     const revenueTrend: Array<{ date: string; revenue: number }> = [];

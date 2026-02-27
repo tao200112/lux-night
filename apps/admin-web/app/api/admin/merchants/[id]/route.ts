@@ -45,9 +45,6 @@ export const GET = handlerWrapper(async (request: NextRequest, { params }: { par
     // 2. Parallel Fetch Related
     step = 'fetch_related';
     
-    // Venues
-    const pVenues = adminClient.from('venues').select('id, name, address, is_active').eq('merchant_id', id);
-    
     // Events (for listing)
     const pEvents = adminClient.from('events_v2').select('id, title, status, created_at').eq('merchant_id', id).order('created_at', { ascending: false });
     
@@ -66,9 +63,7 @@ export const GET = handlerWrapper(async (request: NextRequest, { params }: { par
         .gte('created_at', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()) // Last 60 Days
         .order('created_at', { ascending: false });
 
-    const [venuesRes, eventsRes, membersRes, invitesRes, ordersRes] = await Promise.all([pVenues, pEvents, pMembers, pInvites, pOrders]);
-
-    const venues = venuesRes.data || [];
+    const [eventsRes, membersRes, invitesRes, ordersRes] = await Promise.all([pEvents, pMembers, pInvites, pOrders]);
     const events = eventsRes.data || [];
     const members = membersRes.data || [];
     const invites = invitesRes.data || [];
@@ -169,9 +164,6 @@ export const GET = handlerWrapper(async (request: NextRequest, { params }: { par
         name: merchant.name,
         status: merchant.status,
         region: merchant.regions,
-        venues: venues.map((v: any) => ({ 
-            id: v.id, name: v.name, address: v.address, isActive: v.is_active 
-        })),
         events: events.slice(0, 50).map((e: any) => ({
             id: e.id, title: e.title, status: e.status, startAt: e.created_at
         })),
@@ -193,7 +185,6 @@ export const GET = handlerWrapper(async (request: NextRequest, { params }: { par
              totalOrders: orders.length,
              totalRevenue: totalRevenue / 100,
              totalRevenueFormatted: `$${(totalRevenue/100).toLocaleString()}`,
-             venuesCount: venues.length,
              eventsCount: events.length,
              membersCount: members.length
         },
