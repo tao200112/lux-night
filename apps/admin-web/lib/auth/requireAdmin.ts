@@ -1,6 +1,6 @@
 'use server';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin as requireAdminBase, isRequireAdminOk } from '@lux-night/shared/auth/requireAdmin';
 import type { RequireAdminOk, RequireAdminResult } from '@lux-night/shared/auth/requireAdmin';
 
