@@ -25,6 +25,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { setDefaultWorkspace } from '@/lib/internal/workspace';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 /**
  * 验证 UUID 格式（v1 或 v4）
@@ -81,6 +82,10 @@ export async function POST(request: NextRequest) {
   });
   
   try {
+    // Layer 1: anonymous IP burst gate
+    const rl1 = await rateLimitOrResponse(request, rateLimitPolicies.publicBurst, { userId: 'anon' });
+    if ('response' in rl1) return rl1.response;
+
     // ============================================================
     // 1. 检查用户登录状态
     // ============================================================
@@ -115,6 +120,10 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    // Layer 2: authenticated invite consume rate limit
+    const rl2 = await rateLimitOrResponse(request, rateLimitPolicies.loginOrInviteRedeem, { userId: user.id });
+    if ('response' in rl2) return rl2.response;
 
     // ============================================================
     // 2. 读取并验证请求体

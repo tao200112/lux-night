@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getActiveWorkspace } from '@/lib/internal/workspace';
 import { requireInternalAuth } from '@/lib/internal/auth';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 // 使用 service role key 创建 admin client（绕过 RLS）
 const getAdminClient = () => {
@@ -28,6 +29,9 @@ const getAdminClient = () => {
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     await requireInternalAuth();
 
     // 获取当前workspace

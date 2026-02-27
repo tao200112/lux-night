@@ -5,9 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.publicBurst, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     const supabase = await createClient();
     
     const { error } = await supabase.auth.signOut({

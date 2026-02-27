@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 // 使用 service role key 创建 admin client（绕过 RLS）
 const getAdminClient = () => {
@@ -28,6 +29,9 @@ const getAdminClient = () => {
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     // 首先验证用户已登录（使用普通 client）
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

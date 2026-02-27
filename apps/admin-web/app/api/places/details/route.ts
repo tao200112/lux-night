@@ -6,8 +6,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPlaceDetails } from '@/lib/places';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function POST(req: NextRequest) {
+  const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+  if ('response' in rl) return rl.response;
+
   const key = process.env.GOOGLE_MAPS_API_KEY;
   if (!key) {
     return NextResponse.json(

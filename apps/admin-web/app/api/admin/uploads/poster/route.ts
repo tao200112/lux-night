@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 // Allowed file types
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'] as const;
@@ -38,6 +39,9 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
   
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     // 1. 权限检查（使用普通client检查用户身份）
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -12,6 +12,7 @@ import {
 } from '@/lib/admin/api';
 import { syncEventWeekStripe } from '@/lib/stripe/event-week-sync';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -124,6 +125,9 @@ export const POST = handlerWrapper(async (
   let step = 'init';
 
   try {
+    const rl = await rateLimitOrResponse(request, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response as NextResponse;
+
     step = 'auth_check';
     const authResult = await withTimeout(requireAdmin(request), TIMEOUT_MS, 'requireAdmin');
 

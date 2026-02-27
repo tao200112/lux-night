@@ -7,6 +7,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function GET(request: NextRequest) {
   try {
@@ -82,6 +83,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const rl1 = await rateLimitOrResponse(request, rateLimitPolicies.publicBurst, { userId: 'anon' });
+    if ('response' in rl1) return rl1.response;
+
     const supabase = await createClient();
     
     // 检查 Admin 权限
@@ -100,6 +104,9 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    const rl2 = await rateLimitOrResponse(request, rateLimitPolicies.adminExportStrict, { userId: user!.id });
+    if ('response' in rl2) return rl2.response;
     
     const body = await request.json();
     const { dataType, region, merchant, format, dateRange, filters } = body;

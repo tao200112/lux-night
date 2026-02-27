@@ -452,57 +452,70 @@ BEGIN
   IF NOT FOUND THEN
     v_result := 'INVALID';
     v_message := 'Ticket not found';
-  ELSIF v_ticket.status = 'refunded' THEN
-    v_result := 'REFUNDED';
-    v_message := 'Ticket has been refunded';
-  ELSIF v_ticket.status = 'void' THEN
-    v_result := 'INVALID';
-    v_message := 'Ticket is void';
-  ELSIF v_ticket.status = 'expired' THEN
-    v_result := 'EXPIRED';
-    v_message := 'Ticket has expired';
-  ELSIF p_venue_id IS NOT NULL AND v_ticket.venue_id != p_venue_id THEN
-    v_result := 'WRONG_VENUE';
-    v_message := 'Ticket is not valid for this venue';
   ELSE
-    -- 查询 event 检查时间
-    SELECT * INTO v_event
-    FROM public.events
-    WHERE id = v_ticket.event_id;
-    
-    IF v_event.end_at < NOW() THEN
+    -- 3.5 校验 venue 权限：仅 admin 或拥有该场地权限的 staff 可核销
+    IF NOT (
+      public.is_admin()
+      OR COALESCE(p_venue_id, v_ticket.venue_id) = ANY(public.my_venue_ids())
+    ) THEN
+      RETURN jsonb_build_object(
+        'ok', false,
+        'result', 'NOT_ALLOWED',
+        'message', 'Insufficient venue permission'
+      );
+    END IF;
+    IF v_ticket.status = 'refunded' THEN
+      v_result := 'REFUNDED';
+      v_message := 'Ticket has been refunded';
+    ELSIF v_ticket.status = 'void' THEN
+      v_result := 'INVALID';
+      v_message := 'Ticket is void';
+    ELSIF v_ticket.status = 'expired' THEN
       v_result := 'EXPIRED';
-      v_message := 'Event has ended';
+      v_message := 'Ticket has expired';
+    ELSIF p_venue_id IS NOT NULL AND v_ticket.venue_id != p_venue_id THEN
+      v_result := 'WRONG_VENUE';
+      v_message := 'Ticket is not valid for this venue';
     ELSE
-      -- 检查是否已核销（幂等性检查）
-      SELECT * INTO v_existing_checkin
-      FROM public.checkins
-      WHERE ticket_id = p_ticket_id
-        AND action = p_action
-        AND success = true
-      LIMIT 1;
+      -- 查询 event 检查时间
+      SELECT * INTO v_event
+      FROM public.events
+      WHERE id = v_ticket.event_id;
       
-      IF FOUND THEN
-        v_result := 'ALREADY_USED';
-        v_message := 'Ticket already used for this action';
-      ELSIF v_ticket.redeemed_count >= v_ticket.redeem_limit THEN
-        v_result := 'ALREADY_USED';
-        v_message := 'Ticket redeem limit reached';
+      IF v_event.end_at < NOW() THEN
+        v_result := 'EXPIRED';
+        v_message := 'Event has ended';
       ELSE
-        -- 成功核销
-        v_result := 'OK';
-        v_success := true;
-        v_message := 'Check-in successful';
+        -- 检查是否已核销（幂等性检查）
+        SELECT * INTO v_existing_checkin
+        FROM public.checkins
+        WHERE ticket_id = p_ticket_id
+          AND action = p_action
+          AND success = true
+        LIMIT 1;
         
-        -- 更新 ticket 状态
-        UPDATE public.tickets
-        SET redeemed_count = redeemed_count + 1,
-            status = CASE
-              WHEN redeemed_count + 1 >= redeem_limit THEN 'used'
-              ELSE status
-            END,
-            updated_at = NOW()
-        WHERE id = p_ticket_id;
+        IF FOUND THEN
+          v_result := 'ALREADY_USED';
+          v_message := 'Ticket already used for this action';
+        ELSIF v_ticket.redeemed_count >= v_ticket.redeem_limit THEN
+          v_result := 'ALREADY_USED';
+          v_message := 'Ticket redeem limit reached';
+        ELSE
+          -- 成功核销
+          v_result := 'OK';
+          v_success := true;
+          v_message := 'Check-in successful';
+          
+          -- 更新 ticket 状态
+          UPDATE public.tickets
+          SET redeemed_count = redeemed_count + 1,
+              status = CASE
+                WHEN redeemed_count + 1 >= redeem_limit THEN 'used'
+                ELSE status
+              END,
+              updated_at = NOW()
+          WHERE id = p_ticket_id;
+        END IF;
       END IF;
     END IF;
   END IF;

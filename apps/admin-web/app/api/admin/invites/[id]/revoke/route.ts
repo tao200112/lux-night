@@ -14,6 +14,7 @@ import {
 } from '@/lib/admin/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 const TIMEOUT_MS = 10000;
 
@@ -31,6 +32,9 @@ export const POST = handlerWrapper(async (
   let step = 'init';
 
   try {
+    const rl = await rateLimitOrResponse(request, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response as NextResponse;
+
     // STEP 1: 权限检查
     step = 'auth_check';
     const authResult = await withTimeout(

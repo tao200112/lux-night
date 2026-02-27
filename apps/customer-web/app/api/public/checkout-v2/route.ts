@@ -13,8 +13,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js'; // For service role
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { stripe, isStripeConfigured } from '@/lib/stripe/server';
+import {
+  rateLimitOrResponse,
+  rateLimitPolicies,
+  withRateLimitHeaders,
+} from '@lux-night/security';
 
 // Service Role Client for Invite Logic
 const supabaseAdmin = createAdminClient(
@@ -60,6 +65,10 @@ export async function POST(req: NextRequest) {
   const debugId = Math.random().toString(36).substring(7);
 
   try {
+    // Layer 1: anonymous IP burst gate
+    const rl1 = await rateLimitOrResponse(req, rateLimitPolicies.publicBurst, { userId: 'anon' });
+    if ('response' in rl1) return rl1.response;
+
     // 1. 检查 Stripe 配置
     if (!isStripeConfigured || !stripe) {
       return NextResponse.json<ApiResponse<never>>(
@@ -73,11 +82,18 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json<ApiResponse<never>>(
-        { success: false, error: { code: 'UNAUTHORIZED', message: 'Must be logged in' } },
-        { status: 401 }
+      return withRateLimitHeaders(
+        NextResponse.json<ApiResponse<never>>(
+          { success: false, error: { code: 'UNAUTHORIZED', message: 'Must be logged in' } },
+          { status: 401 },
+        ),
+        rl1.headers,
       );
     }
+
+    // Layer 2: authenticated checkout rate limit
+    const rl2 = await rateLimitOrResponse(req, rateLimitPolicies.checkout, { userId: user.id });
+    if ('response' in rl2) return rl2.response;
 
     // 3. 验证请求体
     const body = await req.json();

@@ -7,12 +7,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireInternalAuth } from '@/lib/internal/auth';
 import { getActiveWorkspace } from '@/lib/internal/workspace';
 import { createClient } from '@/lib/supabase/server';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     await requireInternalAuth();
     const workspace = await getActiveWorkspace();
     

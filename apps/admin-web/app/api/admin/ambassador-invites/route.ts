@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { handlerWrapper, requireAdmin, withTimeout, type ApiResponse } from '@/lib/admin/api';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,9 @@ const TIMEOUT_MS = 15000;
 export const POST = handlerWrapper(async (request: NextRequest): Promise<NextResponse> => {
     let step = 'init';
     try {
+        const rl = await rateLimitOrResponse(request, rateLimitPolicies.loginOrInviteRedeem, { userId: 'anon' });
+        if ('response' in rl) return rl.response as NextResponse;
+
         step = 'auth';
         const authResult = await withTimeout(requireAdmin(request), TIMEOUT_MS, 'auth');
         if ('status' in authResult) return authResult.response;

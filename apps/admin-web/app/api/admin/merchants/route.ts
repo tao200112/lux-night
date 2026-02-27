@@ -15,6 +15,7 @@ import {
   type ApiResponse,
 } from '@/lib/admin/api';
 import { randomUUID } from 'crypto';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 function isValidUuid(v: any): boolean {
   if (!v || typeof v !== 'string') return false;
@@ -155,6 +156,9 @@ export const POST = handlerWrapper(async (request: NextRequest): Promise<NextRes
   let step = 'init';
 
   try {
+    const rl = await rateLimitOrResponse(request, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response as NextResponse;
+
     step = 'auth_check';
     const authResult = await requireAdmin(request);
     if ('status' in authResult) return authResult.response;

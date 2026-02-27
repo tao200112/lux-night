@@ -12,11 +12,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { setDefaultWorkspace } from '@/lib/internal/workspace';
 import { createClient } from '@/lib/supabase/server';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export const runtime = 'nodejs'; // 确保使用 Node.js runtime，避免 Edge runtime 限制
 
 export async function POST(request: NextRequest) {
   try {
+    const rl = await rateLimitOrResponse(request, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 

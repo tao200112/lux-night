@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handlerWrapper, requireAdmin, withTimeout, type ApiResponse } from '@/lib/admin/api';
 import { randomUUID } from 'crypto';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -215,6 +216,9 @@ export const PATCH = handlerWrapper(async (request: NextRequest, { params }: { p
     // ... Minimal generic PATCH implementation
   const debugId = randomUUID().substring(0, 8);
   try {
+    const rl = await rateLimitOrResponse(request, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response as NextResponse;
+
      const authResult = await requireAdmin(request);
      if ('status' in authResult) return authResult.response;
      const { adminClient } = authResult;

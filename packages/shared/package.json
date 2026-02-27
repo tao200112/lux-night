@@ -13,11 +13,19 @@
     "./data/regions": "./src/data/regions.ts",
     "./data/drops": "./src/data/drops.ts",
     "./utils/qr": "./src/utils/qr.ts",
-    "./auth": "./src/auth/index.ts"
+    "./auth": "./src/auth/index.ts",
+    "./auth/requireUser": "./src/auth/requireUser.ts",
+    "./auth/requireAdmin": "./src/auth/requireAdmin.ts",
+    "./auth/requireMerchantRole": "./src/auth/requireMerchantRole.ts",
+    "./auth/requireVenueAccess": "./src/auth/requireVenueAccess.ts",
+    "./server/rpc": "./src/server/rpc.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.90.1"
+  },
+  "peerDependencies": {
+    "next": ">=14.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

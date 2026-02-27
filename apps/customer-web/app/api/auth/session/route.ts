@@ -8,6 +8,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function GET() {
   try {
@@ -42,6 +43,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.loginOrInviteRedeem, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     const body = await req.json();
     const { access_token, refresh_token } = body;
 

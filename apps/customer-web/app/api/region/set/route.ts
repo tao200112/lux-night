@@ -4,6 +4,7 @@
  * 校验 region 存在且 is_active，设置 cookie current_region_id，返回 { ok: true, region }
  */
 
+import { rateLimitOrResponse, rateLimitPolicies } from '@lux-night/security';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -13,6 +14,8 @@ const MAX_AGE = 365 * 24 * 60 * 60; // 1 year
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
     const body = await req.json().catch(() => ({}));
     const regionId = body?.regionId ?? body?.region_id;
 

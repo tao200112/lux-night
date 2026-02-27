@@ -7,27 +7,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import {
+  rateLimitOrResponse,
+  rateLimitPolicies,
+  withRateLimitHeaders,
+} from '@lux-night/security';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
+    // Layer 1: anonymous IP burst gate (before any parsing)
+    const rl1 = await rateLimitOrResponse(req, rateLimitPolicies.publicBurst, { userId: 'anon' });
+    if ('response' in rl1) return rl1.response;
+
     let body: { token?: string };
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+      return withRateLimitHeaders(
+        NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }),
+        rl1.headers,
+      );
     }
     const token = typeof body?.token === 'string' ? body.token.trim() : '';
     if (!token || token.length < 10) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
+      return withRateLimitHeaders(
+        NextResponse.json({ error: 'Invalid token' }, { status: 400 }),
+        rl1.headers,
+      );
     }
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return withRateLimitHeaders(
+        NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+        rl1.headers,
+      );
     }
+
+    // Layer 2: authenticated checkin rate limit
+    const rl2 = await rateLimitOrResponse(req, rateLimitPolicies.checkinStrict, { userId: user.id });
+    if ('response' in rl2) return rl2.response;
+    const rlHeaders = { ...rl1.headers, ...rl2.headers };
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -236,17 +259,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      ticket: {
-        id: updated!.id,
-        status: updated!.status,
-        redeemed_at: updated!.redeemed_at,
-        redeemed_by: updated!.redeemed_by,
-        redeemed_count: updated!.redeemed_count,
-        redeem_limit: updated!.redeem_limit
-      },
-    });
+    return withRateLimitHeaders(
+      NextResponse.json({
+        success: true,
+        ticket: {
+          id: updated!.id,
+          status: updated!.status,
+          redeemed_at: updated!.redeemed_at,
+          redeemed_by: updated!.redeemed_by,
+          redeemed_count: updated!.redeemed_count,
+          redeem_limit: updated!.redeem_limit
+        },
+      }),
+      rlHeaders,
+    );
 
 
   } catch (e: any) {

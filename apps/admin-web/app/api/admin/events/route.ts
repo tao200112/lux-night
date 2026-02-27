@@ -8,8 +8,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/server/requireAdmin';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function POST(req: NextRequest) {
+  const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+  if ('response' in rl) return rl.response;
+
   const authResult = await requireAdmin();
   if ('error' in authResult) {
     return authResult.error;
@@ -130,6 +134,9 @@ export async function GET(req: NextRequest) {
  * Body: { order: [{ id: string, sort_order: number }] }
  */
 export async function PATCH(req: NextRequest) {
+  const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+  if ('response' in rl) return rl.response;
+
   const authResult = await requireAdmin();
   if ('error' in authResult) {
     return authResult.error;

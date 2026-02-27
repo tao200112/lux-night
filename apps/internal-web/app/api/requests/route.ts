@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRequests, createRequest } from '@/lib/data/internal/requests';
 import { getActiveWorkspace } from '@/lib/internal/workspace';
 import { requireInternalAuth } from '@/lib/internal/auth';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function GET(req: NextRequest) {
   try {
@@ -54,6 +55,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     await requireInternalAuth();
     const body = await req.json();
     const { type, payload, venueId } = body;

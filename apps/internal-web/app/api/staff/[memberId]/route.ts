@@ -8,6 +8,7 @@ import { getStaffMemberById, updateStaffStatus } from '@/lib/data/internal/staff
 import { getActiveWorkspace } from '@/lib/internal/workspace';
 import { requireInternalAuth } from '@/lib/internal/auth';
 import { canManageMerchant } from '@/lib/internal/permissions';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function GET(
   req: NextRequest,
@@ -50,6 +51,9 @@ export async function PATCH(
   { params }: { params: Promise<{ memberId: string }> }
 ) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     await requireInternalAuth();
     const { memberId } = await params;
     const body = await req.json();

@@ -5,9 +5,13 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function POST(req: Request) {
   try {
+    const rl1 = await rateLimitOrResponse(req, rateLimitPolicies.publicBurst, { userId: 'anon' });
+    if ('response' in rl1) return rl1.response;
+
     const supabase = await createClient();
     
     // 验证用户已登录
@@ -18,6 +22,9 @@ export async function POST(req: Request) {
         { status: 401 }
       );
     }
+
+    const rl2 = await rateLimitOrResponse(req, rateLimitPolicies.loginOrInviteRedeem, { userId: user.id });
+    if ('response' in rl2) return rl2.response;
 
     const body = await req.json();
     const { token } = body;

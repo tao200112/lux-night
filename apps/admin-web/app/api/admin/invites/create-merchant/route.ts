@@ -9,6 +9,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 /**
  * 验证 UUID 格式（v1 或 v4）
@@ -31,6 +32,9 @@ function isValidUuid(v: any): boolean {
 }
 
 export async function POST(req: Request) {
+  const rl = await rateLimitOrResponse(req, rateLimitPolicies.loginOrInviteRedeem, { userId: 'anon' });
+  if ('response' in rl) return rl.response;
+
   const debugId = randomUUID().substring(0, 8);
   
   // 环境自检

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { z } from 'zod';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 const updateDropSchema = z.object({
   region_id: z.string().uuid().optional(),
@@ -17,6 +18,9 @@ const updateDropSchema = z.object({
 
 export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     const params = await props.params;
     const { id } = params;
     const supabase = await createClient();
@@ -57,6 +61,9 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
 
 export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   try {
+    const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+    if ('response' in rl) return rl.response;
+
     const params = await props.params;
     const { id } = params;
     const supabase = await createClient();

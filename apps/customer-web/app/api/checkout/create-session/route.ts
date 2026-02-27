@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { stripe, isStripeConfigured } from '@/lib/stripe/server';
+import {
+  rateLimitOrResponse,
+  rateLimitPolicies,
+  withRateLimitHeaders,
+} from '@lux-night/security';
 
 // Zod schemas
 const CheckoutItemSchema = z.object({
@@ -28,6 +33,10 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
   
   try {
+    // Layer 1: anonymous IP burst gate
+    const rl1 = await rateLimitOrResponse(req, rateLimitPolicies.publicBurst, { userId: 'anon' });
+    if ('response' in rl1) return rl1.response;
+
     // 1. 检查 Stripe 配置
     if (!isStripeConfigured || !stripe) {
       console.warn('[CHECKOUT API] Stripe not configured');
@@ -49,17 +58,18 @@ export async function POST(req: NextRequest) {
 
     if (authError || !user) {
       console.error('[CHECKOUT API] Auth error:', authError);
-      return NextResponse.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Must be logged in',
-          },
-        },
-        { status: 401 }
+      return withRateLimitHeaders(
+        NextResponse.json<ApiResponse<never>>(
+          { success: false, error: { code: 'UNAUTHORIZED', message: 'Must be logged in' } },
+          { status: 401 },
+        ),
+        rl1.headers,
       );
     }
+
+    // Layer 2: authenticated checkout rate limit
+    const rl2 = await rateLimitOrResponse(req, rateLimitPolicies.checkout, { userId: user.id });
+    if ('response' in rl2) return rl2.response;
 
     // 3. 验证请求体
     const body = await req.json();

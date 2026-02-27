@@ -8,11 +8,15 @@ import { requireAdmin } from '@/lib/server/requireAdmin';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateEventForPublish } from '@/lib/events-v2/publish-validator';
 import { syncEventWeekStripe } from '@/lib/stripe/event-week-sync';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+  if ('response' in rl) return rl.response;
+
   const authResult = await requireAdmin();
   if ('error' in authResult) return authResult.error;
 

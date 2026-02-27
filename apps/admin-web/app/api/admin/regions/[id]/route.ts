@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { slugFromName } from '@/lib/places';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 async function requireAdmin() {
   const { createClient } = await import('@/lib/supabase/server');
@@ -32,6 +33,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const rl = await rateLimitOrResponse(req, rateLimitPolicies.sensitivePost, { userId: 'anon' });
+  if ('response' in rl) return rl.response;
+
   const auth = await requireAdmin();
   if (!auth.ok) return NextResponse.json(auth.body, { status: auth.status });
 

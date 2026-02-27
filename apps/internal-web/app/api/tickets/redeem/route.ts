@@ -2,10 +2,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  // Layer 1: anonymous IP burst gate
+  const rl1 = await rateLimitOrResponse(req, rateLimitPolicies.publicBurst, { userId: 'anon' });
+  if ('response' in rl1) return rl1.response;
+
   // 1. Auth Check (Staff Login)
   const supabase = await createClient(); // Await if server client needs it (Supabase SSR v5 might not, but safe)
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -13,6 +18,10 @@ export async function POST(req: NextRequest) {
   if (!user || authError) {
     return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
   }
+
+  // Layer 2: authenticated checkin rate limit
+  const rl2 = await rateLimitOrResponse(req, rateLimitPolicies.checkinStrict, { userId: user.id });
+  if ('response' in rl2) return rl2.response;
 
   // 2. Parse Body
   let body;

@@ -14,6 +14,11 @@ import { stripe, isStripeConfigured } from '@/lib/stripe/server';
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 import Stripe from 'stripe';
+import {
+  rateLimitWebhookOrResponse,
+  rateLimitPolicies,
+  withRateLimitHeaders,
+} from '@lux-night/security';
 
 // Use service role key for webhook to bypass RLS
 const supabaseAdmin = createClient(
@@ -1123,6 +1128,21 @@ export async function POST(req: NextRequest) {
     eventType: event.type,
     livemode: event.livemode,
   });
+
+  // Rate limit by event.id (dedup: 1 per event per 24h)
+  // Returns 200 (not 429) when already seen, to avoid Stripe retries
+  const rlResult = await rateLimitWebhookOrResponse(
+    req,
+    rateLimitPolicies.webhookStripeEvent,
+    { extraKey: event.id },
+  );
+  if ('response' in rlResult) return rlResult.response;
+  if (rlResult.alreadySeen) {
+    return withRateLimitHeaders(
+      NextResponse.json({ received: true, rate_limited: true }),
+      rlResult.headers,
+    );
+  }
 
   // Record event and check idempotency
   let eventRecord: { id: string; alreadyProcessed: boolean } | null = null;

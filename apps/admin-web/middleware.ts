@@ -11,11 +11,12 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // ============================================================
-  // Phase 1: 诊断日志 - 路径检查
+  // Phase 1: 路径检查 - /api/admin/* 不再视为 public，需强制鉴权
   // ============================================================
-  const isPublicPath = pathname === '/login' || 
+  const isAdminApiPath = pathname.startsWith('/api/admin');
+  const isPublicPath = pathname === '/login' ||
                        pathname === '/auth/callback' ||
-                       pathname.startsWith('/api/') ||
+                       (pathname.startsWith('/api/') && !isAdminApiPath) ||
                        pathname.startsWith('/_next/') ||
                        pathname === '/favicon.ico' ||
                        pathname.includes('.');
@@ -36,13 +37,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 保护路径列表
+  // 保护路径列表（含 /api/admin/*）
   const protectedPaths = [
     '/',
     '/dashboard',
     '/events',
     '/users',
     '/admin',
+    '/api/admin',
     '/approvals',
     '/merchants',
     '/orders',
@@ -131,12 +133,17 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  // 如果未登录，重定向到登录页
+  // 如果未登录
   if (!user) {
     if (process.env.NODE_ENV === 'development') {
-      console.log('[ADMIN MIDDLEWARE] No user found, redirecting to /login');
-      console.log('[ADMIN MIDDLEWARE] Reason: Cookie read failed or session expired');
+      console.log('[ADMIN MIDDLEWARE] No user found');
       console.log('[ADMIN MIDDLEWARE] ========================================');
+    }
+    if (isAdminApiPath) {
+      return NextResponse.json(
+        { ok: false, error: 'Unauthorized', code: 'UNAUTHENTICATED', message: 'Must be logged in' },
+        { status: 401 }
+      );
     }
     const url = request.nextUrl.clone();
     url.pathname = '/login';
@@ -237,11 +244,17 @@ export async function middleware(request: NextRequest) {
   // Phase 6: 权限检查和路由处理
   // ============================================================
   
-  // 如果不是 admin，重定向到 /no-access
+  // 如果不是 admin
   if (!isAdmin) {
     if (process.env.NODE_ENV === 'development') {
-      console.log('[ADMIN MIDDLEWARE] User is not admin, redirecting to /no-access');
+      console.log('[ADMIN MIDDLEWARE] User is not admin');
       console.log('[ADMIN MIDDLEWARE] ========================================');
+    }
+    if (isAdminApiPath) {
+      return NextResponse.json(
+        { ok: false, error: 'Forbidden', code: 'FORBIDDEN', message: 'Must be admin' },
+        { status: 403 }
+      );
     }
     return NextResponse.redirect(new URL('/no-access', request.url));
   }

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { rateLimitOrResponse, rateLimitPolicies, withRateLimitHeaders } from '@lux-night/security';
 
 // Zod schema for query validation
 const InvitesQuerySchema = z.object({
@@ -310,6 +311,9 @@ function isValidUuid(v: any): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  const rl = await rateLimitOrResponse(request, rateLimitPolicies.loginOrInviteRedeem, { userId: 'anon' });
+  if ('response' in rl) return rl.response;
+
   const debugId = randomUUID().substring(0, 8);
   
   // 环境自检
