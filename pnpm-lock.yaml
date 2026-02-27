@@ -189,6 +189,19 @@ importers:
         specifier: ~5.8.2
         version: 5.8.3
 
+  packages/security:
+    dependencies:
+      next:
+        specifier: '>=14.0.0'
+        version: 15.5.9(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.7
+      typescript:
+        specifier: ~5.8.2
+        version: 5.8.3
+
   packages/shared:
     dependencies:
       '@supabase/ssr':
@@ -197,6 +210,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.90.1
         version: 2.90.1
+      next:
+        specifier: '>=14.0.0'
+        version: 15.5.9(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
