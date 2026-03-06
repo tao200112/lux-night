@@ -109,13 +109,13 @@ export default function PublicTicketPage({ params }: { params: Promise<{ token: 
             {start && (
               <p>
                 <span className="text-white/50">Start:</span>{' '}
-                {start.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                {start.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/New_York' } as any)}
               </p>
             )}
             {entry && (
               <p>
                 <span className="text-white/50">Entry before:</span>{' '}
-                {entry.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                {entry.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/New_York' } as any)}
               </p>
             )}
             <p>
@@ -127,7 +127,7 @@ export default function PublicTicketPage({ params }: { params: Promise<{ token: 
           </div>
           {isUsed && data.redeemedAt && (
             <p className="mt-4 text-amber-400/90 text-xs">
-              Redeemed: {new Date(data.redeemedAt).toLocaleString()}
+              Redeemed: {new Date(data.redeemedAt).toLocaleString('en-US', { timeZone: 'America/New_York' })}
             </p>
           )}
         </div>

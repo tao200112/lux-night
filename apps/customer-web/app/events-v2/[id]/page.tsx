@@ -422,7 +422,7 @@ export default function CustomerEventV2DetailPage() {
               {enabledDays.map((day, i) => {
                 const [y, m, d] = day.date.split('-').map(Number);
                 const dayDate = new Date(y, m - 1, d);
-                const label = dayDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                const label = dayDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', timeZone: 'America/New_York' });
                 const selected = i === selectedDayIndex;
                 return (
                   <button

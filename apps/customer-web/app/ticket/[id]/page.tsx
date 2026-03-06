@@ -176,7 +176,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
                    // Priority 1: Redeemed At
                    if (ticket.redeemedAt) {
                        const d = new Date(ticket.redeemedAt);
-                       value = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                       value = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', timeZone: 'America/New_York'});
                    } 
                    // Alternate Priority 1: Status is used but no time (fallback)
                    else if (ticket.status === 'used' || redemptionStatus === 'redeemed') {
@@ -187,8 +187,8 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
                        const start = new Date(ticket.validStartAt);
                        const end = new Date(ticket.validEndAt);
                        
-                       const startTime = start.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
-                       const endTime = end.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
+                       const startTime = start.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', timeZone: 'America/New_York'});
+                       const endTime = end.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', timeZone: 'America/New_York'});
                        
                        // Check if end is next day logic (simple date check)
                        const isNextDay = end.getDate() !== start.getDate();
@@ -197,7 +197,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
                    // Priority 3: Only Valid Start (Open ended?)
                    else if (ticket.validStartAt) {
                         const start = new Date(ticket.validStartAt);
-                        value = `From ${start.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})}`;
+                        value = `From ${start.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit', timeZone: 'America/New_York'})}`;
                    }
                    
                    return (

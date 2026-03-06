@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { getNYDateString } from '@lux-night/shared/timezone';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -53,7 +54,7 @@ export default function EventDetailPage() {
     try {
       setLoading(true);
       setError(null);
-      const today = new Date().toISOString().split('T')[0];
+      const today = getNYDateString();
       const response = await fetch(`/api/events/${eventId}/week?date=${today}`);
       const result = await response.json();
 
@@ -103,7 +104,7 @@ export default function EventDetailPage() {
           </Link>
           <h1 className="text-2xl font-bold">Event Week Configuration (Read-only)</h1>
           <p className="text-gray-400 mt-2">
-            Week of {new Date(weekConfig.week_start_date).toLocaleDateString()}
+            Week of {new Date(weekConfig.week_start_date).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
           </p>
         </div>
 

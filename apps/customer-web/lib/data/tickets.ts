@@ -139,7 +139,7 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
       qrToken: t.qr_seed,
       publicToken: token,
       qrCodeUrl: base ? generateQRCodeUrl(`${base}/t/${token}`) : generateQRCodeUrl(`/t/${token}`),
-      purchaseDate: new Date(t.created_at).toLocaleDateString(),
+      purchaseDate: new Date(t.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
       redeemedAt: t.redeemed_at || undefined,
       redeemedBy: t.redeemed_by || undefined,
     };
@@ -234,7 +234,7 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
     qrToken: data.qr_seed,
     publicToken: token,
     qrCodeUrl: base ? generateQRCodeUrl(`${base}/t/${token}`) : generateQRCodeUrl(`/t/${token}`),
-    purchaseDate: new Date(data.created_at).toLocaleDateString(),
+    purchaseDate: new Date(data.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
     redeemedAt: data.redeemed_at || undefined,
     redeemedBy: data.redeemed_by || undefined,
   };

@@ -366,7 +366,7 @@ export default function RedeemPage({ params }: { params: Promise<{ token: string
                )}
                {redeemed.redeemedAt && (
                  <p className="text-zinc-500 text-xs mt-2 font-mono">
-                   {new Date(redeemed.redeemedAt).toLocaleTimeString()}
+                   {new Date(redeemed.redeemedAt).toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}
                  </p>
                )}
             </div>

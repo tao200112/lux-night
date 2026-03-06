@@ -12,6 +12,7 @@ import {
   rateLimitPolicies,
   withRateLimitHeaders,
 } from '@lux-night/security';
+import { APP_TIMEZONE } from '@lux-night/shared/timezone';
 
 export const dynamic = 'force-dynamic';
 
@@ -164,7 +165,7 @@ export async function POST(req: NextRequest) {
              serverNow: now.toISOString(),
              startsAt: ticket.valid_start_at,
              endsAt: ticket.valid_end_at,
-             timezone: 'America/New_York' // Hint for Frontend, strictly strictly derived from venue ideally
+             timezone: APP_TIMEZONE
            }
          }, { status: 422 });
        }
@@ -180,7 +181,7 @@ export async function POST(req: NextRequest) {
              serverNow: now.toISOString(),
              startsAt: ticket.valid_start_at,
              endsAt: ticket.valid_end_at,
-             timezone: 'America/New_York'
+             timezone: APP_TIMEZONE
            }
          }, { status: 422 });
        }

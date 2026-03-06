@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { APP_TIMEZONE } from '@lux-night/shared/timezone';
 
 // Simple in-memory rate limit (per-instance; for distributed use Upstash/Redis)
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -138,7 +139,7 @@ export async function GET(req: NextRequest) {
     },
     meta: {
       serverTime: now.toISOString(),
-      timezone: 'America/New_York', // Fixed for display
+      timezone: APP_TIMEZONE,
       testConfig: {
          earlyMinutes: earlyMins,
          lateMinutes: lateMins,

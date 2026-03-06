@@ -59,7 +59,7 @@ export default function WeeklyScheduleEditor({
           valid_from_time: '22:00:00',
           valid_to_time: '04:00:00',
           is_overnight: true,
-          timezone: 'America/Los_Angeles',
+          timezone: 'America/New_York',
         })));
       }
       return;
@@ -97,7 +97,7 @@ export default function WeeklyScheduleEditor({
         valid_from_time: '22:00:00',
         valid_to_time: '04:00:00',
         is_overnight: true,
-        timezone: 'America/Los_Angeles',
+        timezone: 'America/New_York',
       })));
     }
   }, [eventId, scheduleMode, loadRules, mode]);

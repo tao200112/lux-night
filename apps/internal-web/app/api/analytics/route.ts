@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireInternalAuth } from '@/lib/internal/auth';
 import { getActiveWorkspace } from '@/lib/internal/workspace';
 import { createClient } from '@/lib/supabase/server';
+import { getNYDateString } from '@lux-night/shared/timezone';
 
 type Period = 'day' | 'week' | 'month' | 'total';
 
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
     const series: Array<{ label: string; date: string; revenue: number; orders: number }> = [];
     let totalRevenue = 0;
     let totalOrdersCount = 0;
-    const toDateStr = (d: Date) => d.toISOString().split('T')[0];
+    const toDateStr = (d: Date) => getNYDateString(d);
     const now = new Date();
 
     if (resolvedPeriod === 'total') {

@@ -65,7 +65,8 @@ export default function DropDetailPage() {
   const dateStr = publishedDate.toLocaleDateString('en-US', { 
     month: 'long', 
     day: 'numeric', 
-    year: 'numeric' 
+    year: 'numeric',
+    timeZone: 'America/New_York'
   });
 
   return (

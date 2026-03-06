@@ -85,13 +85,13 @@ export async function getTickets(userId: string, status?: string): Promise<Ticke
     eventId: t.event_id,
     eventName: t.events.title,
     venue: t.events.venues.name,
-    date: new Date(t.events.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    time: new Date(t.events.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    date: new Date(t.events.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }),
+    time: new Date(t.events.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }),
     status: t.status,
     tierName: t.ticket_types.name,
     qrToken: t.qr_seed,
     qrCodeUrl: generateQRCodeUrl(t.qr_seed),
-    purchaseDate: new Date(t.created_at).toLocaleDateString(),
+    purchaseDate: new Date(t.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
   }));
 }
 
@@ -135,12 +135,12 @@ export async function getTicket(id: string, userId?: string): Promise<Ticket | n
     eventId: data.event_id,
     eventName: data.events.title,
     venue: data.events.venues.name,
-    date: new Date(data.events.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    time: new Date(data.events.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    date: new Date(data.events.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }),
+    time: new Date(data.events.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }),
     status: data.status,
     tierName: data.ticket_types.name,
     qrToken: data.qr_seed,
     qrCodeUrl: generateQRCodeUrl(data.qr_seed),
-    purchaseDate: new Date(data.created_at).toLocaleDateString(),
+    purchaseDate: new Date(data.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
   };
 }

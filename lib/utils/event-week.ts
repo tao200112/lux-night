@@ -1,78 +1,77 @@
 /**
  * Event Week Utilities
  * 活动周配置工具函数
+ *
+ * All date/time math uses America/New_York via Intl and
+ * correctly handles EST ↔ EDT transitions.
  */
 
+import { getNYOffset, getNYDateString, APP_TIMEZONE } from '../../packages/shared/src/timezone';
+
 /**
- * 计算某天的时间窗口（统一算法）
- * 
- * @param weekStartDate 周一开始日期
- * @param dow 星期几 (0=Monday, 1=Tuesday, ..., 6=Sunday)
- * @param startTime 开始时间 (HH:MM)
- * @param endTime 结束时间 (HH:MM)
- * @param endNextDay 是否跨天
- * @param timezone 时区 (默认 America/New_York)
- * @returns { validStartAt: Date, validEndAt: Date }
+ * Calculate the validity window for a specific day — timezone-aware.
+ *
+ * Returns ISO strings with the correct NY offset for the given date,
+ * automatically handling DST boundaries.
  */
 export function calculateDayValidityWindow(
   weekStartDate: Date,
   dow: number,
-  startTime: string, // "16:00"
-  endTime: string, // "02:00"
+  startTime: string,
+  endTime: string,
   endNextDay: boolean,
-  timezone: string = 'America/New_York'
+  _timezone: string = 'America/New_York'
 ): { validStartAt: Date; validEndAt: Date } {
-  // 计算目标日期（weekStartDate + dow days）
   const targetDate = new Date(weekStartDate);
   targetDate.setDate(targetDate.getDate() + dow);
+  const targetDateStr = getNYDateString(targetDate);
 
-  // 解析时间字符串
-  const [startHour, startMinute] = startTime.split(':').map(Number);
-  const [endHour, endMinute] = endTime.split(':').map(Number);
+  const startIso = `${targetDateStr}T${startTime.length === 5 ? startTime + ':00' : startTime}${getNYOffset(targetDate)}`;
+  const validStartAt = new Date(startIso);
 
-  // 计算 valid_start_at: (target_date + start_time) in timezone -> timestamptz
-  const validStartAt = new Date(targetDate);
-  validStartAt.setHours(startHour, startMinute, 0, 0);
-
-  // 计算 valid_end_at
-  let validEndAt: Date;
+  let endDateObj = new Date(targetDate);
   if (endNextDay) {
-    // 跨天：结束时间是次日
-    validEndAt = new Date(targetDate);
-    validEndAt.setDate(validEndAt.getDate() + 1);
-    validEndAt.setHours(endHour, endMinute, 0, 0);
-  } else {
-    // 不跨天
-    validEndAt = new Date(targetDate);
-    validEndAt.setHours(endHour, endMinute, 0, 0);
+    endDateObj.setDate(endDateObj.getDate() + 1);
   }
+  const endDateStr = getNYDateString(endDateObj);
+  const endIso = `${endDateStr}T${endTime.length === 5 ? endTime + ':00' : endTime}${getNYOffset(endDateObj)}`;
+  const validEndAt = new Date(endIso);
 
-  // 注意：这里返回的是本地时间，实际使用时需要转换为 UTC
-  // 在生产环境中，应该使用服务器端函数或时区库（如 date-fns-tz）来处理时区转换
   return { validStartAt, validEndAt };
 }
 
 /**
- * 计算本周的 week_start_date（周一 00:00）
- * 
- * @param forDate 任意日期
- * @param timezone 时区 (默认 America/New_York)
- * @returns 周一开始日期
+ * Calculate week_start_date (Monday 00:00) in NY timezone.
  */
 export function calculateWeekStartDate(
   forDate: Date,
-  timezone: string = 'America/New_York'
+  _timezone: string = 'America/New_York'
 ): Date {
-  // JavaScript Date.getDay() 返回 0=Sunday, 1=Monday, ..., 6=Saturday
-  // 我们需要转换为 0=Monday, 1=Tuesday, ..., 6=Sunday
-  const dayOfWeek = forDate.getDay();
-  const mondayOffset = (dayOfWeek === 0 ? 6 : dayOfWeek - 1); // 0=Monday
+  const nyParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_TIMEZONE,
+    weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(forDate);
 
-  const weekStart = new Date(forDate);
-  weekStart.setDate(weekStart.getDate() - mondayOffset);
-  weekStart.setHours(0, 0, 0, 0);
+  const yearPart = nyParts.find(p => p.type === 'year')?.value || '2026';
+  const monthPart = nyParts.find(p => p.type === 'month')?.value || '01';
+  const dayPart = nyParts.find(p => p.type === 'day')?.value || '01';
+  const weekdayPart = nyParts.find(p => p.type === 'weekday')?.value || 'Mon';
 
-  return weekStart;
+  const dayMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  const dow = dayMap[weekdayPart] ?? 1;
+  const mondayOffset = dow === 0 ? 6 : dow - 1;
+
+  const d = new Date(`${yearPart}-${monthPart}-${dayPart}T12:00:00`);
+  d.setDate(d.getDate() - mondayOffset);
+
+  const mondayStr = getNYDateString(d);
+  const offset = getNYOffset(d);
+  return new Date(`${mondayStr}T00:00:00${offset}`);
 }
 
 /**

@@ -228,7 +228,7 @@ export default function AdminEventChangeRequestsPage() {
                       Merchant: {request.merchants?.name || 'Unknown'}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Submitted: {new Date(request.submitted_at).toLocaleString()}
+                      Submitted: {new Date(request.submitted_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}
                     </p>
                     {request.submitted_user && (
                       <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -300,10 +300,10 @@ export default function AdminEventChangeRequestsPage() {
                       <p><span className="font-semibold">Title:</span> {request.payload_json.title}</p>
                     )}
                     {request.payload_json.start_at && (
-                      <p><span className="font-semibold">Start:</span> {new Date(request.payload_json.start_at).toLocaleString()}</p>
+                      <p><span className="font-semibold">Start:</span> {new Date(request.payload_json.start_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</p>
                     )}
                     {request.payload_json.end_at && (
-                      <p><span className="font-semibold">End:</span> {new Date(request.payload_json.end_at).toLocaleString()}</p>
+                      <p><span className="font-semibold">End:</span> {new Date(request.payload_json.end_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</p>
                     )}
                     {request.payload_json.age_policy && (
                       <p><span className="font-semibold">Age Policy:</span> {request.payload_json.age_policy}</p>

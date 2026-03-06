@@ -11,12 +11,12 @@ function formatAmount(cents: number, currency: string): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { dateStyle: 'medium' });
+  return new Date(iso).toLocaleDateString('en-US', { dateStyle: 'medium', timeZone: 'America/New_York' } as any);
 }
 
 function formatTime(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
 }
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {

@@ -176,7 +176,7 @@ export default function AdminOrderDetailPage() {
               </p>
             )}
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {new Date(order.event.startAt).toLocaleString()}
+              {new Date(order.event.startAt).toLocaleString('en-US', { timeZone: 'America/New_York' })}
             </p>
           </section>
         )}

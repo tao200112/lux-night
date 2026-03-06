@@ -316,7 +316,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                      {new Date(event.startAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} • {event.venue}
+                      {new Date(event.startAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} • {event.venue}
                     </p>
                     <div className="flex items-center gap-4">
                       <div className="flex flex-col">

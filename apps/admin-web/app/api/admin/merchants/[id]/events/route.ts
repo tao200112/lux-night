@@ -208,7 +208,7 @@ export async function POST(
       age_policy: age_policy,
       status: published_status === 'PUBLISHED' ? 'published' : 'draft',
       schedule_mode: schedule_mode,
-      timezone: timezone || merchant.timezone || 'America/Los_Angeles',
+      timezone: timezone || merchant.timezone || 'America/New_York',
       venue_id: venue_id || null, // OPTIONAL - can be null
     };
     
@@ -278,7 +278,7 @@ export async function POST(
         is_on_sale: rule.is_on_sale !== undefined ? rule.is_on_sale : false,
         valid_from_time: rule.valid_from_time || '22:00:00',
         valid_to_time: rule.valid_to_time || '04:00:00',
-        timezone: rule.timezone || timezone || 'America/Los_Angeles',
+        timezone: rule.timezone || timezone || 'America/New_York',
       }));
       
       const { error: rulesError } = await supabase

@@ -243,11 +243,11 @@ export default function AdminApprovalsPage() {
     const isYesterday = new Date(date.getTime() + 24 * 60 * 60 * 1000).toDateString() === now.toDateString();
     
     if (isToday) {
-      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
     } else if (isYesterday) {
-      return `Yesterday, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+      return `Yesterday, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}`;
     } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
     }
   };
   
@@ -523,7 +523,7 @@ export default function AdminApprovalsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Submitted</p>
-                <p className="text-sm">{new Date(selectedApproval.createdAt).toLocaleString()}</p>
+                <p className="text-sm">{new Date(selectedApproval.createdAt).toLocaleString('en-US', { timeZone: 'America/New_York' })}</p>
               </div>
 
               <div>

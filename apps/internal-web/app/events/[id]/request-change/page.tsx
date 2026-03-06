@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getNYDateString } from '@lux-night/shared/timezone';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -59,7 +60,7 @@ export default function RequestChangePage() {
     try {
       setLoading(true);
       setError(null);
-      const dateStr = selectedDate.toISOString().split('T')[0];
+      const dateStr = getNYDateString(selectedDate);
       const response = await fetch(`/api/events/${eventId}/week?date=${dateStr}`);
       const result = await response.json();
       if (result.error) throw new Error(result.error);
@@ -202,7 +203,7 @@ export default function RequestChangePage() {
             <label className="block text-sm font-medium mb-2">Select Week</label>
             <input
               type="date"
-              value={selectedDate.toISOString().split('T')[0]}
+              value={getNYDateString(selectedDate)}
               onChange={(e) => setSelectedDate(new Date(e.target.value))}
               className="px-4 py-2 bg-surface-dark rounded-lg border border-gray-700"
             />

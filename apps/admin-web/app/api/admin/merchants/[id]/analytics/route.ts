@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { handlerWrapper, requireAdmin, withTimeout, type ApiResponse } from '@/lib/admin/api';
+import { getNYDateString } from '@lux-night/shared/timezone';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,7 +56,7 @@ export const GET = handlerWrapper(async (request: NextRequest, { params }: { par
     let totalOrders = 0;
     let totalAmbassadorOrders = 0;
 
-    const toDateStr = (d: Date) => d.toISOString().split('T')[0];
+    const toDateStr = (d: Date) => getNYDateString(d);
 
     if (resolvedPeriod === 'total') {
       totalRevenue = orders.reduce((s: number, o: any) => s + (o.amount_cents || 0), 0);

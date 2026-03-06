@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { getNYDateString } from '@lux-night/shared/timezone';
 // import { toast } from 'sonner'; // Assuming sonner is installed or falling back to alert
 import PageContainer from '@/components/admin/PageContainer';
 
@@ -80,10 +81,19 @@ export default function WeekConfigPage() {
   const [weekStartDate, setWeekStartDate] = useState<string>(''); // Store week_start_date
   const [status, setStatus] = useState<'draft' | 'active' | 'temp_closed' | 'archived'>('draft');
   const [deletedTickets, setDeletedTickets] = useState<{ id: string; dow: number }[]>([]); // Track tickets to delete
-  const [selectedWeekDate, setSelectedWeekDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [selectedWeekDate, setSelectedWeekDate] = useState<string>(() => getNYDateString());
 
   // Event Info State
-  const [activeTab, setActiveTab] = useState<'tickets' | 'info'>('tickets');
+  const [activeTab, setActiveTab] = useState<'tickets' | 'info' | 'templates'>('tickets');
+
+  // Template State
+  const [templateDays, setTemplateDays] = useState<Record<number, DayUI>>({});
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [templateDirty, setTemplateDirty] = useState(false);
+  const [templateDeletedTickets, setTemplateDeletedTickets] = useState<{ id: string; dow: number }[]>([]);
+  const [templateStripeStatus, setTemplateStripeStatus] = useState<string>('');
+
   const [eventInfo, setEventInfo] = useState({
     title: '',
     subtitle: '',
@@ -176,6 +186,159 @@ export default function WeekConfigPage() {
     };
     fetchConfig();
   }, [eventId, selectedWeekDate]);
+
+  // Fetch templates when tab switches to 'templates'
+  useEffect(() => {
+    if (activeTab !== 'templates') return;
+    const fetchTemplates = async () => {
+      setTemplateLoading(true);
+      try {
+        const res = await fetch(`/api/admin/events/${eventId}/templates`);
+        const json = await res.json();
+        const loaded: Record<number, DayUI> = {};
+        [0, 1, 2, 3, 4, 5, 6].forEach(dow => {
+          loaded[dow] = { dow, enabled: false, startTime: '22:00', endTime: '02:00', endNextDay: true, tickets: [] };
+        });
+        if (json.days && Array.isArray(json.days)) {
+          for (const d of json.days) {
+            const tix = (d.ticket_type_templates || []).map((t: any, idx: number) => ({
+              id: t.id,
+              tempId: Math.random().toString(36).substr(2, 9),
+              name: t.name || 'Unnamed',
+              category: mapDbCategoryToUi(t.category),
+              priceDollars: ((t.price_cents || 0) / 100).toFixed(2),
+              age: t.min_age === 21 ? '21' : t.min_age === 18 ? '18' : 'ALL' as AgeRestriction,
+              quantity: t.inventory_limit === null ? '' : String(t.inventory_limit),
+              status: (t.status || 'active') as TicketStatus,
+              sortOrder: t.sort_order ?? idx,
+            }));
+            loaded[d.dow] = {
+              dow: d.dow,
+              enabled: d.enabled,
+              startTime: d.start_time?.slice(0, 5) || '22:00',
+              endTime: d.end_time?.slice(0, 5) || '02:00',
+              endNextDay: d.end_next_day ?? true,
+              tickets: tix,
+            };
+          }
+        }
+        setTemplateDays(loaded);
+        setTemplateDirty(false);
+        setTemplateDeletedTickets([]);
+        setTemplateStripeStatus('');
+      } catch (err) {
+        console.error('Fetch Templates Error:', err);
+        alert('Failed to load recurring defaults');
+      } finally {
+        setTemplateLoading(false);
+      }
+    };
+    fetchTemplates();
+  }, [activeTab, eventId]);
+
+  // Template handlers
+  const toggleTemplateDay = (dow: number, field: keyof DayUI, value: any) => {
+    setTemplateDays(prev => ({ ...prev, [dow]: { ...prev[dow], [field]: value } }));
+    setTemplateDirty(true);
+  };
+  const addTemplateTicket = (dow: number, templateCat: TicketCategory = 'General') => {
+    const tmpl = DEFAULT_TICKET_TEMPLATES[templateCat];
+    const day = templateDays[dow];
+    const maxOrder = Math.max(0, ...day.tickets.map(t => t.sortOrder ?? 0));
+    setTemplateDays(prev => ({
+      ...prev,
+      [dow]: { ...prev[dow], tickets: [...prev[dow].tickets, {
+        tempId: Math.random().toString(36).substr(2, 9),
+        name: tmpl.name || 'New Ticket',
+        category: templateCat,
+        priceDollars: tmpl.priceDollars || '0.00',
+        age: (tmpl.age as AgeRestriction) || '21',
+        quantity: tmpl.quantity || '',
+        status: 'active',
+        sortOrder: maxOrder + 100,
+      }] }
+    }));
+    setTemplateDirty(true);
+  };
+  const updateTemplateTicket = (dow: number, ticketTempId: string, field: keyof TicketUI, value: any) => {
+    setTemplateDays(prev => ({
+      ...prev,
+      [dow]: { ...prev[dow], tickets: prev[dow].tickets.map(t => t.tempId === ticketTempId ? { ...t, [field]: value } : t) }
+    }));
+    setTemplateDirty(true);
+  };
+  const removeTemplateTicket = (dow: number, ticketTempId: string) => {
+    if (!confirm('Delete this ticket from recurring defaults?')) return;
+    const t = templateDays[dow]?.tickets.find(t => t.tempId === ticketTempId);
+    if (t?.id) setTemplateDeletedTickets(prev => [...prev, { id: t.id!, dow }]);
+    setTemplateDays(prev => ({
+      ...prev,
+      [dow]: { ...prev[dow], tickets: prev[dow].tickets.filter(t => t.tempId !== ticketTempId) }
+    }));
+    setTemplateDirty(true);
+  };
+
+  const handleTemplateSave = async () => {
+    setTemplateSaving(true);
+    setTemplateStripeStatus('');
+    try {
+      const daysPayload: Record<string, any> = {};
+      Object.values(templateDays).forEach(day => {
+        const activeTickets = day.tickets.map((t, idx) => ({
+          id: t.id,
+          name: t.name,
+          category: mapUiCategoryToDb(t.category),
+          price_cents: Math.round(parseFloat(t.priceDollars) * 100),
+          currency: 'usd',
+          min_age: t.age === 'ALL' ? null : parseInt(t.age),
+          inventory_limit: t.quantity === '' ? null : parseInt(t.quantity),
+          status: t.status,
+          sort_order: (idx + 1) * 100,
+          action: 'upsert',
+        }));
+        const deleted = templateDeletedTickets
+          .filter(d => d.dow === day.dow)
+          .map(d => ({ id: d.id, action: 'delete' }));
+        daysPayload[day.dow] = {
+          enabled: day.enabled,
+          start_time: day.startTime,
+          end_time: day.endTime,
+          end_next_day: day.endNextDay,
+          tickets: [...activeTickets, ...deleted],
+        };
+      });
+
+      const res = await fetch(`/api/admin/events/${eventId}/templates`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days: daysPayload }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+
+      setTemplateDirty(false);
+      setTemplateDeletedTickets([]);
+
+      let msg = 'Recurring defaults saved!';
+      if (json.stripe_sync?.status === 'failed' || json.stripe_sync?.status === 'partial') {
+        const errs = (json.stripe_sync.errors || []).join('; ');
+        msg += `\n\nStripe sync warning: ${errs}`;
+        setTemplateStripeStatus(`Stripe sync incomplete: ${errs}`);
+      } else if (json.stripe_sync?.status === 'success') {
+        msg += `\nStripe synced (${json.stripe_sync.synced} tickets)`;
+        setTemplateStripeStatus('');
+      }
+      alert(msg);
+
+      // Re-fetch to get updated IDs
+      setActiveTab('tickets');
+      setTimeout(() => setActiveTab('templates'), 50);
+    } catch (err: any) {
+      alert('Failed to save recurring defaults: ' + err.message);
+    } finally {
+      setTemplateSaving(false);
+    }
+  };
 
   // --- Actions ---
 
@@ -547,6 +710,12 @@ export default function WeekConfigPage() {
                     Tickets
                 </button>
                 <button
+                    onClick={() => setActiveTab('templates')}
+                    className={`text-xs font-bold px-4 py-1.5 rounded-md transition-all ${activeTab === 'templates' ? 'bg-[#1313ec] text-white shadow-sm' : 'text-[#888] hover:text-white'}`}
+                >
+                    Recurring
+                </button>
+                <button
                     onClick={() => setActiveTab('info')}
                     className={`text-xs font-bold px-4 py-1.5 rounded-md transition-all ${activeTab === 'info' ? 'bg-[#1313ec] text-white shadow-sm' : 'text-[#888] hover:text-white'}`}
                 >
@@ -556,7 +725,7 @@ export default function WeekConfigPage() {
           </div>
 
           <div className="flex flex-col items-end">
-             {(activeTab === 'tickets' ? isDirty : infoDirty) && <span className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-1 block">Unsaved changes</span>}
+             {(activeTab === 'tickets' ? isDirty : activeTab === 'templates' ? templateDirty : infoDirty) && <span className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-1 block">Unsaved changes</span>}
              {activeTab === 'tickets' ? (
                  <button
                     onClick={handleSave}
@@ -564,6 +733,14 @@ export default function WeekConfigPage() {
                     className={`bg-[#1313ec] hover:bg-[#1313ec]/90 text-white font-bold py-1.5 px-4 rounded transition-all flex items-center gap-2 ${saving || !isDirty ? 'opacity-70 cursor-not-allowed' : ''}`}
                  >
                     {saving ? 'Saving...' : 'Save Tickets'}
+                 </button>
+             ) : activeTab === 'templates' ? (
+                 <button
+                    onClick={handleTemplateSave}
+                    disabled={templateSaving || !templateDirty}
+                    className={`bg-[#1313ec] hover:bg-[#1313ec]/90 text-white font-bold py-1.5 px-4 rounded transition-all flex items-center gap-2 ${templateSaving || !templateDirty ? 'opacity-70 cursor-not-allowed' : ''}`}
+                 >
+                    {templateSaving ? 'Saving...' : 'Save Defaults'}
                  </button>
              ) : (
                  <button
@@ -676,7 +853,7 @@ export default function WeekConfigPage() {
                   if (isDirty && !confirm('Unsaved changes will be lost. Continue?')) return;
                   const d = new Date(selectedWeekDate);
                   d.setDate(d.getDate() - 7);
-                  setSelectedWeekDate(d.toISOString().split('T')[0]);
+                  setSelectedWeekDate(getNYDateString(d));
                   setIsDirty(false);
                 }}
                 className="p-2 rounded-lg hover:bg-white/10 transition-colors"
@@ -685,7 +862,7 @@ export default function WeekConfigPage() {
                 <span className="material-symbols-outlined text-[20px]">chevron_left</span>
               </button>
               <span className="text-sm font-medium text-white">
-                Week of {new Date(weekStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                Week of {new Date(weekStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' })}
               </span>
               <button
                 type="button"
@@ -693,7 +870,7 @@ export default function WeekConfigPage() {
                   if (isDirty && !confirm('Unsaved changes will be lost. Continue?')) return;
                   const d = new Date(selectedWeekDate);
                   d.setDate(d.getDate() + 7);
-                  setSelectedWeekDate(d.toISOString().split('T')[0]);
+                  setSelectedWeekDate(getNYDateString(d));
                   setIsDirty(false);
                 }}
                 className="p-2 rounded-lg hover:bg-white/10 transition-colors"
@@ -905,6 +1082,118 @@ export default function WeekConfigPage() {
         })}
           </div>
        )}
+
+       {activeTab === 'templates' && (
+         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+           {/* Banner */}
+           <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 text-center">
+             <p className="text-xs text-blue-300 font-medium">
+               These are your recurring defaults. Changes here apply to <strong>all future weeks</strong> only — they do not affect the current or past weeks.
+             </p>
+             {templateStripeStatus && (
+               <p className="text-xs text-yellow-400 mt-1">{templateStripeStatus}</p>
+             )}
+           </div>
+
+           {templateLoading ? (
+             <div className="text-center py-12 text-[#888]">Loading recurring defaults...</div>
+           ) : (
+             DAY_ORDER.map((dow) => {
+               const day = templateDays[dow];
+               if (!day) return null;
+
+               return (
+                 <div key={dow} className={`rounded-xl border transition-all duration-200 ${day.enabled ? 'bg-[#181820] border-[#1313ec]/50 shadow-[0_0_20px_rgba(19,19,236,0.1)]' : 'bg-[#111116] border-[#22222a] opacity-80'}`}>
+                   <div className="p-4 flex items-center justify-between border-b border-white/5">
+                     <div>
+                       <h3 className="text-lg font-bold text-white flex items-center gap-2">{DAY_LABELS[dow]}</h3>
+                       {day.enabled && (
+                         <div className="text-xs text-[#666666] mt-0.5">{day.tickets.filter(t => t.status === 'active').length} Tickets</div>
+                       )}
+                     </div>
+                     <label className="relative inline-flex items-center cursor-pointer">
+                       <input type="checkbox" checked={day.enabled} onChange={(e) => toggleTemplateDay(dow, 'enabled', e.target.checked)} className="sr-only peer" />
+                       <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1313ec]"></div>
+                     </label>
+                   </div>
+
+                   {day.enabled && (
+                     <div className="p-4 space-y-4">
+                       <div className="grid grid-cols-2 gap-3 mb-4">
+                         <div className="bg-[#0A0A0E] rounded-lg p-2 border border-[#333] flex items-center justify-between">
+                           <div className="text-[10px] text-[#666] uppercase font-bold px-1">Start</div>
+                           <input type="time" value={day.startTime} onChange={(e) => toggleTemplateDay(dow, 'startTime', e.target.value)} className="bg-transparent text-white text-sm font-mono focus:outline-none text-right w-full" />
+                         </div>
+                         <div className="bg-[#0A0A0E] rounded-lg p-2 border border-[#333] flex items-center justify-between">
+                           <div className="text-[10px] text-[#666] uppercase font-bold px-1">End</div>
+                           <input type="time" value={day.endTime} onChange={(e) => toggleTemplateDay(dow, 'endTime', e.target.value)} className="bg-transparent text-white text-sm font-mono focus:outline-none text-right w-full" />
+                         </div>
+                         <div className="col-span-2 flex items-center justify-end gap-2">
+                           <label className="text-xs text-[#888] flex items-center gap-2 cursor-pointer select-none">
+                             <input type="checkbox" checked={day.endNextDay} onChange={(e) => toggleTemplateDay(dow, 'endNextDay', e.target.checked)} className="rounded border-gray-600 bg-[#222] text-[#1313ec] focus:ring-0" />
+                             Ends next day (+1D)
+                           </label>
+                         </div>
+                       </div>
+                       <div className="h-[1px] bg-white/5 w-full my-4"></div>
+                       <div className="space-y-3">
+                         {day.tickets.map((ticket, tIdx) => (
+                           <div key={ticket.tempId} className="bg-[#15151A] rounded-lg border border-[#333] p-3 group hover:border-[#555] transition-colors relative">
+                             <div className="grid grid-cols-12 gap-3 mb-2">
+                               <div className="col-span-8">
+                                 <label className="text-[10px] text-[#555] uppercase font-bold block mb-1">Ticket Name</label>
+                                 <input type="text" value={ticket.name} onChange={(e) => updateTemplateTicket(dow, ticket.tempId, 'name', e.target.value)} className="w-full bg-[#0A0A0E] border border-[#333] rounded px-2 py-1.5 text-sm text-white focus:border-[#1313ec] focus:outline-none" placeholder="e.g. Early Bird" />
+                               </div>
+                               <div className="col-span-4">
+                                 <label className="text-[10px] text-[#555] uppercase font-bold block mb-1">Price ($)</label>
+                                 <input type="number" value={ticket.priceDollars} onChange={(e) => updateTemplateTicket(dow, ticket.tempId, 'priceDollars', e.target.value)} className="w-full bg-[#0A0A0E] border border-[#333] rounded px-2 py-1.5 text-sm text-white font-mono text-right focus:border-[#1313ec] focus:outline-none" placeholder="0.00" />
+                               </div>
+                             </div>
+                             <div className="grid grid-cols-3 gap-2">
+                               <select value={ticket.age} onChange={(e) => updateTemplateTicket(dow, ticket.tempId, 'age', e.target.value)} className="w-full bg-[#0A0A0E] border border-[#333] rounded px-2 py-1.5 text-xs text-[#aaa] focus:border-[#1313ec] focus:outline-none">
+                                 <option value="21">21+</option>
+                                 <option value="18">18+</option>
+                                 <option value="ALL">All Ages</option>
+                               </select>
+                               <input type="number" value={ticket.quantity} onChange={(e) => updateTemplateTicket(dow, ticket.tempId, 'quantity', e.target.value)} className="w-full bg-[#0A0A0E] border border-[#333] rounded px-2 py-1.5 text-xs text-[#aaa] focus:border-[#1313ec] focus:outline-none" placeholder="Qty" />
+                               <select value={ticket.status} onChange={(e) => updateTemplateTicket(dow, ticket.tempId, 'status', e.target.value)} className={`w-full bg-[#0A0A0E] border border-[#333] rounded px-2 py-1.5 text-xs focus:border-[#1313ec] focus:outline-none ${ticket.status === 'active' ? 'text-green-400' : 'text-gray-500'}`}>
+                                 <option value="active">Active</option>
+                                 <option value="sold_out">Sold Out</option>
+                                 <option value="hidden">Hidden</option>
+                               </select>
+                             </div>
+                             <div className="flex items-center gap-1 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all">
+                               <button onClick={() => removeTemplateTicket(dow, ticket.tempId)} className="bg-[#222] text-[#888] hover:text-red-400 hover:bg-[#333] rounded-md p-1 border border-[#444]" title="Delete">
+                                 <span className="material-symbols-outlined text-[14px] block">close</span>
+                               </button>
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                       <div className="pt-2">
+                         <label className="text-[10px] text-[#666] uppercase font-bold block mb-2 text-center">Quick Add Ticket</label>
+                         <div className="flex flex-wrap gap-2 justify-center">
+                           <button onClick={() => addTemplateTicket(dow, 'General')} className="px-3 py-1 bg-[#1e1e24] hover:bg-[#25252d] border border-[#333] rounded-full text-xs text-[#ccc] transition-colors">+ General</button>
+                           <button onClick={() => addTemplateTicket(dow, 'VIP')} className="px-3 py-1 bg-[#1e1e24] hover:bg-[#25252d] border border-[#333] rounded-full text-xs text-[#ccc] transition-colors">+ VIP</button>
+                           <button onClick={() => addTemplateTicket(dow, 'Drink')} className="px-3 py-1 bg-[#1e1e24] hover:bg-[#25252d] border border-[#333] rounded-full text-xs text-[#ccc] transition-colors">+ Drink</button>
+                           <button onClick={() => addTemplateTicket(dow, 'Skip')} className="px-3 py-1 bg-[#1e1e24] hover:bg-[#25252d] border border-[#333] rounded-full text-xs text-[#ccc] transition-colors">+ Skip Line</button>
+                         </div>
+                       </div>
+                       {day.tickets.length === 0 && (
+                         <div className="text-center py-4 bg-[#141418] rounded-lg border border-dashed border-[#333]">
+                           <span className="material-symbols-outlined text-[#444] text-[24px] mb-1">confirmation_number</span>
+                           <p className="text-xs text-[#666]">No tickets configured</p>
+                         </div>
+                       )}
+                     </div>
+                   )}
+                 </div>
+               );
+             })
+           )}
+         </div>
+       )}
+
        </div>
     </PageContainer>
   );

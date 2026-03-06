@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { getNYStartOfDay, getNYStartOfWeek, getNYStartOfMonth } from '@lux-night/shared/timezone';
 
 export interface DashboardStats {
   totalEvents: number;
@@ -57,15 +58,14 @@ export async function getDashboardStats(
     const totalTickets = tickets?.length || 0;
 
     // 获取今日核销统计
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStartISO = getNYStartOfDay(now);
 
     const { data: checkinsToday } = await supabase
       .from('checkins')
       .select('id')
       .eq('result', 'OK')
       .eq('success', true)
-      .gte('created_at', todayStart.toISOString());
+      .gte('created_at', todayStartISO);
 
     const checkedInToday = checkinsToday?.length || 0;
 
@@ -78,7 +78,7 @@ export async function getDashboardStats(
         'id',
         (tickets || []).map((t: any) => t.order_id).filter(Boolean)
       )
-      .gte('created_at', todayStart.toISOString());
+      .gte('created_at', todayStartISO);
 
     const revenueToday = ordersToday?.reduce(
       (sum: number, o: any) => sum + (o.amount_cents || 0),
@@ -86,9 +86,7 @@ export async function getDashboardStats(
     ) || 0;
 
     // 本周收入
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStartISO = getNYStartOfWeek(now);
 
     const { data: ordersThisWeek } = await supabase
       .from('orders')
@@ -98,7 +96,7 @@ export async function getDashboardStats(
         'id',
         (tickets || []).map((t: any) => t.order_id).filter(Boolean)
       )
-      .gte('created_at', weekStart.toISOString());
+      .gte('created_at', weekStartISO);
 
     const revenueThisWeek = ordersThisWeek?.reduce(
       (sum: number, o: any) => sum + (o.amount_cents || 0),
@@ -106,9 +104,7 @@ export async function getDashboardStats(
     ) || 0;
 
     // 本月收入
-    const monthStart = new Date(now);
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
+    const monthStartISO = getNYStartOfMonth(now);
 
     const { data: ordersThisMonth } = await supabase
       .from('orders')
@@ -118,7 +114,7 @@ export async function getDashboardStats(
         'id',
         (tickets || []).map((t: any) => t.order_id).filter(Boolean)
       )
-      .gte('created_at', monthStart.toISOString());
+      .gte('created_at', monthStartISO);
 
     const revenueThisMonth = ordersThisMonth?.reduce(
       (sum: number, o: any) => sum + (o.amount_cents || 0),

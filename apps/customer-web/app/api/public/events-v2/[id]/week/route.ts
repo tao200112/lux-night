@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { syncEventWeekStripeIfNeeded } from '@/lib/stripe/event-week-sync';
+import { APP_TIMEZONE, getNYOffset, getNYDateString } from '@lux-night/shared/timezone';
 
 export async function GET(
   req: NextRequest,
@@ -17,9 +18,8 @@ export async function GET(
     const searchParams = req.nextUrl.searchParams;
     const dateParam = searchParams.get('date');
     
-    // 默认使用今天
     const forDate = dateParam ? new Date(dateParam) : new Date();
-    const timezone = 'America/New_York';
+    const timezone = APP_TIMEZONE;
 
     const supabase = await createClient();
 
@@ -43,7 +43,7 @@ export async function GET(
       'rpc_get_or_create_event_week',
       {
         p_event_id: id,
-        p_for_date: forDate.toISOString().split('T')[0],
+        p_for_date: getNYDateString(forDate),
         p_timezone: timezone,
       }
     );
@@ -110,18 +110,16 @@ export async function GET(
        const [startH, startM] = day.start_time.split(':').map(Number);
        const [endH, endM] = day.end_time.split(':').map(Number);
        
-       // Construct ISO Strings with Explicit Timezone (America/New_York)
-       // TODO: Read from event_weeks.timezone.
-       const tzOffset = '-05:00'; 
-       
-       const startIso = `${dayDateStr}T${day.start_time}${day.start_time.length === 5 ? ':00' : ''}${tzOffset}`;
-       
-       let endDate = new Date(dayDate);
-       if (day.end_next_day) {
-           endDate.setDate(endDate.getDate() + 1);
-       }
-       const endDateStr = endDate.toLocaleDateString('en-CA');
-       const endIso = `${endDateStr}T${day.end_time}${day.end_time.length === 5 ? ':00' : ''}${tzOffset}`;
+      const startOffset = getNYOffset(dayDate);
+      const startIso = `${dayDateStr}T${day.start_time}${day.start_time.length === 5 ? ':00' : ''}${startOffset}`;
+      
+      let endDate = new Date(dayDate);
+      if (day.end_next_day) {
+          endDate.setDate(endDate.getDate() + 1);
+      }
+      const endDateStr = endDate.toLocaleDateString('en-CA');
+      const endOffset = getNYOffset(endDate);
+      const endIso = `${endDateStr}T${day.end_time}${day.end_time.length === 5 ? ':00' : ''}${endOffset}`;
 
        // Filter active tickets
        const validTickets = (day.tickets || []).filter((t: any) => t.status === 'active');

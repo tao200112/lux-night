@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { syncEventWeekStripeIfNeeded } from '@/lib/stripe/event-week-sync';
+import { APP_TIMEZONE, getNYOffset, getNYDateString } from '@lux-night/shared/timezone';
 
 const DEFAULT_LIMIT = 3;
 const MAX_WEEKS_TO_FETCH = 6;
@@ -19,7 +20,7 @@ function addDays(date: Date, days: number): Date {
 }
 
 function toYYYYMMDD(d: Date): string {
-  return d.toISOString().split('T')[0];
+  return getNYDateString(d);
 }
 
 export async function GET(
@@ -32,8 +33,7 @@ export async function GET(
     const limitParam = searchParams.get('limit');
     const limit = Math.min(Math.max(parseInt(limitParam || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT, 1), 10);
 
-    const timezone = 'America/New_York';
-    const tzOffset = '-05:00';
+    const timezone = APP_TIMEZONE;
     const supabase = await createClient();
 
     const { data: event, error: eventError } = await supabase
@@ -107,11 +107,13 @@ export async function GET(
 
         const st = String(day.start_time);
         const et = String(day.end_time);
-        const startIso = `${dayDateStr}T${st.length === 5 ? st + ':00' : st}${tzOffset}`;
+        const startOffset = getNYOffset(dayDate);
+        const startIso = `${dayDateStr}T${st.length === 5 ? st + ':00' : st}${startOffset}`;
         let endDate = new Date(dayDate);
         if (day.end_next_day) endDate.setDate(endDate.getDate() + 1);
         const endDateStr = endDate.toLocaleDateString('en-CA');
-        const endIso = `${endDateStr}T${et.length === 5 ? et + ':00' : et}${tzOffset}`;
+        const endOffset = getNYOffset(endDate);
+        const endIso = `${endDateStr}T${et.length === 5 ? et + ':00' : et}${endOffset}`;
 
         if (new Date(endIso) <= now) continue;
 

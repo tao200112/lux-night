@@ -18,7 +18,8 @@
     "./auth/requireAdmin": "./src/auth/requireAdmin.ts",
     "./auth/requireMerchantRole": "./src/auth/requireMerchantRole.ts",
     "./auth/requireVenueAccess": "./src/auth/requireVenueAccess.ts",
-    "./server/rpc": "./src/server/rpc.ts"
+    "./server/rpc": "./src/server/rpc.ts",
+    "./timezone": "./src/timezone.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

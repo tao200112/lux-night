@@ -14,7 +14,8 @@ export default function DropCard({ drop, className }: DropCardProps) {
   const dateStr = publishedDate.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: 'America/New_York'
   }).replace(/,/g, '/'); // simple format preference 2026/1/29 or similar
 
   const displaySubtitle = drop.subtitle || drop.content.split('\n')[0];
@@ -59,7 +60,7 @@ export default function DropCard({ drop, className }: DropCardProps) {
 
           <div className="flex items-center justify-between border-t border-white/20 pt-3 mt-1">
               <span className="text-[10px] uppercase tracking-widest text-white/60">
-                  {publishedDate.getFullYear()}/{publishedDate.getMonth() + 1}/{publishedDate.getDate()}
+                  {new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'America/New_York' }).format(publishedDate).replace(/(\d+)\/(\d+)\/(\d+)/, '$3/$1/$2')}
               </span>
               <span className="material-symbols-outlined text-white/50 text-sm group-hover:translate-x-1 transition-transform">
                   arrow_forward

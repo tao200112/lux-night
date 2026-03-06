@@ -191,7 +191,7 @@ export default function AdminCustomerDetailPage() {
                   status={order.status as any}
                   metadata={[
                     { label: 'Total', value: `$${order.total.toFixed(2)}` },
-                    { label: 'Date', value: new Date(order.createdAt).toLocaleDateString() },
+                    { label: 'Date', value: new Date(order.createdAt).toLocaleDateString('en-US', { timeZone: 'America/New_York' }) },
                   ]}
                 />
               ))}

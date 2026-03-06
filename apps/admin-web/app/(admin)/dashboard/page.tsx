@@ -221,7 +221,7 @@ export default async function AdminDashboardPage() {
                       const maxVal = Math.max(...dashboardData.revenueTrend.map((d: any) => d.revenue), 1);
                       return dashboardData.revenueTrend.map((d: any, i: number) => {
                         const h = (d.revenue / maxVal) * 100;
-                        const dateLabel = d.date ? new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                        const dateLabel = d.date ? new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }) : '';
                         return (
                           <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
                             <div

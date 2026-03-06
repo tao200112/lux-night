@@ -143,11 +143,11 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
         // If unlinked or legacy, use created_at
         let dateRangeDisplay = 'Unknown Date';
         if (minStart) {
-            const d1 = new Date(minStart).toLocaleDateString();
-            const d2 = maxEnd ? new Date(maxEnd).toLocaleDateString() : '';
+            const d1 = new Date(minStart).toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+            const d2 = maxEnd ? new Date(maxEnd).toLocaleDateString('en-US', { timeZone: 'America/New_York' }) : '';
             dateRangeDisplay = (d2 && d1 !== d2) ? `${d1} - ${d2}` : d1;
         } else {
-             dateRangeDisplay = new Date(order.created_at).toLocaleDateString();
+             dateRangeDisplay = new Date(order.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' });
         }
 
         return {

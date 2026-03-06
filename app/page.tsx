@@ -344,9 +344,9 @@ export default function DiscoverPage() {
                         <div className="flex-1 flex flex-col justify-center py-1">
                           <h4 className="text-slate-900 dark:text-white font-bold text-lg leading-tight line-clamp-1">{event.title}</h4>
                           <div className="flex items-center gap-2 mt-2 text-slate-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wide">
-                            <span className="text-primary">{new Date(event.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                            <span className="text-primary">{new Date(event.start_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}</span>
                             <span className="w-1 h-1 rounded-full bg-gray-600"></span>
-                            <span>{new Date(event.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                            <span>{new Date(event.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })}</span>
                           </div>
                           <div className="mt-auto pt-2 flex items-center justify-between">
                             <p className="text-slate-400 dark:text-gray-500 text-xs">{event.venue?.address || 'Location TBA'}</p>

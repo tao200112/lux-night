@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireInternalAuth } from '@/lib/internal/auth';
 import { getActiveWorkspace } from '@/lib/internal/workspace';
 import { createClient } from '@/lib/supabase/server';
+import { getNYDateString } from '@lux-night/shared/timezone';
 
 export async function GET(
   req: NextRequest,
@@ -50,7 +51,7 @@ export async function GET(
       'rpc_get_or_create_event_week',
       {
         p_event_id: id,
-        p_for_date: forDate.toISOString().split('T')[0],
+        p_for_date: getNYDateString(forDate),
         p_timezone: timezone,
       }
     );

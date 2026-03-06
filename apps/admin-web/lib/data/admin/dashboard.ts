@@ -8,7 +8,8 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { createServiceRoleClient } from '@/lib/admin/api'; 
+import { createServiceRoleClient } from '@/lib/admin/api';
+import { getNYStartOfDay, getNYDateString } from '@lux-night/shared/timezone'; 
 
 export interface DashboardData {
   kpis: {
@@ -44,8 +45,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
     // Dates
     const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStart = new Date(getNYStartOfDay(now));
     
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
@@ -241,7 +241,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     for (let i = 6; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = getNYDateString(d);
         const dayRevenue = recentOrders
             .filter((o: any) => o.created_at.startsWith(dateStr))
             .reduce((sum: number, o: any) => sum + (o.amount_cents || 0), 0);

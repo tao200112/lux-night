@@ -285,7 +285,7 @@ export default function AdminMerchantDetailPage() {
                   key={event.id}
                   href={`/events/${event.id}/week`}
                   title={event.title}
-                  subtitle={new Date(event.startAt || 0).toLocaleDateString()}
+                  subtitle={new Date(event.startAt || 0).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
                   status={event.status as any}
                 />
               ))}
@@ -342,7 +342,7 @@ export default function AdminMerchantDetailPage() {
                         Order #{order.id.slice(0, 8)}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {new Date(order.createdAt).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
                       </p>
                     </div>
                     <div className="text-right">

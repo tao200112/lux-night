@@ -99,7 +99,7 @@ export default function OrdersPage() {
                     <div>
                       <p className="font-mono text-xs text-gray-500">#{o.id.slice(0, 8)}</p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(o.createdAt).toLocaleString()} · {o.tickets} ticket{o.tickets !== 1 ? 's' : ''}
+                        {new Date(o.createdAt).toLocaleString('en-US', { timeZone: 'America/New_York' })} · {o.tickets} ticket{o.tickets !== 1 ? 's' : ''}
                       </p>
                       {o.inviteCode && (
                         <p className="text-xs text-purple-500 mt-1">Code: {o.inviteCode}</p>

@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { getNYStartOfDay, getNYStartOfWeek, getNYStartOfMonth, getNYDateString } from '@lux-night/shared/timezone';
 
 export interface DashboardStats {
   totalEvents: number;
@@ -81,17 +82,10 @@ export async function getDashboardStats(
     totalTickets = (orderItems || []).reduce((sum: number, oi: any) => sum + (oi.quantity || 0), 0);
   }
 
-  // Time ranges
-  const now = new Date();
-  const todayStart = new Date(now.setHours(0,0,0,0)).toISOString();
-  
-  const weekStartFn = new Date();
-  weekStartFn.setDate(weekStartFn.getDate() - weekStartFn.getDay());
-  const weekStart = new Date(weekStartFn.setHours(0,0,0,0)).toISOString();
-  
-  const monthStartFn = new Date();
-  monthStartFn.setDate(1);
-  const monthStart = new Date(monthStartFn.setHours(0,0,0,0)).toISOString();
+  // Time ranges (NY timezone-aware)
+  const todayStart = getNYStartOfDay();
+  const weekStart = getNYStartOfWeek();
+  const monthStart = getNYStartOfMonth();
 
   const calcRevenue = (fromDate: string) => {
       return paidOrders
@@ -158,7 +152,7 @@ export async function getDashboardStats(
         return {
             id: e.id,
             title: e.title,
-            startAt: config?.start_time ? `${new Date().toISOString().split('T')[0]}T${config.start_time}` : e.created_at,
+            startAt: config?.start_time ? `${getNYDateString()}T${config.start_time}` : e.created_at,
             venue: (e as any).venue_name || 'Venue',
             sold,
             total: total || 1,

@@ -300,9 +300,9 @@ export default function AdminChangeRequestsPage() {
                     <div className="text-sm text-gray-400 space-y-1">
                       <p>Merchant: {request.merchants?.name || 'Unknown'}</p>
                       <p>
-                        Target Week: {new Date(request.target_week_start_date).toLocaleDateString()}
+                        Target Week: {new Date(request.target_week_start_date).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
                       </p>
-                      <p>Submitted: {new Date(request.created_at).toLocaleString()}</p>
+                      <p>Submitted: {new Date(request.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</p>
                       {request.note && <p>Note: {request.note}</p>}
                     </div>
                   </div>
@@ -346,7 +346,7 @@ export default function AdminChangeRequestsPage() {
                     <p>
                       {request.status === 'approved' ? 'Approved' : 'Rejected'} by admin on{' '}
                       {request.reviewed_at
-                        ? new Date(request.reviewed_at).toLocaleString()
+                        ? new Date(request.reviewed_at).toLocaleString('en-US', { timeZone: 'America/New_York' })
                         : 'N/A'}
                     </p>
                     <p className="mt-1">Note: {request.review_note}</p>
@@ -372,7 +372,7 @@ export default function AdminChangeRequestsPage() {
                 </p>
                 <p>
                   <strong>Target Week:</strong>{' '}
-                  {new Date(selectedRequest.target_week_start_date).toLocaleDateString()}
+                  {new Date(selectedRequest.target_week_start_date).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
                 </p>
                 {selectedRequest.note && (
                   <p>

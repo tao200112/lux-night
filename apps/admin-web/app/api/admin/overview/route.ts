@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { handlerWrapper, requireAdmin, withTimeout, type ApiResponse } from '@/lib/admin/api';
+import { getNYStartOfDay } from '@lux-night/shared/timezone';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,8 +42,7 @@ export const GET = handlerWrapper(async (request: NextRequest): Promise<NextResp
     
     // Dates
     const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStart = new Date(getNYStartOfDay(now));
 
     const rangeStart = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000);
     const previousRangeStart = new Date(now.getTime() - (rangeDays * 2) * 24 * 60 * 60 * 1000);

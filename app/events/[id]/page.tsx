@@ -154,8 +154,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Format date and time
   const eventDate = new Date(event.start_at);
-  const formattedDate = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  const formattedTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const formattedDate = eventDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' });
+  const formattedTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
 
   // Age policy tags
   const ageTag = event.age_policy === '21+' ? '21+' : event.age_policy === 'UNDER21' ? '18+' : 'ALL AGES';

@@ -68,6 +68,7 @@ export default function ApprovalDiffPanel({
           year: 'numeric',
           hour: 'numeric',
           minute: '2-digit',
+          timeZone: 'America/New_York',
         });
       } catch {
         return String(value);

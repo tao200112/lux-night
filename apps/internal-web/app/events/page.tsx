@@ -244,7 +244,7 @@ export default function EventsPage() {
                       <span className="material-symbols-outlined text-xs">calendar_today</span>
                       <span>
                         {startDate ? (
-                          `${startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • ${startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                          `${startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' })} • ${startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })}`
                         ) : (
                           'Recurring Event'
                         )}

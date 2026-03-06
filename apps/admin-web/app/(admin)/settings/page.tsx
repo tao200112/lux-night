@@ -149,7 +149,7 @@ export default function AdminSettingsPage() {
     const date = new Date(dateString);
     const isToday = date.toDateString() === new Date().toDateString();
     if (isToday) return 'Today';
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' });
   };
   
   const getInitials = (name: string) => {
