@@ -41,15 +41,8 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Type-check if available
-        shell: bash
-        run: |
-          if pnpm -r --if-present type-check; then
-            echo "type-check scripts completed"
-          else
-            echo "No type-check scripts were available or type-check failed"
-            exit 1
-          fi
+      - name: Type-check
+        run: pnpm type-check
 
       - name: Build
         run: pnpm build

@@ -1,8 +1,24 @@
 {
   "name": "lux-night-monorepo",
   "version": "0.0.0",
+  "description": "Self-hostable nightlife and event ticketing platform for venues, clubs, promoters, and small event operators.",
+  "license": "MIT",
   "private": true,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tao200112/lux-night.git"
+  },
+  "keywords": [
+    "ticketing",
+    "events",
+    "nightlife",
+    "self-hosted",
+    "nextjs",
+    "supabase",
+    "stripe",
+    "typescript"
+  ],
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -17,6 +33,8 @@
     "build:admin": "pnpm --filter admin-web build",
     "build": "pnpm run build:customer && pnpm run build:internal && pnpm run build:admin",
     "lint": "pnpm --filter \"*\" lint",
+    "type-check": "tsc -p apps/customer-web/tsconfig.json --noEmit && tsc -p apps/internal-web/tsconfig.json --noEmit && tsc -p apps/admin-web/tsconfig.json --noEmit && tsc -p packages/shared/tsconfig.json --noEmit && tsc -p packages/security/tsconfig.json --noEmit",
+    "ci": "pnpm install --frozen-lockfile && pnpm lint && pnpm type-check && pnpm build",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:reset": "npx supabase db reset",

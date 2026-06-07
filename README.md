@@ -1,12 +1,23 @@
 # Lux Night
 
-Lux Night is an early-stage, self-hostable nightlife and event ticketing platform for venues, clubs, promoters, and small event operators.
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3FCF8E.svg)](https://supabase.com/)
+[![Stripe](https://img.shields.io/badge/Stripe-Checkout%20%2B%20Webhooks-635BFF.svg)](https://stripe.com/)
+[![CI](https://github.com/tao200112/lux-night/actions/workflows/ci.yml/badge.svg)](https://github.com/tao200112/lux-night/actions/workflows/ci.yml)
+
+Lux Night is a self-hostable nightlife and event ticketing platform for venues, clubs, promoters, and small event operators.
+
+**Status:** early-stage, actively maintained, and not yet production-hardened. The codebase is real-world inspired and reusable, but operators should review payments, webhooks, Supabase RLS, service-role usage, ticket redemption, and rate limits before running real events.
 
 The project combines a customer ticket-buying experience, a merchant/staff operations portal, and an admin console in one TypeScript monorepo. It is designed for teams that need practical event discovery, checkout, invite codes, ticket issuance, and door redemption workflows without depending on a closed proprietary platform.
 
-## Problem
+## Why This Project Exists
 
 Small nightlife operators often stitch together ticket sales, guest lists, payments, QR codes, staff permissions, and reporting across several tools. That creates operational risk at the door, makes refunds and invite tracking difficult, and leaves venues with limited control over their own data.
+
+Lux Night exists to make those workflows inspectable and self-hostable. It is not meant to be one private venue's app or a closed demo. The goal is to provide a credible open-source foundation that operators can adapt for their own venues, cities, brands, or event series while keeping control of their data and deployment.
 
 Lux Night aims to provide a transparent, hackable foundation for:
 
@@ -16,6 +27,15 @@ Lux Night aims to provide a transparent, hackable foundation for:
 - Giving venue staff limited tools for scanning and manual lookup.
 - Giving operators and admins visibility into orders, customers, merchants, events, and approvals.
 - Running the whole stack against a Supabase project that the operator controls.
+
+## Who This Is For
+
+- Independent venues and clubs that want more control over ticketing and door operations.
+- Promoters and small event operators who need invite codes, checkout, ticket wallets, and scanning workflows.
+- Developers building self-hosted event operations tools on Next.js, Supabase, and Stripe.
+- Maintainers interested in security-sensitive open-source work around payments, webhooks, RLS, and ticket redemption.
+
+Lux Night is not a turnkey replacement for mature commercial ticketing systems yet. It is a practical starting point for teams that can run and review their own infrastructure.
 
 ## Key Features
 
@@ -62,6 +82,19 @@ For a deeper system walkthrough, see [docs/architecture.md](docs/architecture.md
 - Tailwind CSS
 - Zod
 - Optional Upstash Redis-backed rate limiting
+
+## Maintainer Workflows Where Codex Helps
+
+Codex is especially useful for the maintenance work this project needs next:
+
+- PR review across customer, merchant/staff, admin, shared, and security packages.
+- Issue triage that separates setup problems, product bugs, payment issues, and security-sensitive reports.
+- Release notes that summarize app, database, webhook, and operational changes without inventing adoption claims.
+- Security review for service-role routes, admin boundaries, invite code logic, and ticket redemption flows.
+- Webhook and payment edge-case testing, including retries, duplicate events, expiration, refunds, and partial failures.
+- Supabase RLS review for anon/authenticated access, RPC functions, and server-only privileged operations.
+
+See [docs/codex-for-oss.md](docs/codex-for-oss.md) for the application-oriented summary.
 
 ## Local Development
 
@@ -210,6 +243,12 @@ Lux Night is early-stage and actively evolving. Near-term areas of work include:
 - Expanded documentation for RLS policies and deployment options.
 - More complete CI coverage across apps and packages.
 - Accessibility and responsive UX improvements across operational workflows.
+
+See [ROADMAP.md](ROADMAP.md) for the current roadmap.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## Contributing
 

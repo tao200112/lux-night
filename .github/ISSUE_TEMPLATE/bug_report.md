@@ -19,7 +19,15 @@ Describe the bug clearly.
 - [ ] packages/security
 - [ ] Supabase migrations/RLS/RPC
 - [ ] Stripe checkout/webhook
+- [ ] Ticket redemption/scanning
+- [ ] Invite codes
 - [ ] Documentation
+
+## Security-Sensitive Checklist
+
+- [ ] This affects payments, Stripe webhooks, Supabase RLS, service-role usage, rate limiting, ticket redemption, invite codes, auth, or admin access.
+- [ ] I removed all secrets, tokens, customer data, payment data, and private URLs from this report.
+- [ ] If this may be a vulnerability, I will report it privately instead of posting exploit details publicly.
 
 ## Steps to Reproduce
 
